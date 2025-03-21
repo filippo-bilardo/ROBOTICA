@@ -7,7 +7,7 @@ void setup() {
 
 void loop() {
   tone(BUZZER_PIN, 1000);  // Genera un tono a 1000 Hz
-  delay(1000);            // Mantieni il tono per 1 secondo
+  delay(1000);             // Mantieni il tono per 1 secondo
   noTone(BUZZER_PIN);      // Ferma il tono
-  delay(1000);            // Pausa di 1 secondo
+  delay(1000);             // Pausa di 1 secondo
 }
