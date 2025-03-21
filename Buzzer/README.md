@@ -45,7 +45,7 @@ void loop() {
   delay(1000);                    // Pausa di 1 secondo
 }
 ```
-[Scarica il codice completo](01_buzzer_attivo.ino)
+[Scarica il codice completo](Buzzer_01_buzzer_attivo.ino)
 
 ### Utilizzo di un buzzer passivo
 Se usi un buzzer passivo, puoi generare diverse frequenze utilizzando la funzione `tone()`:
@@ -65,7 +65,7 @@ void loop() {
   delay(1000);            // Pausa di 1 secondo
 }
 ```
-[Scarica il codice completo](02_buzzer_passivo.ino)
+[Scarica il codice completo](Buzzer_02_buzzer_passivo.ino)
 
 ## Parte 2: Funzionalità intermedie
 
@@ -107,7 +107,7 @@ void loop() {
   delay(2000);  // Pausa prima di ripetere
 }
 ```
-[Scarica il codice completo](03_melodia_semplice.ino)
+[Scarica il codice completo](Buzzer_03_melodia_semplice.ino)
 
 ### Controllo del volume (PWM)
 Per i buzzer passivi, puoi simulare diversi livelli di volume utilizzando il PWM (Pulse Width Modulation):
@@ -136,7 +136,7 @@ void loop() {
   delay(1000);  // Pausa prima di ripetere
 }
 ```
-[Scarica il codice completo](04_controllo_volume_pwm.ino)
+[Scarica il codice completo](Buzzer_04_controllo_volume_pwm.ino)
 
 ## Parte 3: Applicazioni avanzate
 
@@ -196,6 +196,7 @@ void triggerAlarm() {
 }
 
 ```
+[Scarica il codice completo](Buzzer_05_sistema_allarme_pir.ino)
 
 ### Comunicazione in codice Morse
 
@@ -280,6 +281,7 @@ void playMorseCode(String code) {
 }
 
 ```
+[Scarica il codice completo](Buzzer_06_codice_morse.ino)
 
 ### Theremin digitale con sensore a ultrasuoni HC-SR04
 
@@ -343,6 +345,7 @@ void loop() {
 }
 
 ```
+[Scarica il codice completo](Buzzer_07_theremin_digitale.ino)
 
 ### Sintetizzatore MIDI
 
@@ -414,6 +417,7 @@ void printNoteTable() {
 }
 
 ```
+[Scarica il codice completo](Buzzer_08_sintetizzatore_midi.ino)
 
 ## Esercizi proposti
 

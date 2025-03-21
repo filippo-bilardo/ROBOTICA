@@ -1,14 +1,16 @@
 /**
- * 03_melodia_semplice.ino
+ * \Buzzer_03_melodia_semplice 
  * 
  * Questo sketch suona una semplice melodia utilizzando un buzzer.
  * Il buzzer è collegato al pin digitale 8.
  *
  * https://wokwi.com/projects/425933995361295361
+ * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale
- */const int BUZZER_PIN = 8;
+ */
+const int BUZZER_PIN = 8;
 
 // Definizione delle note (frequenze in Hz)
 #define NOTE_C4  262

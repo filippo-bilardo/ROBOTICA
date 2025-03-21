@@ -1,4 +1,6 @@
 /**
+ * \Buzzer_08_sintetizzatore_midi
+ *
  * Sintetizzatore MIDI. Questo programma permette di suonare una nota MIDI 
  * seleziondola tra 24 possibili note. La nota viene
  * selezionata tramite un numero digitato sulla seriale.
@@ -8,6 +10,7 @@
  * dove nota è un numero da 0 a 127.
  *
  * https://wokwi.com/projects/425933317096044545
+ * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale
