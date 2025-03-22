@@ -481,7 +481,7 @@ Ecco un elenco di risorse utili per comprendere e riprodurre brani in formato RT
 - [https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/](<https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/>)
 - [https://github.com/end2endzone/NonBlockingRTTTL](https://github.com/end2endzone/NonBlockingRTTTL)
 - [https://github.com/ArminJo/PlayRtttl](https://github.com/ArminJo/PlayRtttl)
-
+- [https://1j01.github.io/rtttl.js](https://1j01.github.io/rtttl.js)
 
 ## Esercizi proposti
 

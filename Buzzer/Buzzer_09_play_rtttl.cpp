@@ -1,4 +1,8 @@
-// Definizione delle melodie
+// https://adamonsoon.github.io/rtttl-play/
+// https://eddmann.com/nokia-composer-web/
+// https://1j01.github.io/rtttl.js/
+
+// Melodie in formato RTTTL
 const char* mTetris = "tetris:d=4,o=5,b=160:e6,8b,8c6,8d6,16e6,16d6,8c6,8b,a,8a,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,2a,8p,d6,8f6,a6,8g6,8f6,e6,8e6,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,a";
 const char* mMission = "MissionImp:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,a#,g,2d,32p,a#,g,2c#,32p,a#,g,2c,a#5,8c,2p,32p,a#5,g5,2f#,32p,a#5,g5,2f,32";
 const char* mSuperMario = "Super Mario:d=4,o=5,b=100:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,16p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b";
@@ -52,6 +56,3 @@ const char *mFrogger = "frogger:d=8,o=5,b=100:d#6,c6,g,d#6,c6,g,d#6,c6,a#,a,a#,c
 
 const char* mSiren = "siren:d=8,o=5,b=100:d,e,d,e,d,e,d,e";
 const char* mScale_up = ":d=32,o=5,b=100:c,c#,d#,e,f#,g#,a#,b";
-
-// https://adamonsoon.github.io/rtttl-play/
-// https://eddmann.com/nokia-composer-web/
