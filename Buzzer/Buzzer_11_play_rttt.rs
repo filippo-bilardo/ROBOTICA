@@ -130,8 +130,13 @@ fn get_frequency(note: &str, octave: u8) -> f32 {
     let base_c4 = 261.63;
     let semitone_ratio = 2.0_f32.powf(FRAC_1_12);
     
+    // Rimuovi eventuali punti dalla nota (notazione puntata)
+    // Questo è necessario perché nel formato RTTTL il punto indica una nota puntata
+    // ma non fa parte del nome della nota stessa
+    let clean_note = note.trim_end_matches('.');
+    
     // Calcola la distanza in semitoni da C4
-    let note_index = *note_map.get(note.to_lowercase().as_str()).unwrap_or(&0);
+    let note_index = *note_map.get(clean_note.to_lowercase().as_str()).unwrap_or(&0);
     let octave_diff = (octave as i8) - 4;
     let semitones_from_c4 = note_index + (octave_diff * 12);
     
