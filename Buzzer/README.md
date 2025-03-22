@@ -480,6 +480,8 @@ Ecco un elenco di risorse utili per comprendere e riprodurre brani in formato RT
 - [Nokia Composer](<https://eddmann.com/nokia-composer-web/>)
 - [https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/](<https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/>)
 - [https://github.com/end2endzone/NonBlockingRTTTL](https://github.com/end2endzone/NonBlockingRTTTL)
+- [https://github.com/ArminJo/PlayRtttl](https://github.com/ArminJo/PlayRtttl)
+
 
 ## Esercizi proposti
 
