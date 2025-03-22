@@ -66,6 +66,7 @@ void loop() {
 }
 ```
 [Scarica il codice completo](Buzzer_02_buzzer_passivo.ino)
+[Versione online](https://wokwi.com/projects/425933995361295361)
 
 ## Parte 2: Funzionalità intermedie
 
@@ -108,6 +109,7 @@ void loop() {
 }
 ```
 [Scarica il codice completo](Buzzer_03_melodia_semplice.ino)
+[Versione online](https://wokwi.com/projects/425933995361295361)
 
 ### Controllo del volume (PWM)
 Per i buzzer passivi, puoi simulare diversi livelli di volume utilizzando il PWM (Pulse Width Modulation):
@@ -197,6 +199,7 @@ void triggerAlarm() {
 
 ```
 [Scarica il codice completo](Buzzer_05_sistema_allarme_pir.ino)
+[Versione online](https://wokwi.com/projects/425932743963164673)
 
 ### Comunicazione in codice Morse
 
@@ -418,6 +421,65 @@ void printNoteTable() {
 
 ```
 [Scarica il codice completo](Buzzer_08_sintetizzatore_midi.ino)
+[Versione online](https://wokwi.com/projects/425933317096044545)
+
+### Player RTTTL
+Il formato RTTTL (Ring Tone Text Transfer Language) è un formato di dati sviluppato da Nokia per la creazione di suonerie. È un metodo testuale semplice per descrivere melodie che può essere utilizzato in vari contesti di programmazione, tra cui progetti con Arduino o altri microcontrollori.
+
+#### Struttura di base di un file RTTTL
+
+Un file RTTTL è composto da tre sezioni principali:
+1. Nome del brano
+2. Impostazioni di default
+3. Sequenza di note
+
+La struttura generale è: `Nome:Impostazioni:Note`
+```cpp
+// Un semplice esempio di melodia RTTTL
+const char* rtttl = "Super Mario:d=4,o=5,b=100:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p";
+```
+
+**1. Nome del brano**
+Il nome è semplicemente una stringa che identifica la melodia.
+
+**Impostazioni di default**
+Le impostazioni includono:
+- `d` = durata predefinita delle note (1, 2, 4, 8, 16, 32)
+- `o` = ottava predefinita (4, 5, 6, 7)
+- `b` = battiti al minuto (BPM)
+
+**3. Sequenza di note**
+Ogni nota è definita nel formato: `[durata][nota][ottava][punto]`
+- `durata`: opzionale, sovrascrive il valore predefinito
+- `nota`: lettera da A a G, con eventuale diesis (#) o bemolle (b)
+- `ottava`: opzionale, sovrascrive l'ottava predefinita
+- `punto`: un punto (.) aggiunge metà della durata alla nota
+
+**Esempio di implementazione in Arduino**
+Ecco un esempio di come implementare un player RTTTL base in Arduino:
+[Scarica il codice completo](Buzzer_09_play_rtttl.ino)
+[Versione online](https://wokwi.com/projects/425889424760583169)
+Esempio in python
+[Scarica il codice completo](Buzzer_10_play_rttt.py)
+[Versione online](https://wokwi.com/projects/426041520669602817)
+Esempio di implentazione codice non bloccante
+[Scarica il codice completo](Buzzer_11_play_rtttl_nonblocking.ino)
+[Versione online](https://wokwi.com/projects/426124385658658817)
+[Versione online2](https://wokwi.com/projects/389782389483344897)
+
+**Collezioni di brani**
+[Buzzer_09_play_rtttl.cpp](Buzzer_09_play_rtttl.cpp)
+
+**Approfondimenti sul web**
+Ecco un elenco di risorse utili per comprendere e riprodurre brani in formato RTTTL (Ring Tone Text Transfer Language):
+- [Specifica RTTTL e guida rapida](<https://www.mobilefish.com/tutorials/rtttl/rtttl_quickguide_specification.html>)
+- [Wikipedia - Ring Tone Text Transfer Language](<https://en.wikipedia.org/wiki/Ring_Tone_Text_Transfer_Language>)
+- High School Maker - Introduzione a RTTTL
+- Adafruit RTTTL Library
+- [ESPHome - Rtttl Buzzer](<https://esphome.io/components/rtttl.html>)
+- [Nokia Composer](<https://eddmann.com/nokia-composer-web/>)
+- [https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/](<https://picaxe.com/RTTTL-Ringtones-for-Tune-Command/>)
+- [https://github.com/end2endzone/NonBlockingRTTTL](https://github.com/end2endzone/NonBlockingRTTTL)
 
 ## Esercizi proposti
 

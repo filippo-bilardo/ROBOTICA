@@ -26,27 +26,33 @@ class Buzzer
 private:
     int buzzerPin; // Pin del buzzer
 
-    // Funzione per calcolare la frequenza di una nota MIDI
-    // Esempi di note MIDI: 60 (C4), 69 (A4), 81 (A5), 108 (C8)
-    int getNoteFrequencyMIDI(int note)
-    {
-        // Frequenza di una nota MIDI
-        return 440 * pow(2, (note - 69) / 12);
-    }
-
     /**
      * @brief Funzione per calcolare la frequenza di una nota 
      * comprese i diesis e i bemolli
      * 
      * @param note la nota (C, D, E, F, G, A, B) //case insensitive
-     * @param octave l'ottava (da 0 a 8)
+     * @param octave l'ottava (0-8)
      * @param sharp_flat 1 per diesis, -1 per bemolle, 0 per naturale
      * @return int la frequenza della nota
      */
     int getNoteFrequency(char note, int octave, int sharp_flat)
     {
         // Frequenze base delle note nell'ottava 4 (A4 = 440Hz)
-        const int notes[] = {0, 262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494};
+        const int notes[] = {
+            0,   // Non usato
+            262, // C 
+            277, // C#, Db
+            294, // D
+            311, // D#, Eb
+            330, // E
+            349, // F 
+            370, // F#, Gb
+            392, // G
+            415, // G#, Ab
+            440, // A
+            466, // A#, Bb  
+            494  // B
+        };
         int index = 0;
 
         // Trasforma la nota in minuscolo per uniformità
@@ -71,12 +77,23 @@ private:
 
         // Calcolo della frequenza in base all'ottava
         // Utilizziamo l'operatore bit shift per calcolare potenze di 2 (più efficiente)
+        // se octave = 0 la frequenza è 0
+        // se octave = 1 la frequenza è notes[index] * 2^(-3) = notes[index] / 8
+        // se octave = 2 la frequenza è notes[index] * 2^(-2) = notes[index] / 4
+        // se octave = 3 la frequenza è notes[index] * 2^(-1) = notes[index] / 2
+        // se octave = 4 la frequenza è notes[index] * 2^(0) = notes[index]
+        // se octave = 5 la frequenza è notes[index] * 2^(1) = notes[index] * 2
+        // se octave = 6 la frequenza è notes[index] * 2^(2) = notes[index] * 4
+        // se octave = 7 la frequenza è notes[index] * 2^(3) = notes[index] * 8
+        // se octave = 8 la frequenza è notes[index] * 2^(4) = notes[index] * 16
         int frequency = notes[index] * (1 << (octave - 4));
         return frequency;
     }
 public:
     // Costruttore
-    Buzzer(int pin) : buzzerPin(pin) {}
+    Buzzer(int pin) : buzzerPin(pin) {
+        pinMode(buzzerPin, OUTPUT);
+    }
 
     // Funzione per suonare una melodia
     void play(const char *melody)
@@ -138,7 +155,7 @@ public:
         {
             // Estrazione della durata
             int duration = defaultDuration;
-            if (isdigit(*p))
+            if (isdigit(*p)) // Se è un numero //(*p >= '0' && *p <= '9')
             {
                 duration = 0;
                 while (isdigit(*p))
@@ -161,13 +178,12 @@ public:
             int octave = defaultOctave;
             int sharp_flat = 0;
             
-            if (isalpha(*p))
+            if (isalpha(*p)) // Se è una lettera //(*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')
             {
-                note = tolower(*p);
+                note = tolower(*p); // if (*p >= 'A' && *p <= 'Z') *p = *p + 32;
                 p++;
 
                 // Estrazione dell'eventuale diesis o bemolle
-                
                 if(*p == '#' || *p == 'b') {
                     sharp_flat = (*p == '#') ? 1 : -1;
                     p++;
@@ -217,16 +233,9 @@ public:
 };
 
 // Definizione delle melodie
-const char *mTetris = "tetris:d=4,o=5,b=160:e6,8b,8c6,8d6,16e6,16d6,8c6,8b,a,8a,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,2a,8p,d6,8f6,a6,8g6,8f6,e6,8e6,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,a";
-//const char *mArkanoid = "Arkanoid:d=4,o=5,b=140:8g6,16p,16g.6,2a#6,32p,8a6,8g6,8f6,8a6,2g6";
-//const char *mMario = "Mario:d=4,o=6,b=180:e6,8e6,8e6,8c6,8e6,g6,8g5,c6,8g5,e5,a5,b5,a5,8g5,e6,g6,a6,f6,g6,e6,c6,d6,b5";
-//const char *mUnderworld = "Underworld:d=4,o=5,b=140:8c,16c,16g#,16g,16f,16e,16d#,16d,16c,16g#,16g,16f,16e,16d#,16d,16c,16g#,16g,16g#,16g,16a#,16a,16g#,16f,16d#,16d,16d#,16d,16e,16d#,16g#,16g,16g#,16g,16a#,16a,16g#,16f,16d#,16d,16d#,16d,16c";
-//const char *nH="HauntHouse:d=4,o=5,b=108:2a4,2e,2d#,2b4,2a4,2c,2d,2a#4,2e.,e,1f4,1a4,1d#,2e.,d,2c.,b4,1a4,1p,2a4,2e,2d#,2b4,2a4,2c,2d,2a#4,2e.,e,1f4,1a4,1d#,2e.,d,2c.,b4,1a4";
-const char* starWars = "StarWars:d=4,o=5,b=120:8f,8f,8f,2a#.,2f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8d#6,2c6";
-const char* rtttl_jingle = "JingleBell:d=8,o=5,b=112:32p,a,a,a,a,a,a,a,c6,f.,g.,a,p,a#,a#,a#,a#,a#,a#,a#,d6,a#.,a.,2g";
-const char* rtttl_bond = "Bond:d=4,o=5,b=80:32p,16c#6,32d#6,32d#6,16d#6,8d#6,16c#6,16c#6,16c#6,16c#6,32e6,32e6,16e6,8e6,16d#6,16d#6,16d#6,16c#6,32d#6,32d#6,16d#6,8d#6,16c#6,16c#6,16c#6,16c#6,32e6,32e6,16e6,8e6,16d#6,16d6,16c#6,16c#7,c.7,16g#6,16f#6,g#.6";
-const char* rtttl_mission = "MissionImp:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,a#,g,2d,32p,a#,g,2c#,32p,a#,g,2c,a#5,8c,2p,32p,a#5,g5,2f#,32p,a#5,g5,2f,32";
-const char* rtttl_godfather = "Godfather:d=8,o=5,b=80:g,c6,b,a,2c,a,c6,a,c6,2g6,g,c6,b,a,2c,a,4c6,2a,4e.6,2e6,e6,d6,c6,2b,a,c6,a,c6,2g6,g,c6,b,a,2c,a,4c6,2a";
+const char *mTetris = "Tetris:d=4,o=5,b=160:e6,8b,8c6,8d6,16e6,16d6,8c6,8b,a,8a,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,2a,8p,d6,8f6,a6,8g6,8f6,e6,8e6,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,a";
+const char* mMission = "Mission Impossible:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,a#,g,2d,32p,a#,g,2c#,32p,a#,g,2c,a#5,8c,2p,32p,a#5,g5,2f#,32p,a#5,g5,2f,32";
+const char* mSuperMario = "Super Mario:d=4,o=5,b=100:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,16p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b";
 
 // Definizione del pin del buzzer
 const int buzzerPin = 8;
@@ -236,14 +245,13 @@ Buzzer buzzer(buzzerPin);
 
 void setup()
 {
-    // Inizializzazione del pin del buzzer come output
-    pinMode(buzzerPin, OUTPUT);
     // Inizializzazione della comunicazione seriale per debug
     Serial.begin(9600);
-    Serial.println("Buzzer inizializzato");
+    Serial.println("RTTTL music player...");
 
-    buzzer.play(mUnderworld); delay(1000);
-    buzzer.play(mArkanoid); delay(1000);
+    buzzer.play(mTetris); delay(1000);
+    buzzer.play(mMission); delay(1000);
+    buzzer.play(mSuperMario); delay(1000);
 }
 
 void loop() {}
