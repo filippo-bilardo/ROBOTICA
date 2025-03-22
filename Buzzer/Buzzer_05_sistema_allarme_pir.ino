@@ -7,7 +7,7 @@
  * Il sensore PIR è collegato al pin digitale 2, il buzzer al pin digitale 8 e il LED al pin digitale 9.
  *
  * https://wokwi.com/projects/425932743963164673
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale

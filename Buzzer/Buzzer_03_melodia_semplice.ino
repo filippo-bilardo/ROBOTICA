@@ -5,7 +5,7 @@
  * Il buzzer è collegato al pin digitale 8.
  *
  * https://wokwi.com/projects/425933995361295361
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  * 
  * variante con codice ad oggetti
  * https://wokwi.com/projects/389619172949739521

@@ -45,7 +45,7 @@ void loop() {
   delay(1000);                    // Pausa di 1 secondo
 }
 ```
-[Scarica il codice completo](Buzzer_01_buzzer_attivo.ino)
+[Vedi il codice completo](Buzzer_01_buzzer_attivo.ino)
 
 ### Utilizzo di un buzzer passivo
 Se usi un buzzer passivo, puoi generare diverse frequenze utilizzando la funzione `tone()`:
@@ -65,7 +65,7 @@ void loop() {
   delay(1000);            // Pausa di 1 secondo
 }
 ```
-[Scarica il codice completo](Buzzer_02_buzzer_passivo.ino)
+[Vedi il codice completo](Buzzer_02_buzzer_passivo.ino)
 [Versione online](https://wokwi.com/projects/425933995361295361)
 
 ## Parte 2: Funzionalità intermedie
@@ -108,7 +108,7 @@ void loop() {
   delay(2000);  // Pausa prima di ripetere
 }
 ```
-[Scarica il codice completo](Buzzer_03_melodia_semplice.ino)
+[Vedi il codice completo](Buzzer_03_melodia_semplice.ino)
 [Versione online](https://wokwi.com/projects/425933995361295361)
 
 ### Controllo del volume (PWM)
@@ -138,7 +138,7 @@ void loop() {
   delay(1000);  // Pausa prima di ripetere
 }
 ```
-[Scarica il codice completo](Buzzer_04_controllo_volume_pwm.ino)
+[Vedi il codice completo](Buzzer_04_controllo_volume_pwm.ino)
 
 ## Parte 3: Applicazioni avanzate
 
@@ -198,7 +198,7 @@ void triggerAlarm() {
 }
 
 ```
-[Scarica il codice completo](Buzzer_05_sistema_allarme_pir.ino)
+[Vedi il codice completo](Buzzer_05_sistema_allarme_pir.ino)
 [Versione online](https://wokwi.com/projects/425932743963164673)
 
 ### Comunicazione in codice Morse
@@ -284,7 +284,7 @@ void playMorseCode(String code) {
 }
 
 ```
-[Scarica il codice completo](Buzzer_06_codice_morse.ino)
+[Vedi il codice completo](Buzzer_06_codice_morse.ino)
 
 ### Theremin digitale con sensore a ultrasuoni HC-SR04
 
@@ -348,7 +348,7 @@ void loop() {
 }
 
 ```
-[Scarica il codice completo](Buzzer_07_theremin_digitale.ino)
+[Vedi il codice completo](Buzzer_07_theremin_digitale.ino)
 
 ### Sintetizzatore MIDI
 
@@ -420,7 +420,7 @@ void printNoteTable() {
 }
 
 ```
-[Scarica il codice completo](Buzzer_08_sintetizzatore_midi.ino)
+[Vedi il codice completo](Buzzer_08_sintetizzatore_midi.ino)
 [Versione online](https://wokwi.com/projects/425933317096044545)
 
 ### Player RTTTL
@@ -457,13 +457,13 @@ Ogni nota è definita nel formato: `[durata][nota][ottava][punto]`
 
 **Esempio di implementazione in Arduino**
 Ecco un esempio di come implementare un player RTTTL base in Arduino:
-[Scarica il codice completo](Buzzer_09_play_rtttl.ino)
+[Vedi il codice completo](Buzzer_09_play_rtttl.ino)
 [Versione online](https://wokwi.com/projects/425889424760583169)
 Esempio in python
-[Scarica il codice completo](Buzzer_10_play_rttt.py)
+[Vedi il codice completo](Buzzer_10_play_rttt.py)
 [Versione online](https://wokwi.com/projects/426041520669602817)
 Esempio di implentazione codice non bloccante
-[Scarica il codice completo](Buzzer_11_play_rtttl_nonblocking.ino)
+[Vedi il codice completo](Buzzer_11_play_rtttl_nonblocking.ino)
 [Versione online](https://wokwi.com/projects/426124385658658817)
 [Versione online2](https://wokwi.com/projects/389782389483344897)
 

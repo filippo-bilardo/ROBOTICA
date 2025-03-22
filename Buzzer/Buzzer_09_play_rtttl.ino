@@ -15,7 +15,7 @@
  * - <note> sono le note da suonare: <note>[#|b][<octave>][.<duration>] 
  *
  * https://wokwi.com/projects/425889424760583169
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale

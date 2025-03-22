@@ -5,7 +5,7 @@
  * Il tono viene generato con la funzione tone() e viene fermato con la funzione noTone().
  * 
  * https://wokwi.com/projects/425933995361295361
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale

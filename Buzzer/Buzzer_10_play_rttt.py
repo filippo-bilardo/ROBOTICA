@@ -6,7 +6,7 @@
 # su un buzzer collegato al Raspberry Pi Pico.
 #
 # https://wokwi.com/projects/426041520669602817
-# https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer 
+# https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
 #
 # @author Filippo Bilardo
 # @version 1.0 21/03/25 - Versione iniziale

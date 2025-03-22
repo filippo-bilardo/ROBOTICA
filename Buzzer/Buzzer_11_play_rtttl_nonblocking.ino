@@ -8,7 +8,7 @@
  * Ciò consente di eseguire altre operazioni (come lampeggiare un LED) mentre suona la melodia.
  * 
  * https://wokwi.com/projects/426124385658658817
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  *
  * @author Versione originale: Filippo Bilardo
  * @version 1.0  22/03/25 - Versione non bloccante

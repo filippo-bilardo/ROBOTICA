@@ -10,7 +10,7 @@
  * dove nota è un numero da 0 a 127.
  *
  * https://wokwi.com/projects/425933317096044545
- * https://github.com/filippo-bilardo/ROBOTICA/tree/main/Buzzer
+ * https://github.com/filippo-bilardo/ROBOTICA/blob/main/Buzzer/README.md
  * 
  * @author Fippo Bilardo
  * @version 1.0  20/03/25 - Versione iniziale
