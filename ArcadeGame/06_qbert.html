@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q*bert Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 640px;
+            height: 640px;
+        }
+        
+        canvas {
+            background-color: #000;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #FF8800;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FF8800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="640" height="640"></canvas>
+        
+        <div id="startScreen">
+            <h1>Q*BERT</h1>
+            <p>Jump on all cubes to change their color!</p>
+            <p>Use arrow keys to move diagonally</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Level Complete!</h1>
+            <p>Get ready for the next level</p>
+            <button id="nextLevelButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Game constants
+        const PYRAMID_SIZE = 7; // Number of cubes on the bottom row
+        const CUBE_WIDTH = 60;
+        const CUBE_HEIGHT = 60;
+        const PLAYER_SIZE = 30;
+        const ENEMY_SIZE = 30;
+        
+        // Colors for cubes
+        const CUBE_COLORS = [
+            '#FFA500', // Orange (initial)
+            '#FF0000', // Red (target for level 1)
+            '#00FF00', // Green (target for level 2)
+            '#0000FF', // Blue (target for level 3)
+            '#FFFF00'  // Yellow (target for level 4+)
+        ];
+        
+        // Game state variables
+        let gameRunning = false;
+        let gameOver = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let cubes = [];
+        let player = null;
+        let enemies = [];
+        let discs = []; // Flying discs for escape
+        
+        // Input handling
+        const keys = {};
+        let lastKeyPressed = null;
+        let canMove = true; // To prevent multiple moves during animation
+        
+        // Draw isometric cube
+        function drawCube(x, y, colorIndex) {
+            const topColor = CUBE_COLORS[colorIndex];
+            const leftColor = shadeColor(topColor, -20); // Darker for side
+            const rightColor = shadeColor(topColor, -10); // Slightly darker for side
+            
+            // Draw top face
+            ctx.fillStyle = topColor;
+            ctx.beginPath();
+            ctx.moveTo(x, y - CUBE_HEIGHT / 2);
+            ctx.lineTo(x + CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x - CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw left face
+            ctx.fillStyle = leftColor;
+            ctx.beginPath();
+            ctx.moveTo(x - CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + CUBE_HEIGHT / 2);
+            ctx.lineTo(x - CUBE_WIDTH / 2, y + CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw right face
+            ctx.fillStyle = rightColor;
+            ctx.beginPath();
+            ctx.moveTo(x + CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + CUBE_HEIGHT / 2);
+            ctx.lineTo(x + CUBE_WIDTH / 2, y + CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw outline
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            
+            // Top face outline
+            ctx.beginPath();
+            ctx.moveTo(x, y - CUBE_HEIGHT / 2);
+            ctx.lineTo(x + CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x - CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Left face outline
+            ctx.beginPath();
+            ctx.moveTo(x - CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + CUBE_HEIGHT / 2);
+            ctx.lineTo(x - CUBE_WIDTH / 2, y + CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Right face outline
+            ctx.beginPath();
+            ctx.moveTo(x + CUBE_WIDTH / 2, y - CUBE_HEIGHT / 4);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + CUBE_HEIGHT / 2);
+            ctx.lineTo(x + CUBE_WIDTH / 2, y + CUBE_HEIGHT / 4);
+            ctx.closePath();
+            ctx.stroke();
+        }
+        
+        // Helper function to shade a color (positive value brightens, negative darkens)
+        function shadeColor(color, percent) {
+            let R = parseInt(color.substring(1, 3), 16);
+            let G = parseInt(color.substring(3, 5), 16);
+            let B = parseInt(color.substring(5, 7), 16);
+
+            R = Math.min(255, Math.max(0, R + percent));
+            G = Math.min(255, Math.max(0, G + percent));
+            B = Math.min(255, Math.max(0, B + percent));
+
+            const RR = R.toString(16).padStart(2, '0');
+            const GG = G.toString(16).padStart(2, '0');
+            const BB = B.toString(16).padStart(2, '0');
+
+            return "#" + RR + GG + BB;
+        }
+        
+        // Initialize pyramid of cubes
+        function initPyramid() {
+            cubes = [];
+            
+            // Center position for the pyramid
+            const centerX = canvas.width / 2;
+            const startY = 150; // Top of pyramid
+            
+            // Create pyramid of cubes
+            for (let row = 0; row < PYRAMID_SIZE; row++) {
+                for (let col = 0; col <= row; col++) {
+                    // Calculate isometric position
+                    const x = centerX + (col - row / 2) * CUBE_WIDTH;
+                    const y = startY + row * CUBE_HEIGHT * 0.75;
+                    
+                    cubes.push({
+                        row,
+                        col,
+                        x,
+                        y,
+                        colorIndex: 0, // Start with initial color
+                        targetColorIndex: level // Target color based on level
+                    });
+                }
+            }
+        }
+        
+        // Player class
+        class Player {
+            constructor() {
+                this.row = 0;
+                this.col = 0;
+                this.cube = cubes[0]; // Start at the top cube
+                this.x = this.cube.x;
+                this.y = this.cube.y - CUBE_HEIGHT / 2;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.width = PLAYER_SIZE;
+                this.height = PLAYER_SIZE;
+                this.isJumping = false;
+                this.jumpHeight = 40; // Maximum height of jump
+                this.jumpProgress = 0; // 0 to 1, for jump animation
+                this.jumpSpeed = 0.1; // How fast the jump animation plays
+                this.direction = 'down'; // Used for character appearance
+            }
+            
+            update() {
+                // Handle jumping animation
+                if (this.isJumping) {
+                    this.jumpProgress += this.jumpSpeed;
+                    
+                    if (this.jumpProgress >= 1) {
+                        // Landed on a cube
+                        this.jumpProgress = 0;
+                        this.isJumping = false;
+                        this.x = this.targetX;
+                        this.y = this.targetY;
+                        canMove = true;
+                        
+                        // Find the cube we landed on
+                        const landedCube = this.findCurrentCube();
+                        if (landedCube) {
+                            // Change cube color if needed
+                            if (landedCube.colorIndex !== landedCube.targetColorIndex) {
+                                landedCube.colorIndex = landedCube.targetColorIndex;
+                                score += 25;
+                                
+                                // Check if all cubes have the target color
+                                if (this.checkLevelComplete()) {
+                                    levelComplete();
+                                }
+                            }
+                        } else {
+                            // Fell off the pyramid
+                            this.die();
+                        }
+                    } else {
+                        // Calculate position during jump using arc motion
+                        const jumpFactor = Math.sin(this.jumpProgress * Math.PI);
+                        this.x = this.cube.x + (this.targetX - this.cube.x) * this.jumpProgress;
+                        this.y = this.cube.y - CUBE_HEIGHT / 2 + 
+                               (this.targetY - (this.cube.y - CUBE_HEIGHT / 2)) * this.jumpProgress -
+                               this.jumpHeight * jumpFactor;
+                    }
+                } else if (canMove) {
+                    // Handle movement input
+                    if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+                        this.move('downRight');
+                    } else if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+                        this.move('upLeft');
+                    } else if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                        this.move('downLeft');
+                    } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                        this.move('upRight');
+                    }
+                }
+                
+                // Check collisions with enemies
+                this.checkCollisions();
+            }
+            
+            move(direction) {
+                if (this.isJumping) return;
+                
+                let newRow = this.row;
+                let newCol = this.col;
+                
+                switch (direction) {
+                    case 'upLeft':
+                        newRow--;
+                        this.direction = 'upLeft';
+                        break;
+                    case 'upRight':
+                        newRow--;
+                        newCol++;
+                        this.direction = 'upRight';
+                        break;
+                    case 'downLeft':
+                        newRow++;
+                        newCol--;
+                        this.direction = 'downLeft';
+                        break;
+                    case 'downRight':
+                        newRow++;
+                        this.direction = 'downRight';
+                        break;
+                }
+                
+                // Check if the new position is valid
+                if (newRow >= 0 && newRow < PYRAMID_SIZE && newCol >= 0 && newCol <= newRow) {
+                    // Find the cube at the new position
+                    const targetCube = this.findCubeAt(newRow, newCol);
+                    
+                    if (targetCube) {
+                        // Valid move
+                        this.startJump(targetCube);
+                        this.row = newRow;
+                        this.col = newCol;
+                        canMove = false;
+                    }
+                } else {
+                    // Off the pyramid - die
+                    this.die();
+                }
+            }
+            
+            startJump(targetCube) {
+                this.isJumping = true;
+                this.jumpProgress = 0;
+                this.cube = {...this.findCurrentCube()}; // Copy current cube as starting point
+                this.targetX = targetCube.x;
+                this.targetY = targetCube.y - CUBE_HEIGHT / 2;
+            }
+            
+            findCubeAt(row, col) {
+                return cubes.find(cube => cube.row === row && cube.col === col);
+            }
+            
+            findCurrentCube() {
+                return this.findCubeAt(this.row, this.col);
+            }
+            
+            checkCollisions() {
+                // Only check collisions if not already jumping (during landing)
+                if (!this.isJumping) {
+                    for (const enemy of enemies) {
+                        if (this.intersects(enemy)) {
+                            this.die();
+                            return;
+                        }
+                    }
+                    
+                    // Check for disc collision (for riding)
+                    for (let i = 0; i < discs.length; i++) {
+                        const disc = discs[i];
+                        if (this.intersects(disc)) {
+                            // Ride the disc to safety
+                            discs.splice(i, 1);
+                            this.resetToTop();
+                            score += 50;
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            intersects(entity) {
+                return (
+                    this.x < entity.x + ENEMY_SIZE &&
+                    this.x + PLAYER_SIZE > entity.x &&
+                    this.y < entity.y + ENEMY_SIZE &&
+                    this.y + PLAYER_SIZE > entity.y
+                );
+            }
+            
+            die() {
+                lives--;
+                if (lives <= 0) {
+                    endGame();
+                } else {
+                    this.resetToTop();
+                }
+            }
+            
+            resetToTop() {
+                this.row = 0;
+                this.col = 0;
+                this.cube = cubes[0];
+                this.x = this.cube.x;
+                this.y = this.cube.y - CUBE_HEIGHT / 2;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.isJumping = false;
+                this.jumpProgress = 0;
+            }
+            
+            checkLevelComplete() {
+                return cubes.every(cube => cube.colorIndex === cube.targetColorIndex);
+            }
+            
+            draw() {
+                // Draw character based on direction
+                ctx.fillStyle = '#8B4513'; // Brown color for Q*bert
+                
+                // Basic character shape (can be improved with actual sprite)
+                ctx.beginPath();
+                
+                // Change shape based on direction
+                if (this.direction === 'upLeft' || this.direction === 'upRight') {
+                    ctx.arc(this.x, this.y - 5, PLAYER_SIZE / 2, 0, Math.PI * 2);
+                } else {
+                    ctx.arc(this.x, this.y, PLAYER_SIZE / 2, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                
+                // Draw eyes
+                ctx.fillStyle = '#FFFFFF';
+                
+                if (this.direction === 'upLeft') {
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 10, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.direction === 'upRight') {
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 10, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.direction === 'downLeft') {
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 5, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 5, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw pupils
+                ctx.fillStyle = '#000000';
+                if (this.direction === 'upLeft') {
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 10, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.direction === 'upRight') {
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 10, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.direction === 'downLeft') {
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Enemy class
+        class Enemy {
+            constructor(type) {
+                this.type = type; // 'coily', 'ugg', 'wrongway', 'slick', 'sam'
+                this.row = 0;
+                this.col = 0;
+                this.x = 0;
+                this.y = 0;
+                this.width = ENEMY_SIZE;
+                this.height = ENEMY_SIZE;
+                this.isJumping = false;
+                this.jumpProgress = 0;
+                this.jumpSpeed = 0.05; // Slower than player
+                this.direction = 'down';
+                this.moveTimer = 0;
+                this.moveDelay = 30 + Math.random() * 30; // Random delay between moves
+                
+                this.init();
+            }
+            
+            init() {
+                switch(this.type) {
+                    case 'coily':
+                        // Snake starts at the top
+                        this.row = 0;
+                        this.col = 0;
+                        this.color = '#FF00FF'; // Purple
+                        break;
+                    case 'ugg':
+                    case 'wrongway':
+                        // These appear from the sides
+                        this.row = Math.floor(PYRAMID_SIZE / 2) + Math.floor(Math.random() * (PYRAMID_SIZE / 2));
+                        this.col = this.type === 'ugg' ? 0 : this.row;
+                        this.color = this.type === 'ugg' ? '#FF0000' : '#00FFFF';
+                        break;
+                    case 'slick':
+                    case 'sam':
+                        // These change cubes back to original color
+                        this.row = 1;
+                        this.col = Math.random() > 0.5 ? 0 : 1;
+                        this.color = '#00FF00';
+                        break;
+                }
+                
+                // Find the cube and set position
+                const cube = this.findCubeAt(this.row, this.col);
+                if (cube) {
+                    this.x = cube.x;
+                    this.y = cube.y - CUBE_HEIGHT / 2;
+                }
+            }
+            
+            update() {
+                if (this.isJumping) {
+                    this.updateJump();
+                } else {
+                    this.moveTimer++;
+                    if (this.moveTimer >= this.moveDelay) {
+                        this.moveTimer = 0;
+                        this.decideMove();
+                    }
+                }
+            }
+            
+            updateJump() {
+                this.jumpProgress += this.jumpSpeed;
+                    
+                if (this.jumpProgress >= 1) {
+                    // Landed on a cube
+                    this.jumpProgress = 0;
+                    this.isJumping = false;
+                    
+                    // Find the cube we landed on
+                    const cube = this.findCubeAt(this.row, this.col);
+                    if (cube) {
+                        this.x = cube.x;
+                        this.y = cube.y - CUBE_HEIGHT / 2;
+                        
+                        // Special actions based on enemy type
+                        if (this.type === 'slick' || this.type === 'sam') {
+                            // Change cube back to original color
+                            cube.colorIndex = 0;
+                        }
+                    } else {
+                        // Enemy fell off the pyramid, remove it
+                        this.remove = true;
+                    }
+                } else {
+                    // Calculate position during jump
+                    const startCube = this.findCubeAt(this.startRow, this.startCol);
+                    const endCube = this.findCubeAt(this.row, this.col);
+                    
+                    if (startCube && endCube) {
+                        const jumpFactor = Math.sin(this.jumpProgress * Math.PI);
+                        this.x = startCube.x + (endCube.x - startCube.x) * this.jumpProgress;
+                        this.y = (startCube.y - CUBE_HEIGHT / 2) + 
+                               ((endCube.y - CUBE_HEIGHT / 2) - (startCube.y - CUBE_HEIGHT / 2)) * this.jumpProgress -
+                               20 * jumpFactor; // Jump height
+                    }
+                }
+            }
+            
+            decideMove() {
+                let possibleMoves = [];
+                
+                // Different movement patterns based on enemy type
+                if (this.type === 'coily') {
+                    // Coily tries to follow the player
+                    if (player.row > this.row) {
+                        // Player is below, try to move down
+                        if (player.col > this.col) {
+                            possibleMoves.push('downRight');
+                        } else {
+                            possibleMoves.push('downLeft');
+                        }
+                    } else if (player.row < this.row) {
+                        // Player is above, try to move up
+                        if (player.col < this.col) {
+                            possibleMoves.push('upLeft');
+                        } else {
+                            possibleMoves.push('upRight');
+                        }
+                    } else {
+                        // Same row, random move
+                        possibleMoves = ['upLeft', 'upRight', 'downLeft', 'downRight'];
+                    }
+                } else {
+                    // Other enemies move randomly
+                    possibleMoves = ['upLeft', 'upRight', 'downLeft', 'downRight'];
+                    
+                    // Ugg and Wrong-Way have specific movement patterns
+                    if (this.type === 'ugg') {
+                        possibleMoves = ['upRight', 'downRight']; // Only moves right
+                    } else if (this.type === 'wrongway') {
+                        possibleMoves = ['upLeft', 'downLeft']; // Only moves left
+                    }
+                }
+                
+                // Shuffle possible moves
+                possibleMoves.sort(() => Math.random() - 0.5);
+                
+                // Try each move until a valid one is found
+                for (const move of possibleMoves) {
+                    if (this.tryMove(move)) {
+                        break;
+                    }
+                }
+            }
+            
+            tryMove(direction) {
+                let newRow = this.row;
+                let newCol = this.col;
+                
+                switch (direction) {
+                    case 'upLeft':
+                        newRow--;
+                        this.direction = 'upLeft';
+                        break;
+                    case 'upRight':
+                        newRow--;
+                        newCol++;
+                        this.direction = 'upRight';
+                        break;
+                    case 'downLeft':
+                        newRow++;
+                        newCol--;
+                        this.direction = 'downLeft';
+                        break;
+                    case 'downRight':
+                        newRow++;
+                        this.direction = 'downRight';
+                        break;
+                }
+                
+                // Check if the new position is valid
+                if (newRow >= 0 && newRow < PYRAMID_SIZE && newCol >= 0 && newCol <= newRow) {
+                    // Find the cube at the new position
+                    const targetCube = this.findCubeAt(newRow, newCol);
+                    
+                    if (targetCube) {
+                        // Valid move
+                        this.startJump(newRow, newCol);
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            startJump(newRow, newCol) {
+                this.isJumping = true;
+                this.jumpProgress = 0;
+                this.startRow = this.row;
+                this.startCol = this.col;
+                this.row = newRow;
+                this.col = newCol;
+            }
+            
+            findCubeAt(row, col) {
+                return cubes.find(cube => cube.row === row && cube.col === col);
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                
+                if (this.type === 'coily') {
+                    // Draw snake-like enemy
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, ENEMY_SIZE / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Snake body
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y + 10, ENEMY_SIZE / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Draw other enemies as circles
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, ENEMY_SIZE / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add eyes
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 5, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 5, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add pupils
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(this.x - 5, this.y - 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x + 5, this.y - 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Flying Disc class
+        class Disc {
+            constructor() {
+                // Randomly position on the left or right side of the pyramid
+                const side = Math.random() > 0.5 ? 'left' : 'right';
+                const row = Math.floor(Math.random() * PYRAMID_SIZE);
+                
+                const cube = side === 'left' 
+                    ? cubes.find(c => c.row === row && c.col === 0)
+                    : cubes.find(c => c.row === row && c.col === row);
+                
+                if (cube) {
+                    this.x = cube.x;
+                    this.y = cube.y - CUBE_HEIGHT / 2;
+                } else {
+                    // Default position if cube not found
+                    this.x = side === 'left' ? 100 : canvas.width - 100;
+                    this.y = 200 + Math.random() * 200;
+                }
+                
+                this.width = PLAYER_SIZE;
+                this.height = PLAYER_SIZE / 2;
+                this.color = '#00FFFF'; // Cyan
+                this.lifespan = 300; // How long the disc stays on screen
+            }
+            
+            update() {
+                this.lifespan--;
+                if (this.lifespan <= 0) {
+                    this.remove = true;
+                }
+            }
+            
+            draw() {
+                // Draw as an oval
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add highlight
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.width / 4, this.height / 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Initialize the game
+        function initGame() {
+            // Initialize pyramid
+            initPyramid();
+            
+            // Create player
+            player = new Player();
+            
+            // Reset enemies and discs
+            enemies = [];
+            discs = [];
+            
+            // Add initial enemies based on level
+            addEnemies();
+            
+            // Reset game variables
+            canMove = true;
+        }
+        
+        // Add enemies based on current level
+        function addEnemies() {
+            // Add Coily (snake)
+            if (level >= 1) {
+                enemies.push(new Enemy('coily'));
+            }
+            
+            // Add Ugg and Wrong-Way on higher levels
+            if (level >= 2) {
+                enemies.push(new Enemy('ugg'));
+            }
+            
+            if (level >= 3) {
+                enemies.push(new Enemy('wrongway'));
+            }
+            
+            // Add Slick and Sam on even higher levels
+            if (level >= 4) {
+                if (Math.random() > 0.5) {
+                    enemies.push(new Enemy('slick'));
+                } else {
+                    enemies.push(new Enemy('sam'));
+                }
+            }
+        }
+        
+        // Spawn a disc randomly
+        function spawnDisc() {
+            if (Math.random() < 0.005 && discs.length < 2) {
+                discs.push(new Disc());
+            }
+        }
+        
+        // Game over
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            level++;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Start new game
+        function startNewGame() {
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            levelCompleteScreen.style.visibility = 'hidden';
+            
+            // Reset game variables
+            score = 0;
+            lives = 3;
+            level = 1;
+            
+            // Initialize game
+            initGame();
+            
+            // Start the game
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Start next level
+        function startNextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            initGame();
+            gameRunning = true;
+        }
+        
+        // Draw the game UI
+        function drawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            
+            // Draw lives
+            ctx.fillText(`Lives: ${lives}`, 20, 60);
+            
+            // Draw level
+            ctx.fillText(`Level: ${level}`, 20, 90);
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw the pyramid of cubes
+            for (const cube of cubes) {
+                drawCube(cube.x, cube.y, cube.colorIndex);
+            }
+            
+            if (gameRunning) {
+                // Spawn discs occasionally
+                spawnDisc();
+                
+                // Update and draw player
+                player.update();
+                player.draw();
+                
+                // Update and draw enemies
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    enemies[i].update();
+                    
+                    if (enemies[i].remove) {
+                        enemies.splice(i, 1);
+                    } else {
+                        enemies[i].draw();
+                    }
+                }
+                
+                // Update and draw discs
+                for (let i = discs.length - 1; i >= 0; i--) {
+                    discs[i].update();
+                    
+                    if (discs[i].remove) {
+                        discs.splice(i, 1);
+                    } else {
+                        discs[i].draw();
+                    }
+                }
+                
+                // Respawn enemies if needed
+                if (enemies.length < 1 + Math.floor(level / 2)) {
+                    if (Math.random() < 0.01) {
+                        addEnemies();
+                    }
+                }
+            }
+            
+            // Draw UI
+            drawUI();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+            
+            // Store the last direction key pressed
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+                lastKeyPressed = e.key;
+            }
+            
+            // Prevent default for game control keys
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        // Button event listeners
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        nextLevelButton.addEventListener('click', startNextLevel);
+        
+        // Start the game loop
+        gameLoop();
+        
+        console.log("Q*bert game loaded");
+    </script>
+</body>
+</html>

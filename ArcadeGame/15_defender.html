@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defender</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #radar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 40px;
+            background-color: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0F0;
+        }
+        
+        #bombs-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        #start-screen h1 {
+            font-size: 60px;
+            color: #0F0;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #0F0;
+        }
+        
+        #start-button {
+            background-color: #0F0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        #start-button:hover {
+            background-color: #FFF;
+            color: #000;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="radar"></div>
+        <div id="bombs-display">Smart Bombs: 3</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>DEFENDER</h1>
+            <button id="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const radar = document.getElementById('radar');
+            const radarCtx = document.createElement('canvas').getContext('2d');
+            const scoreDisplay = document.getElementById('score-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const bombsDisplay = document.getElementById('bombs-display');
+            const gameOverDisplay = document.getElementById('game-over');
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            
+            // Game variables
+            let gameRunning = false;
+            let score = 0;
+            let lives = 3;
+            let smartBombs = 3;
+            let mapWidth = 5000; // Large world map
+            let viewportOffset = 0;
+            let player;
+            let bullets = [];
+            let enemies = [];
+            let humans = [];
+            let explosions = [];
+            let terrain = [];
+            let gameLoopId;
+            let enemySpawnInterval;
+            
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                // Set radar size
+                radar.width = 200;
+                radar.height = 40;
+                radarCtx.canvas.width = 200;
+                radarCtx.canvas.height = 40;
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Player ship
+            class Player {
+                constructor() {
+                    this.width = 40;
+                    this.height = 20;
+                    this.x = canvas.width / 2 - this.width / 2;
+                    this.y = canvas.height / 2;
+                    this.speedX = 0;
+                    this.speedY = 0;
+                    this.maxSpeed = 8;
+                    this.isMovingLeft = false;
+                    this.isMovingRight = false;
+                    this.isMovingUp = false;
+                    this.isMovingDown = false;
+                    this.isShooting = false;
+                    this.facingLeft = false;
+                    this.lastShot = Date.now();
+                    this.shootCooldown = 200; // ms
+                    this.color = '#00FF00';
+                }
+                
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.save();
+                    ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                    
+                    if (this.facingLeft) {
+                        ctx.scale(-1, 1);
+                    }
+                    
+                    // Draw the ship
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2, 0);
+                    ctx.lineTo(this.width / 2, 0);
+                    ctx.lineTo(this.width / 2 - 5, -this.height / 2);
+                    ctx.lineTo(-this.width / 2 + 10, -this.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2, 0);
+                    ctx.lineTo(this.width / 2, 0);
+                    ctx.lineTo(this.width / 2 - 5, this.height / 2);
+                    ctx.lineTo(-this.width / 2 + 10, this.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.restore();
+                }
+                
+                update() {
+                    // Set speed based on input
+                    if (this.isMovingLeft) {
+                        this.speedX = -this.maxSpeed;
+                        this.facingLeft = true;
+                    } else if (this.isMovingRight) {
+                        this.speedX = this.maxSpeed;
+                        this.facingLeft = false;
+                    } else {
+                        this.speedX = 0;
+                    }
+                    
+                    if (this.isMovingUp) {
+                        this.speedY = -this.maxSpeed;
+                    } else if (this.isMovingDown) {
+                        this.speedY = this.maxSpeed;
+                    } else {
+                        this.speedY = 0;
+                    }
+                    
+                    // Update position
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    
+                    // Keep ship in bounds
+                    if (this.x < viewportOffset) {
+                        this.x = viewportOffset;
+                    } else if (this.x + this.width > viewportOffset + canvas.width) {
+                        this.x = viewportOffset + canvas.width - this.width;
+                    }
+                    
+                    if (this.y < 50) {
+                        this.y = 50;
+                    } else if (this.y + this.height > canvas.height - 150) {
+                        this.y = canvas.height - 150 - this.height;
+                    }
+                    
+                    // Scroll the viewport if nearing the edge
+                    if (this.x - viewportOffset < canvas.width * 0.3 && viewportOffset > 0) {
+                        viewportOffset -= 5;
+                    } else if (this.x - viewportOffset > canvas.width * 0.7 && viewportOffset < mapWidth - canvas.width) {
+                        viewportOffset += 5;
+                    }
+                    
+                    // Shooting logic
+                    if (this.isShooting && Date.now() - this.lastShot > this.shootCooldown) {
+                        this.shoot();
+                        this.lastShot = Date.now();
+                    }
+                }
+                
+                shoot() {
+                    const bulletX = this.facingLeft ? this.x : this.x + this.width;
+                    const bullet = {
+                        x: bulletX,
+                        y: this.y + this.height / 2 - 2,
+                        width: 10,
+                        height: 4,
+                        speed: this.facingLeft ? -15 : 15,
+                        color: '#FFFF00'
+                    };
+                    
+                    bullets.push(bullet);
+                    playSound('shoot');
+                }
+                
+                useBomb() {
+                    if (smartBombs > 0) {
+                        smartBombs--;
+                        bombsDisplay.textContent = `Smart Bombs: ${smartBombs}`;
+                        
+                        // Destroy all visible enemies
+                        const visibleEnemies = enemies.filter(enemy => 
+                            enemy.x >= viewportOffset && 
+                            enemy.x <= viewportOffset + canvas.width
+                        );
+                        
+                        visibleEnemies.forEach(enemy => {
+                            score += 150;
+                            createExplosion(enemy.x, enemy.y);
+                            
+                            // Remove the enemy
+                            const index = enemies.indexOf(enemy);
+                            if (index !== -1) {
+                                enemies.splice(index, 1);
+                            }
+                        });
+                        
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        playSound('explosion');
+                    }
+                }
+            }
+            
+            // Enemy class
+            class Enemy {
+                constructor(x, y, type) {
+                    this.width = 30;
+                    this.height = 20;
+                    this.x = x;
+                    this.y = y;
+                    this.type = type || Math.floor(Math.random() * 3) + 1; // Random type if not specified
+                    this.speedX = (Math.random() * 2 + 2) * (Math.random() < 0.5 ? 1 : -1);
+                    this.speedY = Math.sin(Math.random() * Math.PI * 2) * 2;
+                    this.points = this.type * 100;
+                    this.lastShot = Date.now();
+                    this.shootCooldown = 2000 + Math.random() * 3000; // Random cooldown between 2-5 seconds
+                    
+                    // Color based on type
+                    if (this.type === 1) {
+                        this.color = '#FF0000'; // Red
+                    } else if (this.type === 2) {
+                        this.color = '#0000FF'; // Blue
+                    } else {
+                        this.color = '#FF00FF'; // Purple
+                    }
+                    
+                    // For landers (type 3), assign a human target
+                    if (this.type === 3 && humans.length > 0) {
+                        this.targetHuman = humans[Math.floor(Math.random() * humans.length)];
+                    }
+                }
+                
+                draw() {
+                    // Only draw if within viewport
+                    if (this.x + this.width < viewportOffset || this.x > viewportOffset + canvas.width) {
+                        return;
+                    }
+                    
+                    const screenX = this.x - viewportOffset;
+                    
+                    ctx.fillStyle = this.color;
+                    
+                    if (this.type === 1) {
+                        // Basic enemy
+                        ctx.beginPath();
+                        ctx.arc(screenX + this.width / 2, this.y, this.width / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (this.type === 2) {
+                        // Bomber
+                        ctx.fillRect(screenX, this.y - this.height / 2, this.width, this.height);
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(screenX + 5, this.y - this.height / 2 + 5, this.width - 10, this.height - 10);
+                    } else {
+                        // Lander
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, this.y - this.height / 2);
+                        ctx.lineTo(screenX + this.width, this.y - this.height / 2);
+                        ctx.lineTo(screenX + this.width / 2, this.y + this.height / 2);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+                
+                update() {
+                    // Move enemy
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    
+                    // Bounce off walls of the map
+                    if (this.x < 0 || this.x + this.width > mapWidth) {
+                        this.speedX *= -1;
+                    }
+                    
+                    // Bounce off top and bottom of screen area
+                    if (this.y < 50 || this.y > canvas.height - 150) {
+                        this.speedY *= -1;
+                    }
+                    
+                    // Lander behavior
+                    if (this.type === 3 && this.targetHuman) {
+                        // Move towards human target
+                        const dx = this.targetHuman.x - this.x;
+                        const dy = this.targetHuman.y - this.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance > 10) {
+                            this.speedX = dx / distance * 2;
+                            this.speedY = dy / distance * 2;
+                        } else {
+                            // Abduct human
+                            this.targetHuman.isAbducted = true;
+                            this.targetHuman = null;
+                            this.speedY = -2; // Move upward after abduction
+                        }
+                    }
+                    
+                    // Shooting logic (types 1 and 2)
+                    if ((this.type === 1 || this.type === 2) && 
+                        Date.now() - this.lastShot > this.shootCooldown && 
+                        this.x >= viewportOffset && this.x <= viewportOffset + canvas.width) {
+                        
+                        this.shoot();
+                        this.lastShot = Date.now();
+                    }
+                }
+                
+                shoot() {
+                    const bullet = {
+                        x: this.x + this.width / 2,
+                        y: this.y + this.height / 2,
+                        width: 4,
+                        height: 4,
+                        speedX: (player.x - this.x) / 50, // Aim at player
+                        speedY: (player.y - this.y) / 50,
+                        color: '#FF6600'
+                    };
+                    
+                    enemyBullets.push(bullet);
+                }
+            }
+            
+            // Human class
+            class Human {
+                constructor(x) {
+                    this.width = 10;
+                    this.height = 20;
+                    this.x = x;
+                    this.y = canvas.height - 120; // Near ground level
+                    this.isAbducted = false;
+                    this.isRescued = false;
+                    this.abductionHeight = 0;
+                    this.color = '#00FFFF';
+                }
+                
+                draw() {
+                    // Only draw if within viewport
+                    if (this.x + this.width < viewportOffset || this.x > viewportOffset + canvas.width) {
+                        return;
+                    }
+                    
+                    const screenX = this.x - viewportOffset;
+                    
+                    ctx.fillStyle = this.color;
+                    
+                    if (this.isAbducted) {
+                        this.y = canvas.height - 120 - this.abductionHeight;
+                        this.abductionHeight += 1;
+                        
+                        // Draw abduction beam
+                        ctx.strokeStyle = '#FFFFFF';
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + this.width / 2, this.y);
+                        ctx.lineTo(screenX + this.width / 2, this.y - 100);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                    
+                    // Draw human (stick figure)
+                    ctx.fillRect(screenX + this.width / 2 - 2, this.y - this.height / 2, 4, 10); // Body
+                    ctx.beginPath();
+                    ctx.arc(screenX + this.width / 2, this.y - this.height / 2 - 5, 5, 0, Math.PI * 2); // Head
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + this.width / 2, this.y - this.height / 2 + 5);
+                    ctx.lineTo(screenX + this.width / 2 - 5, this.y); // Left leg
+                    ctx.moveTo(screenX + this.width / 2, this.y - this.height / 2 + 5);
+                    ctx.lineTo(screenX + this.width / 2 + 5, this.y); // Right leg
+                    ctx.stroke();
+                }
+                
+                update() {
+                    // Check if human is completely abducted
+                    if (this.isAbducted && this.abductionHeight > 150) {
+                        const index = humans.indexOf(this);
+                        if (index !== -1) {
+                            humans.splice(index, 1);
+                            // Game over if all humans are abducted
+                            if (humans.length === 0) {
+                                gameOver();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Explosion class
+            function createExplosion(x, y) {
+                explosions.push({
+                    x: x,
+                    y: y,
+                    radius: 5,
+                    maxRadius: 30,
+                    alpha: 1,
+                    expanding: true
+                });
+            }
+            
+            // Draw terrain
+            function drawTerrain() {
+                ctx.fillStyle = '#008800';
+                
+                // Draw scrolling terrain
+                terrain.forEach(segment => {
+                    const screenX = segment.x - viewportOffset;
+                    
+                    // Only draw if visible in viewport
+                    if (screenX + segment.width >= 0 && screenX <= canvas.width) {
+                        ctx.fillRect(screenX, canvas.height - 100, segment.width, 100);
+                    }
+                });
+            }
+            
+            // Draw radar
+            function drawRadar() {
+                radarCtx.fillStyle = 'rgba(0, 30, 0, 0.7)';
+                radarCtx.fillRect(0, 0, radarCtx.canvas.width, radarCtx.canvas.height);
+                
+                // Calculate scale factor
+                const scale = radarCtx.canvas.width / mapWidth;
+                
+                // Draw viewport indicator
+                radarCtx.strokeStyle = '#FFFFFF';
+                radarCtx.strokeRect(
+                    viewportOffset * scale, 
+                    0, 
+                    canvas.width * scale, 
+                    radarCtx.canvas.height
+                );
+                
+                // Draw player on radar
+                radarCtx.fillStyle = '#00FF00';
+                radarCtx.fillRect(
+                    player.x * scale, 
+                    radarCtx.canvas.height / 2, 
+                    3, 
+                    3
+                );
+                
+                // Draw enemies on radar
+                enemies.forEach(enemy => {
+                    radarCtx.fillStyle = enemy.color;
+                    radarCtx.fillRect(
+                        enemy.x * scale, 
+                        radarCtx.canvas.height / 2, 
+                        2, 
+                        2
+                    );
+                });
+                
+                // Draw humans on radar
+                humans.forEach(human => {
+                    radarCtx.fillStyle = '#00FFFF';
+                    radarCtx.fillRect(
+                        human.x * scale, 
+                        radarCtx.canvas.height - 5, 
+                        1, 
+                        3
+                    );
+                });
+                
+                // Update radar display
+                const radarImage = radarCtx.canvas.toDataURL();
+                radar.style.backgroundImage = `url(${radarImage})`;
+            }
+            
+            // Event listeners for controls
+            function setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'a') {
+                        player.isMovingLeft = true;
+                    } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                        player.isMovingRight = true;
+                    } else if (e.key === 'ArrowUp' || e.key === 'w') {
+                        player.isMovingUp = true;
+                    } else if (e.key === 'ArrowDown' || e.key === 's') {
+                        player.isMovingDown = true;
+                    } else if (e.key === ' ') {
+                        player.isShooting = true;
+                    } else if (e.key === 'b') {
+                        player.useBomb();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'a') {
+                        player.isMovingLeft = false;
+                    } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                        player.isMovingRight = false;
+                    } else if (e.key === 'ArrowUp' || e.key === 'w') {
+                        player.isMovingUp = false;
+                    } else if (e.key === 'ArrowDown' || e.key === 's') {
+                        player.isMovingDown = false;
+                    } else if (e.key === ' ') {
+                        player.isShooting = false;
+                    }
+                });
+                
+                // Mobile controls - implement touch regions
+                canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touches = e.touches;
+                    
+                    for (let i = 0; i < touches.length; i++) {
+                        const touch = touches[i];
+                        handleTouch(touch.clientX, touch.clientY, true);
+                    }
+                });
+                
+                canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touches = e.touches;
+                    
+                    // Reset all movement
+                    player.isMovingLeft = false;
+                    player.isMovingRight = false;
+                    player.isMovingUp = false;
+                    player.isMovingDown = false;
+                    
+                    for (let i = 0; i < touches.length; i++) {
+                        const touch = touches[i];
+                        handleTouch(touch.clientX, touch.clientY, false);
+                    }
+                });
+                
+                canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (e.touches.length === 0) {
+                        player.isMovingLeft = false;
+                        player.isMovingRight = false;
+                        player.isMovingUp = false;
+                        player.isMovingDown = false;
+                        player.isShooting = false;
+                    }
+                });
+                
+                function handleTouch(x, y, isStart) {
+                    // Define control regions
+                    const leftRegion = canvas.width * 0.3;
+                    const rightRegion = canvas.width * 0.7;
+                    const topRegion = canvas.height * 0.4;
+                    const bottomRegion = canvas.height * 0.6;
+                    
+                    // Movement controls
+                    if (x < leftRegion) {
+                        player.isMovingLeft = true;
+                    } else if (x > rightRegion) {
+                        player.isMovingRight = true;
+                    }
+                    
+                    if (y < topRegion) {
+                        player.isMovingUp = true;
+                    } else if (y > bottomRegion) {
+                        player.isMovingDown = true;
+                    }
+                    
+                    // Shooting (always active when touching)
+                    player.isShooting = true;
+                    
+                    // Use bomb on double tap
+                    if (isStart) {
+                        const now = Date.now();
+                        if (now - lastTapTime < 300) {
+                            player.useBomb();
+                        }
+                        lastTapTime = now;
+                    }
+                }
+                
+                let lastTapTime = 0;
+            }
+            
+            // Spawn enemies at regular intervals
+            function setupEnemySpawning() {
+                enemySpawnInterval = setInterval(() => {
+                    if (gameRunning && enemies.length < 15) {
+                        // Spawn outside viewport but within map
+                        let x;
+                        if (Math.random() < 0.5) {
+                            // Left side
+                            x = Math.max(0, viewportOffset - 100 - Math.random() * 200);
+                        } else {
+                            // Right side
+                            x = Math.min(mapWidth, viewportOffset + canvas.width + 100 + Math.random() * 200);
+                        }
+                        
+                        const y = 50 + Math.random() * (canvas.height - 200);
+                        enemies.push(new Enemy(x, y));
+                    }
+                }, 2000);
+            }
+            
+            // Create terrain
+            function createTerrain() {
+                terrain = [];
+                
+                // Create segments across the entire map width
+                for (let x = 0; x < mapWidth; x += 200) {
+                    terrain.push({
+                        x: x,
+                        width: 200,
+                        height: 100
+                    });
+                }
+            }
+            
+            // Create humans
+            function createHumans() {
+                humans = [];
+                
+                // Place humans at regular intervals across the map
+                for (let x = 200; x < mapWidth - 200; x += 400) {
+                    humans.push(new Human(x));
+                }
+            }
+            
+            // Simple sound effects
+            function playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                if (type === 'shoot') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(520, audioContext.currentTime);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                } else if (type === 'explosion') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(10, audioContext.currentTime + 0.5);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } else if (type === 'rescue') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.3);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }
+            }
+            
+            // Main game loop
+            function gameLoop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw starfield background
+                drawStarfield();
+                
+                // Draw terrain
+                drawTerrain();
+                
+                // Update and draw player
+                player.update();
+                player.draw();
+                
+                // Update and draw humans
+                humans.forEach((human, index) => {
+                    human.update();
+                    human.draw();
+                });
+                
+                // Update and draw bullets
+                bullets = bullets.filter(bullet => {
+                    bullet.x += bullet.speed;
+                    
+                    // Remove bullets that go off-screen
+                    if (bullet.x < 0 || bullet.x > mapWidth) {
+                        return false;
+                    }
+                    
+                    // Only draw bullets in viewport
+                    if (bullet.x >= viewportOffset && bullet.x <= viewportOffset + canvas.width) {
+                        ctx.fillStyle = bullet.color;
+                        ctx.fillRect(bullet.x - viewportOffset, bullet.y, bullet.width, bullet.height);
+                    }
+                    
+                    // Check collision with enemies
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        
+                        if (bullet.x < enemy.x + enemy.width &&
+                            bullet.x + bullet.width > enemy.x &&
+                            bullet.y < enemy.y + enemy.height / 2 &&
+                            bullet.y + bullet.height > enemy.y - enemy.height / 2) {
+                            
+                            // Enemy hit
+                            enemies.splice(i, 1);
+                            score += enemy.points;
+                            scoreDisplay.textContent = `Score: ${score}`;
+                            createExplosion(enemy.x, enemy.y);
+                            playSound('explosion');
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+                
+                // Update and draw enemy bullets
+                enemyBullets = enemyBullets.filter(bullet => {
+                    bullet.x += bullet.speedX;
+                    bullet.y += bullet.speedY;
+                    
+                    // Remove bullets that go off-screen
+                    if (bullet.x < 0 || bullet.x > mapWidth || bullet.y < 0 || bullet.y > canvas.height) {
+                        return false;
+                    }
+                    
+                    // Only draw bullets in viewport
+                    if (bullet.x >= viewportOffset && bullet.x <= viewportOffset + canvas.width) {
+                        ctx.fillStyle = bullet.color;
+                        ctx.fillRect(bullet.x - viewportOffset, bullet.y, bullet.width, bullet.height);
+                    }
+                    
+                    // Check collision with player
+                    if (bullet.x < player.x + player.width &&
+                        bullet.x + bullet.width > player.x &&
+                        bullet.y < player.y + player.height / 2 &&
+                        bullet.y + bullet.height > player.y - player.height / 2) {
+                        
+                        // Player hit
+                        lives--;
+                        livesDisplay.textContent = `Lives: ${lives}`;
+                        createExplosion(player.x, player.y);
+                        
+                        if (lives <= 0) {
+                            gameOver();
+                        }
+                        
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                // Update and draw enemies
+                enemies.forEach(enemy => {
+                    enemy.update();
+                    enemy.draw();
+                });
+                
+                // Update and draw explosions
+                explosions = explosions.filter(explosion => {
+                    if (explosion.x >= viewportOffset && explosion.x <= viewportOffset + canvas.width) {
+                        const screenX = explosion.x - viewportOffset;
+                        
+                        ctx.beginPath();
+                        ctx.arc(screenX, explosion.y, explosion.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 100, 0, ${explosion.alpha})`;
+                        ctx.fill();
+                    }
+                    
+                    if (explosion.expanding) {
+                        explosion.radius += 2;
+                        if (explosion.radius >= explosion.maxRadius) {
+                            explosion.expanding = false;
+                        }
+                    } else {
+                        explosion.radius -= 1;
+                        explosion.alpha -= 0.05;
+                    }
+                    
+                    return explosion.alpha > 0;
+                });
+                
+                // Draw radar
+                drawRadar();
+                
+                if (gameRunning) {
+                    gameLoopId = requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            // Draw starfield background
+            function drawStarfield() {
+                // Generate random stars
+                for (let i = 0; i < 100; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = Math.random() * 2;
+                    
+                    ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+            
+            // Game over function
+            function gameOver() {
+                gameRunning = false;
+                clearInterval(enemySpawnInterval);
+                cancelAnimationFrame(gameLoopId);
+                gameOverDisplay.style.display = 'block';
+                
+                setTimeout(() => {
+                    gameOverDisplay.style.display = 'none';
+                    startScreen.style.display = 'block';
+                }, 3000);
+            }
+            
+            // Initialize the game
+            function initGame() {
+                player = new Player();
+                bullets = [];
+                enemyBullets = [];
+                enemies = [];
+                explosions = [];
+                terrain = [];
+                humans = [];
+                score = 0;
+                lives = 3;
+                smartBombs = 3;
+                gameRunning = true;
+                viewportOffset = 0;
+                
+                scoreDisplay.textContent = `Score: ${score}`;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                bombsDisplay.textContent = `Smart Bombs: ${smartBombs}`;
+                
+                createTerrain();
+                createHumans();
+                setupControls();
+                setupEnemySpawning();
+                
+                gameLoop();
+            }
+            
+            // Start the game when the button is clicked
+            startButton.addEventListener('click', () => {
+                startScreen.style.display = 'none';
+                initGame();
+            });
+        });
+    </script>
+</body>
+</html>

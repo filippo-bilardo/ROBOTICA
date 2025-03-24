@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defender Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #000;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #FF5722;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FF5722;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>DEFENDER</h1>
+            <p>Defend your planet from alien invaders!</p>
+            <p>Use arrow keys to move, spacebar to shoot</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Level Complete!</h1>
+            <p>Get ready for the next wave</p>
+            <button id="nextLevelButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Game constants
+        const PLAYER_WIDTH = 40;
+        const PLAYER_HEIGHT = 30;
+        const PLAYER_SPEED = 5;
+        const BULLET_WIDTH = 5;
+        const BULLET_HEIGHT = 2;
+        const BULLET_SPEED = 10;
+        const WORLD_WIDTH = 3000; // Wide world for side scrolling
+        const ENEMY_WIDTH = 30;
+        const ENEMY_HEIGHT = 30;
+        const HUMAN_WIDTH = 15;
+        const HUMAN_HEIGHT = 20;
+        const MINIMAP_HEIGHT = 50;
+        
+        // Game colors
+        const COLORS = {
+            player: '#FF5722',
+            playerEngine: '#FFC107',
+            bullet: '#FFFFFF',
+            enemy1: '#4CAF50',
+            enemy2: '#9C27B0',
+            enemy3: '#F44336',
+            human: '#2196F3',
+            ground: '#3E2723',
+            stars: '#FFFFFF',
+            explosion: '#FF9800'
+        };
+        
+        // Game state variables
+        let gameRunning = false;
+        let gameOver = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let cameraX = 0;
+        let enemiesRemaining = 0;
+        let humansToRescue = 0;
+        
+        // Game objects
+        let player = null;
+        let playerBullets = [];
+        let enemies = [];
+        let humans = [];
+        let explosions = [];
+        let stars = [];
+        
+        // Input handling
+        const keys = {};
+        
+        // Player class
+        class Player {
+            constructor() {
+                this.width = PLAYER_WIDTH;
+                this.height = PLAYER_HEIGHT;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height / 2;
+                this.speed = PLAYER_SPEED;
+                this.shootCooldown = 0;
+                this.maxShootCooldown = 10;
+                this.direction = 'right'; // 'left' or 'right'
+                this.worldX = WORLD_WIDTH / 2; // Position in the world
+            }
+            
+            update() {
+                // Movement controls
+                if ((keys['ArrowLeft'] || keys['a'] || keys['A'])) {
+                    this.worldX -= this.speed;
+                    this.direction = 'left';
+                    
+                    // Keep player within world bounds
+                    if (this.worldX < this.width) {
+                        this.worldX = this.width;
+                    }
+                }
+                
+                if ((keys['ArrowRight'] || keys['d'] || keys['D'])) {
+                    this.worldX += this.speed;
+                    this.direction = 'right';
+                    
+                    // Keep player within world bounds
+                    if (this.worldX > WORLD_WIDTH - this.width) {
+                        this.worldX = WORLD_WIDTH - this.width;
+                    }
+                }
+                
+                // Vertical movement
+                if ((keys['ArrowUp'] || keys['w'] || keys['W']) && this.y > 0) {
+                    this.y -= this.speed;
+                }
+                
+                if ((keys['ArrowDown'] || keys['s'] || keys['S']) && this.y < canvas.height - MINIMAP_HEIGHT - this.height) {
+                    this.y += this.speed;
+                }
+                
+                // Update camera to follow player
+                updateCamera();
+                
+                // Screen position based on world position and camera
+                this.x = this.worldX - cameraX;
+                
+                // Shooting cooldown
+                if (this.shootCooldown > 0) {
+                    this.shootCooldown--;
+                }
+                
+                // Shooting
+                if (keys[' '] && this.shootCooldown === 0) {
+                    this.shoot();
+                    this.shootCooldown = this.maxShootCooldown;
+                }
+            }
+            
+            shoot() {
+                const bulletX = this.direction === 'right' ? this.x + this.width : this.x;
+                const bulletY = this.y + this.height / 2 - BULLET_HEIGHT / 2;
+                const bulletDirection = this.direction === 'right' ? 1 : -1;
+                
+                playerBullets.push(new Bullet(
+                    bulletX, 
+                    bulletY, 
+                    this.worldX + (this.direction === 'right' ? this.width : 0), 
+                    BULLET_SPEED * bulletDirection
+                ));
+            }
+            
+            draw() {
+                ctx.fillStyle = COLORS.player;
+                
+                // Draw player ship based on direction
+                if (this.direction === 'right') {
+                    // Ship body
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.height / 2);
+                    ctx.lineTo(this.x + this.width, this.y + this.height / 3);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 2/3);
+                    ctx.lineTo(this.x, this.y + this.height / 2);
+                    ctx.fill();
+                    
+                    // Cockpit
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width * 0.7, this.y + this.height / 2, this.width * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Engine flame
+                    ctx.fillStyle = COLORS.playerEngine;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.height / 2 - 5);
+                    ctx.lineTo(this.x - 10, this.y + this.height / 2);
+                    ctx.lineTo(this.x, this.y + this.height / 2 + 5);
+                    ctx.fill();
+                } else {
+                    // Ship body
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width, this.y + this.height / 2);
+                    ctx.lineTo(this.x, this.y + this.height / 3);
+                    ctx.lineTo(this.x, this.y + this.height * 2/3);
+                    ctx.lineTo(this.x + this.width, this.y + this.height / 2);
+                    ctx.fill();
+                    
+                    // Cockpit
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width * 0.3, this.y + this.height / 2, this.width * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Engine flame
+                    ctx.fillStyle = COLORS.playerEngine;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width, this.y + this.height / 2 - 5);
+                    ctx.lineTo(this.x + this.width + 10, this.y + this.height / 2);
+                    ctx.lineTo(this.x + this.width, this.y + this.height / 2 + 5);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Bullet class
+        class Bullet {
+            constructor(x, y, worldX, speed) {
+                this.x = x;
+                this.y = y;
+                this.worldX = worldX;
+                this.width = BULLET_WIDTH;
+                this.height = BULLET_HEIGHT;
+                this.speed = speed;
+            }
+            
+            update() {
+                this.worldX += this.speed;
+                this.x = this.worldX - cameraX;
+                
+                // Check if bullet is off screen or world bounds
+                if (this.worldX < 0 || this.worldX > WORLD_WIDTH) {
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            draw() {
+                // Only draw if on screen
+                if (this.x < -this.width || this.x > canvas.width) return;
+                
+                ctx.fillStyle = COLORS.bullet;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+        
+        // Enemy class
+        class Enemy {
+            constructor(worldX, y, type) {
+                this.worldX = worldX;
+                this.y = y;
+                this.x = 0; // Screen position, calculated during update
+                this.width = ENEMY_WIDTH;
+                this.height = ENEMY_HEIGHT;
+                this.type = type; // 1, 2, or 3 (different types of enemies)
+                this.speed = 1 + Math.random() * 2 + level * 0.5;
+                this.direction = Math.random() < 0.5 ? -1 : 1;
+                this.directionChangeTimer = Math.floor(Math.random() * 100) + 50;
+                this.carriesHuman = Math.random() < 0.3; // 30% chance to carry a human
+                this.capturedHuman = null;
+                
+                // If enemy carries a human, create one
+                if (this.carriesHuman) {
+                    this.capturedHuman = {
+                        worldX: this.worldX,
+                        y: this.y + this.height + 5
+                    };
+                    humansToRescue++;
+                }
+            }
+            
+            update() {
+                // Move enemy
+                this.worldX += this.speed * this.direction;
+                
+                // Change direction occasionally or at world boundaries
+                this.directionChangeTimer--;
+                if (this.directionChangeTimer <= 0 || 
+                    this.worldX < 50 || this.worldX > WORLD_WIDTH - 50) {
+                    this.direction *= -1;
+                    this.directionChangeTimer = Math.floor(Math.random() * 100) + 50;
+                }
+                
+                // Update screen position based on camera
+                this.x = this.worldX - cameraX;
+                
+                // Update captured human position
+                if (this.capturedHuman) {
+                    this.capturedHuman.worldX = this.worldX;
+                    this.capturedHuman.x = this.x;
+                }
+                
+                // Random vertical movement
+                if (Math.random() < 0.02) {
+                    this.y += Math.random() < 0.5 ? -2 : 2;
+                    
+                    // Keep within bounds
+                    if (this.y < 50) this.y = 50;
+                    if (this.y > canvas.height - MINIMAP_HEIGHT - 100) {
+                        this.y = canvas.height - MINIMAP_HEIGHT - 100;
+                    }
+                }
+                
+                // Occasionally drop a human if carrying one
+                if (this.capturedHuman && Math.random() < 0.001) {
+                    this.dropHuman();
+                }
+            }
+            
+            draw() {
+                // Only draw if on screen
+                if (this.x < -this.width || this.x > canvas.width) {
+                    return;
+                }
+                
+                // Set color based on enemy type
+                ctx.fillStyle = this.type === 1 ? COLORS.enemy1 : 
+                               (this.type === 2 ? COLORS.enemy2 : COLORS.enemy3);
+                
+                // Draw enemy based on type
+                if (this.type === 1) {
+                    // Type 1: Saucer
+                    ctx.beginPath();
+                    ctx.ellipse(this.x + this.width / 2, this.y + this.height / 3, 
+                               this.width / 2, this.height / 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Dome
+                    ctx.fillStyle = '#88CCFF';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x + this.width / 2, this.y + this.height / 3 - 5, 
+                               this.width / 4, this.height / 6, 0, 0, Math.PI, true);
+                    ctx.fill();
+                    
+                } else if (this.type === 2) {
+                    // Type 2: Square ship
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    
+                    // Windows
+                    ctx.fillStyle = '#88CCFF';
+                    for (let i = 0; i < 3; i++) {
+                        ctx.fillRect(this.x + 5 + i * 10, this.y + 5, 5, 5);
+                    }
+                    
+                } else {
+                    // Type 3: Triangle ship
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.lineTo(this.x, this.y + this.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Window
+                    ctx.fillStyle = '#88CCFF';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width / 2, this.y + this.height / 2, 
+                             this.width / 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw captured human if any
+                if (this.capturedHuman) {
+                    this.drawCapturedHuman();
+                }
+            }
+            
+            drawCapturedHuman() {
+                // Draw human
+                ctx.fillStyle = COLORS.human;
+                
+                // Human body
+                ctx.fillRect(
+                    this.capturedHuman.x + HUMAN_WIDTH / 2 - 2,
+                    this.capturedHuman.y,
+                    4,
+                    HUMAN_HEIGHT - 5
+                );
+                
+                // Human head
+                ctx.beginPath();
+                ctx.arc(
+                    this.capturedHuman.x + HUMAN_WIDTH / 2,
+                    this.capturedHuman.y - 5,
+                    5,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Human arms
+                ctx.fillRect(
+                    this.capturedHuman.x,
+                    this.capturedHuman.y + 5,
+                    HUMAN_WIDTH,
+                    2
+                );
+                
+                // Human legs
+                ctx.fillRect(
+                    this.capturedHuman.x + HUMAN_WIDTH / 2 - 4,
+                    this.capturedHuman.y + HUMAN_HEIGHT - 5,
+                    2,
+                    5
+                );
+                ctx.fillRect(
+                    this.capturedHuman.x + HUMAN_WIDTH / 2 + 2,
+                    this.capturedHuman.y + HUMAN_HEIGHT - 5,
+                    2,
+                    5
+                );
+                
+                // Beam connecting human to enemy
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 2]);
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width / 2, this.y + this.height);
+                ctx.lineTo(this.capturedHuman.x + HUMAN_WIDTH / 2, this.capturedHuman.y - 5);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            dropHuman() {
+                if (!this.capturedHuman) return;
+                
+                // Create a new human
+                humans.push(new Human(this.worldX, this.y + this.height + 10));
+                
+                // Enemy no longer carries a human
+                this.capturedHuman = null;
+            }
+        }
+        
+        // Human class
+        class Human {
+            constructor(worldX, y) {
+                this.worldX = worldX;
+                this.y = y;
+                this.x = 0; // Screen position, calculated during update
+                this.width = HUMAN_WIDTH;
+                this.height = HUMAN_HEIGHT;
+                this.falling = true;
+                this.fallSpeed = 2;
+                this.groundY = canvas.height - MINIMAP_HEIGHT - this.height - 10;
+                this.rescued = false;
+                this.walking = false;
+                this.walkDirection = Math.random() < 0.5 ? -1 : 1;
+                this.walkSpeed = 1;
+                this.walkTimer = 0;
+            }
+            
+            update() {
+                // Update screen position based on camera
+                this.x = this.worldX - cameraX;
+                
+                if (this.falling) {
+                    // Fall until reaching ground
+                    this.y += this.fallSpeed;
+                    
+                    if (this.y >= this.groundY) {
+                        this.y = this.groundY;
+                        this.falling = false;
+                        this.walking = true;
+                    }
+                } else if (this.walking) {
+                    // Random direction changes
+                    this.walkTimer--;
+                    if (this.walkTimer <= 0) {
+                        this.walkDirection = Math.random() < 0.5 ? -1 : 1;
+                        this.walkTimer = Math.floor(Math.random() * 100) + 50;
+                    }
+                    
+                    // Move horizontally
+                    this.worldX += this.walkSpeed * this.walkDirection;
+                    
+                    // Keep within world bounds
+                    if (this.worldX < 20) {
+                        this.worldX = 20;
+                        this.walkDirection = 1;
+                    } else if (this.worldX > WORLD_WIDTH - 20) {
+                        this.worldX = WORLD_WIDTH - 20;
+                        this.walkDirection = -1;
+                    }
+                }
+                
+                // Check if player is nearby for rescue
+                if (!this.falling && !this.rescued && 
+                    Math.abs(player.worldX - this.worldX) < player.width &&
+                    Math.abs(player.y - this.y) < 100) {
+                    this.rescued = true;
+                    score += 100;
+                    humansToRescue--;
+                    
+                    // Check if all humans are rescued
+                    if (humansToRescue <= 0 && enemiesRemaining <= 0) {
+                        levelComplete();
+                    }
+                }
+            }
+            
+            draw() {
+                // Only draw if on screen and not rescued
+                if ((this.x < -this.width || this.x > canvas.width) || this.rescued) return;
+                
+                ctx.fillStyle = COLORS.human;
+                
+                // Human body
+                ctx.fillRect(
+                    this.x + this.width / 2 - 2,
+                    this.y,
+                    4,
+                    this.height - 5
+                );
+                
+                // Human head
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + this.width / 2,
+                    this.y - 5,
+                    5,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Human arms
+                ctx.fillRect(
+                    this.x,
+                    this.y + 5,
+                    this.width,
+                    2
+                );
+                
+                // Human legs - animate if walking
+                if (this.walking) {
+                    const legOffset = Math.sin(Date.now() / 100) * 2;
+                    
+                    ctx.fillRect(
+                        this.x + this.width / 2 - 4,
+                        this.y + this.height - 5,
+                        2,
+                        5 + legOffset
+                    );
+                    ctx.fillRect(
+                        this.x + this.width / 2 + 2,
+                        this.y + this.height - 5,
+                        2,
+                        5 - legOffset
+                    );
+                } else {
+                    ctx.fillRect(
+                        this.x + this.width / 2 - 4,
+                        this.y + this.height - 5,
+                        2,
+                        5
+                    );
+                    ctx.fillRect(
+                        this.x + this.width / 2 + 2,
+                        this.y + this.height - 5,
+                        2,
+                        5
+                    );
+                }
+            }
+        }
+        
+        // Explosion class
+        class Explosion {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.maxRadius = 30;
+                this.growthRate = 1.5;
+                this.active = true;
+            }
+            
+            update() {
+                this.radius += this.growthRate;
+                
+                if (this.radius > this.maxRadius) {
+                    this.active = false;
+                }
+            }
+            
+            draw() {
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, 0,
+                    this.x, this.y, this.radius
+                );
+                
+                gradient.addColorStop(0, 'rgba(255, 255, 0, 1)');
+                gradient.addColorStop(0.3, 'rgba(255, 100, 0, 1)');
+                gradient.addColorStop(0.7, 'rgba(255, 50, 0, 0.5)');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Update camera position to follow player
+        function updateCamera() {
+            const targetCameraX = player.worldX - canvas.width / 2;
+            
+            // Apply camera bounds
+            if (targetCameraX < 0) {
+                cameraX = 0;
+            } else if (targetCameraX > WORLD_WIDTH - canvas.width) {
+                cameraX = WORLD_WIDTH - canvas.width;
+            } else {
+                cameraX = targetCameraX;
+            }
+        }
+        
+        // Initialize game level
+        function initLevel() {
+            // Create player
+            player = new Player();
+            
+            // Reset variables
+            cameraX = player.worldX - canvas.width / 2;
+            playerBullets = [];
+            enemies = [];
+            humans = [];
+            explosions = [];
+            enemiesRemaining = 10 + level * 5;
+            humansToRescue = 0; // Will be incremented when enemies with humans are created
+            
+            // Create stars
+            createStars();
+            
+            // Create some initial enemies
+            for (let i = 0; i < 5 + level * 2; i++) {
+                createEnemy();
+            }
+            
+            // Create some initial humans on the ground
+            for (let i = 0; i < 3 + level; i++) {
+                const x = Math.random() * WORLD_WIDTH;
+                const y = canvas.height - MINIMAP_HEIGHT - HUMAN_HEIGHT - 10;
+                
+                humans.push(new Human(x, y));
+                humansToRescue++;
+                
+                // Make them not falling
+                humans[humans.length - 1].falling = false;
+                humans[humans.length - 1].walking = true;
+            }
+        }
+        
+        // Create stars for background
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * (canvas.height - MINIMAP_HEIGHT),
+                    size: Math.random() * 2 + 1,
+                    brightness: Math.random() * 0.8 + 0.2
+                });
+            }
+        }
+        
+        // Create a new enemy at a random position
+        function createEnemy() {
+            if (enemiesRemaining <= 0) return;
+            
+            const x = Math.random() * WORLD_WIDTH;
+            const y = Math.random() * (canvas.height - MINIMAP_HEIGHT - 200) + 50;
+            const type = Math.floor(Math.random() * 3) + 1;
+            
+            enemies.push(new Enemy(x, y, type));
+            enemiesRemaining--;
+        }
+        
+        // Check collisions between bullets and enemies
+        function checkCollisions() {
+            // Check for bullet-enemy collisions
+            for (let i = playerBullets.length - 1; i >= 0; i--) {
+                const bullet = playerBullets[i];
+                
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    
+                    if (bullet.worldX + bullet.width > enemy.worldX &&
+                        bullet.worldX < enemy.worldX + enemy.width &&
+                        bullet.y + bullet.height > enemy.y &&
+                        bullet.y < enemy.y + enemy.height) {
+                        
+                        // Hit! Remove bullet and enemy
+                        playerBullets.splice(i, 1);
+                        
+                        // If enemy has a human, release it
+                        if (enemy.capturedHuman) {
+                            enemy.dropHuman();
+                        }
+                        
+                        // Create explosion
+                        explosions.push(new Explosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2));
+                        
+                        // Remove enemy
+                        enemies.splice(j, 1);
+                        
+                        // Add score
+                        score += 50;
+                        
+                        // Check if level is complete
+                        if (enemiesRemaining <= 0 && enemies.length === 0 && humansToRescue <= 0) {
+                            levelComplete();
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // Check for player-enemy collisions
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                if (player.x + player.width > enemy.x &&
+                    player.x < enemy.x + enemy.width &&
+                    player.y + player.height > enemy.y &&
+                    player.y < enemy.y + enemy.height) {
+                    
+                    // Player hit enemy
+                    lives--;
+                    
+                    // Create explosion
+                    explosions.push(new Explosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2));
+                    
+                    // Remove enemy
+                    enemies.splice(i, 1);
+                    
+                    // Create replacement enemy
+                    createEnemy();
+                    
+                    // Check for game over
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                    
+                    // Respawn player in center
+                    player.worldX = WORLD_WIDTH / 2;
+                    player.y = canvas.height / 2;
+                    
+                    break;
+                }
+            }
+        }
+        
+        // Draw the starry background
+        function drawBackground() {
+            // Clear canvas
+            ctx.fillStyle = '#000022';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw stars
+            ctx.fillStyle = COLORS.stars;
+            for (const star of stars) {
+                // Only draw stars that are on screen
+                if (star.x - cameraX < 0 || star.x - cameraX > canvas.width) continue;
+                
+                ctx.globalAlpha = star.brightness;
+                ctx.fillRect(
+                    Math.floor(star.x - cameraX), 
+                    Math.floor(star.y), 
+                    star.size, 
+                    star.size
+                );
+            }
+            ctx.globalAlpha = 1;
+            
+            // Draw ground
+            const groundHeight = 20;
+            ctx.fillStyle = COLORS.ground;
+            ctx.fillRect(0, canvas.height - MINIMAP_HEIGHT - groundHeight, canvas.width, groundHeight);
+        }
+        
+        // Draw the minimap
+        function drawMinimap() {
+            const minimapY = canvas.height - MINIMAP_HEIGHT;
+            const minimapScale = canvas.width / WORLD_WIDTH;
+            
+            // Draw minimap background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, minimapY, canvas.width, MINIMAP_HEIGHT);
+            
+            // Draw minimap border
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, minimapY, canvas.width, MINIMAP_HEIGHT);
+            
+            // Draw player on minimap
+            const playerMinimapX = player.worldX * minimapScale;
+            ctx.fillStyle = COLORS.player;
+            ctx.fillRect(playerMinimapX - 2, minimapY + MINIMAP_HEIGHT / 2, 4, 4);
+            
+            // Draw enemies on minimap
+            ctx.fillStyle = '#FF0000';
+            for (const enemy of enemies) {
+                const enemyMinimapX = enemy.worldX * minimapScale;
+                ctx.fillRect(enemyMinimapX - 1, minimapY + MINIMAP_HEIGHT / 2, 2, 2);
+            }
+            
+            // Draw humans on minimap
+            ctx.fillStyle = COLORS.human;
+            for (const human of humans) {
+                if (human.rescued) continue;
+                const humanMinimapX = human.worldX * minimapScale;
+                ctx.fillRect(humanMinimapX - 1, minimapY + MINIMAP_HEIGHT / 2 + 5, 2, 2);
+            }
+            
+            // Draw visible area indicator
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(
+                cameraX * minimapScale, 
+                minimapY, 
+                canvas.width * minimapScale, 
+                MINIMAP_HEIGHT
+            );
+        }
+        
+        // Draw game UI
+        function drawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            
+            // Draw lives
+            ctx.fillText(`Lives: ${lives}`, 20, 60);
+            
+            // Draw level
+            ctx.textAlign = 'right';
+            ctx.fillText(`Level: ${level}`, canvas.width - 20, 30);
+            
+            // Draw enemies & humans remaining
+            ctx.fillText(`Enemies: ${enemies.length + enemiesRemaining}`, canvas.width - 20, 60);
+            ctx.fillText(`Humans: ${humansToRescue}`, canvas.width - 20, 90);
+        }
+        
+        // Spawn new enemies occasionally
+        function spawnEnemies() {
+            if (enemiesRemaining > 0 && Math.random() < 0.01 + (level * 0.005)) {
+                createEnemy();
+            }
+        }
+        
+        // Game over
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            level++;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Start new game
+        function startNewGame() {
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            levelCompleteScreen.style.visibility = 'hidden';
+            
+            // Reset game variables
+            score = 0;
+            lives = 3;
+            level = 1;
+            
+            // Initialize level
+            initLevel();
+            
+            // Start the game
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Start next level
+        function startNextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            if (gameRunning) {
+                // Update game objects
+                player.update();
+                
+                // Update player bullets
+                for (let i = playerBullets.length - 1; i >= 0; i--) {
+                    if (!playerBullets[i].update()) {
+                        playerBullets.splice(i, 1);
+                    }
+                }
+                
+                // Update enemies
+                for (const enemy of enemies) {
+                    enemy.update();
+                }
+                
+                // Update humans
+                for (const human of humans) {
+                    human.update();
+                }
+                
+                // Update explosions
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    explosions[i].update();
+                    if (!explosions[i].active) {
+                        explosions.splice(i, 1);
+                    }
+                }
+                
+                // Check collisions
+                checkCollisions();
+                
+                // Spawn new enemies
+                spawnEnemies();
+            }
+            
+            // Draw everything
+            drawBackground();
+            
+            // Draw humans on the ground
+            for (const human of humans) {
+                human.draw();
+            }
+            
+            // Draw player bullets
+            for (const bullet of playerBullets) {
+                bullet.draw();
+            }
+            
+            // Draw enemies
+            for (const enemy of enemies) {
+                enemy.draw();
+            }
+            
+            // Draw player
+            player.draw();
+            
+            // Draw explosions
+            for (const explosion of explosions) {
+                explosion.draw();
+            }
+            
+            // Draw minimap
+            drawMinimap();
+            
+            // Draw UI
+            drawUI();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+            
+            // Prevent default for game control keys
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", " "].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        // Button event listeners
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        nextLevelButton.addEventListener('click', startNextLevel);
+        
+        // Start the game loop
+        gameLoop();
+        
+        console.log("Defender game loaded");
+    </script>
+</body>
+</html>

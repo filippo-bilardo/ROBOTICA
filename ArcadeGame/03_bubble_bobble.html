@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Bobble - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000033;
+            color: white;
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #FFCC00;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+        }
+        
+        canvas {
+            background-color: #000066;
+            border: 4px solid #9966FF;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(153, 102, 255, 0.4);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+            color: #CCCCFF;
+        }
+        
+        .controls p {
+            margin: 10px 0;
+        }
+        
+        .controls span {
+            padding: 2px 8px;
+            background-color: #9966FF;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 51, 0.8);
+        }
+        
+        .start-screen {
+            z-index: 10;
+        }
+        
+        .game-over {
+            visibility: hidden;
+            z-index: 20;
+        }
+        
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #FFCC00;
+            color: #000066;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #CC9900;
+        }
+        
+        button:hover {
+            background-color: #FFDD33;
+        }
+        
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bubble Bobble</h1>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen" class="screen start-screen">
+            <h2 style="color: #FFCC00; font-size: 36px;">BUBBLE BOBBLE</h2>
+            <p style="color: #CCCCFF; font-size: 18px; max-width: 80%; text-align: center; margin-bottom: 20px;">
+                Intrappola i nemici nelle bolle e scoppiale per guadagnare punti!
+            </p>
+            <button id="startButton">Inizia Gioco</button>
+        </div>
+        
+        <div id="gameOver" class="screen game-over">
+            <h2 style="color: #FF5555; font-size: 36px;">GAME OVER</h2>
+            <p id="finalScore" style="color: #FFCC00; font-size: 24px;">Punteggio: 0</p>
+            <button id="restartButton">Gioca Ancora</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <p>Comandi: <span>←</span> <span>→</span> per muoversi, <span>↑</span> per saltare, <span>Spazio</span> per sparare bolle</p>
+    </div>
+    
+    <script>
+        // Riferimenti al DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        
+        // Costanti di gioco
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -12;
+        const BUBBLE_SPEED = 4;
+        const BUBBLE_LIFETIME = 180; // 3 secondi a 60 FPS
+        const BUBBLE_FLOAT_SPEED = 1;
+        const ENEMY_COUNT_PER_LEVEL = 5;
+        
+        // Variabili di gioco
+        let player;
+        let platforms = [];
+        let bubbles = [];
+        let enemies = [];
+        let fruits = [];
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let gameRunning = false;
+        let gameOver = false;
+        let keys = {};
+        
+        // Sprite e asset
+        const sprites = {
+            player: { 
+                width: 32, 
+                height: 32,
+                color: '#33FF33',
+                jumpColor: '#66FF66'
+            },
+            bubble: { 
+                width: 24, 
+                height: 24,
+                color: '#99CCFF'
+            },
+            enemy: { 
+                width: 28, 
+                height: 28,
+                colors: ['#FF6666', '#FF9966', '#FFCC66', '#99CC66']
+            },
+            platform: {
+                color: '#9966CC'
+            },
+            fruit: {
+                width: 20,
+                height: 20,
+                colors: ['#FF3366', '#FFCC00', '#33CCFF', '#FF99CC']
+            }
+        };
+        
+        // Classe per il giocatore
+        class Player {
+            constructor() {
+                this.width = sprites.player.width;
+                this.height = sprites.player.height;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - 100 - this.height;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 5;
+                this.jumpForce = JUMP_FORCE;
+                this.isJumping = false;
+                this.direction = 1; // 1 destra, -1 sinistra
+                this.bubbleCooldown = 0;
+                this.isBubbling = false;
+                this.isInvincible = false;
+                this.invincibleTimer = 0;
+                this.animationFrame = 0;
+                this.animationCounter = 0;
+            }
+            
+            update() {
+                // Controllo movimento orizzontale
+                if (keys['ArrowLeft']) {
+                    this.vx = -this.speed;
+                    this.direction = -1;
+                } else if (keys['ArrowRight']) {
+                    this.vx = this.speed;
+                    this.direction = 1;
+                } else {
+                    this.vx = 0;
+                }
+                
+                // Aggiorna posizione orizzontale
+                this.x += this.vx;
+                
+                // Limiti orizzontali
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+                
+                // Applica gravità
+                this.vy += GRAVITY;
+                
+                // Aggiorna posizione verticale
+                this.y += this.vy;
+                
+                // Controlla collisioni con piattaforme
+                let onGround = false;
+                for (let platform of platforms) {
+                    if (this.vy >= 0 && // Sta cadendo
+                        this.y + this.height >= platform.y && 
+                        this.y + this.height <= platform.y + platform.height + 10 && 
+                        this.x + this.width > platform.x && 
+                        this.x < platform.x + platform.width) {
+                        this.y = platform.y - this.height;
+                        this.vy = 0;
+                        this.isJumping = false;
+                        onGround = true;
+                    }
+                }
+                
+                // Limite inferiore (base del canvas)
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.vy = 0;
+                    this.isJumping = false;
+                    onGround = true;
+                }
+                
+                // Salta se premi freccia su ed è a terra
+                if (keys['ArrowUp'] && !this.isJumping && onGround) {
+                    this.vy = this.jumpForce;
+                    this.isJumping = true;
+                }
+                
+                // Spara bolla
+                if (keys[' '] && this.bubbleCooldown <= 0) {
+                    this.shootBubble();
+                    this.bubbleCooldown = 20; // Cooldown di 1/3 di secondo
+                    this.isBubbling = true;
+                    setTimeout(() => this.isBubbling = false, 200);
+                }
+                
+                // Riduzione cooldown
+                if (this.bubbleCooldown > 0) this.bubbleCooldown--;
+                
+                // Gestione invincibilità
+                if (this.isInvincible) {
+                    this.invincibleTimer--;
+                    if (this.invincibleTimer <= 0) this.isInvincible = false;
+                }
+                
+                // Animazione
+                this.animationCounter++;
+                if (this.animationCounter >= 6) {
+                    this.animationFrame = (this.animationFrame + 1) % 4;
+                    this.animationCounter = 0;
+                }
+            }
+            
+            draw() {
+                // Non disegnare se invincibile e lampeggia
+                if (this.isInvincible && Math.floor(Date.now() / 100) % 2 === 0) return;
+                
+                ctx.save();
+                
+                // Direzione
+                if (this.direction === -1) {
+                    ctx.translate(this.x + this.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.translate(-this.x, 0);
+                }
+                
+                // Corpo del dinosauro
+                ctx.fillStyle = this.isJumping ? sprites.player.jumpColor : sprites.player.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Occhi
+                ctx.fillStyle = 'white';
+                ctx.fillRect(this.x + this.width - 12, this.y + 8, 8, 8);
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x + this.width - 10, this.y + 10, 4, 4);
+                
+                // Dorso
+                ctx.fillStyle = '#66CC66';
+                ctx.beginPath();
+                ctx.arc(this.x + 10, this.y + 10, 4, 0, Math.PI * 2);
+                ctx.arc(this.x + 18, this.y + 8, 4, 0, Math.PI * 2);
+                ctx.arc(this.x + 24, this.y + 10, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Bocca (aperta se sta sparando bolle)
+                if (this.isBubbling) {
+                    ctx.fillStyle = '#FF9999';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width - 6, this.y + 20, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            shootBubble() {
+                bubbles.push({
+                    x: this.direction === 1 ? this.x + this.width : this.x - sprites.bubble.width,
+                    y: this.y + 12,
+                    width: sprites.bubble.width,
+                    height: sprites.bubble.height,
+                    vx: this.direction * BUBBLE_SPEED,
+                    vy: 0,
+                    lifetime: BUBBLE_LIFETIME,
+                    hasEnemy: false,
+                    enemy: null,
+                    popping: false,
+                    poppingFrame: 0
+                });
+            }
+            
+            hit() {
+                if (this.isInvincible) return;
+                
+                lives--;
+                if (lives <= 0) {
+                    endGame();
+                } else {
+                    this.isInvincible = true;
+                    this.invincibleTimer = 120; // 2 secondi di invincibilità
+                }
+            }
+        }
+        
+        // Classe per i nemici
+        class Enemy {
+            constructor(x, y, type) {
+                this.width = sprites.enemy.width;
+                this.height = sprites.enemy.height;
+                this.x = x;
+                this.y = y;
+                this.vx = Math.random() > 0.5 ? 2 : -2;
+                this.vy = 0;
+                this.type = type || Math.floor(Math.random() * sprites.enemy.colors.length);
+                this.color = sprites.enemy.colors[this.type];
+                this.trapped = false;
+                this.animationFrame = 0;
+                this.animationCounter = 0;
+                this.jumpTimer = 0;
+                this.targetPlayer = false;
+            }
+            
+            update() {
+                if (this.trapped) return;
+                
+                // Gravità
+                this.vy += GRAVITY;
+                
+                // Movimento orizzontale
+                this.x += this.vx;
+                
+                // Cambio direzione ai bordi
+                if (this.x <= 0 || this.x + this.width >= canvas.width) {
+                    this.vx = -this.vx;
+                }
+                
+                // Aggiornamento posizione verticale
+                this.y += this.vy;
+                
+                // Collisione con piattaforme
+                for (let platform of platforms) {
+                    if (this.vy >= 0 && // Sta cadendo
+                        this.y + this.height >= platform.y && 
+                        this.y + this.height <= platform.y + platform.height + 10 && 
+                        this.x + this.width > platform.x && 
+                        this.x < platform.x + platform.width) {
+                        this.y = platform.y - this.height;
+                        this.vy = 0;
+                        
+                        // Salto casuale
+                        this.jumpTimer++;
+                        if (this.jumpTimer > 60 && Math.random() < 0.02) {
+                            this.vy = JUMP_FORCE * 0.7;
+                            this.jumpTimer = 0;
+                        }
+                    }
+                }
+                
+                // Limite inferiore
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.vy = 0;
+                    
+                    // Salto casuale
+                    this.jumpTimer++;
+                    if (this.jumpTimer > 60 && Math.random() < 0.02) {
+                        this.vy = JUMP_FORCE * 0.7;
+                        this.jumpTimer = 0;
+                    }
+                }
+                
+                // Cambio di direzione casuale
+                if (Math.random() < 0.01) {
+                    this.vx = -this.vx;
+                }
+                
+                // Inseguimento giocatore ogni tanto
+                if (Math.random() < 0.005) {
+                    this.targetPlayer = !this.targetPlayer;
+                }
+                
+                if (this.targetPlayer && player) {
+                    if (player.x < this.x) this.vx = -Math.abs(this.vx);
+                    if (player.x > this.x) this.vx = Math.abs(this.vx);
+                }
+                
+                // Animazione
+                this.animationCounter++;
+                if (this.animationCounter >= 8) {
+                    this.animationFrame = (this.animationFrame + 1) % 2;
+                    this.animationCounter = 0;
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Occhi
+                ctx.fillStyle = 'white';
+                ctx.fillRect(this.x + 6, this.y + 8, 6, 6);
+                ctx.fillRect(this.x + this.width - 12, this.y + 8, 6, 6);
+                
+                ctx.fillStyle = 'black';
+                const eyeOffset = this.vx > 0 ? 2 : 0;
+                ctx.fillRect(this.x + 8 + eyeOffset, this.y + 10, 2, 2);
+                ctx.fillRect(this.x + this.width - 10 + eyeOffset, this.y + 10, 2, 2);
+                
+                // Bocca
+                ctx.fillStyle = this.animationFrame === 0 ? '#FF3333' : '#FF6666';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + 20, 6, 0, Math.PI);
+                ctx.fill();
+            }
+            
+            trap(bubble) {
+                this.trapped = true;
+                bubble.hasEnemy = true;
+                bubble.enemy = this;
+                
+                // Rimuovi dalla lista dei nemici
+                const index = enemies.indexOf(this);
+                if (index !== -1) {
+                    enemies.splice(index, 1);
+                }
+            }
+        }
+        
+        // Funzione per creare un livello
+        function createLevel() {
+            // Pulisci le liste
+            platforms = [];
+            bubbles = [];
+            enemies = [];
+            fruits = [];
+            
+            // Crea le piattaforme
+            const platformCount = 4 + Math.min(level, 3);
+            const platformHeight = 20;
+            
+            // Piattaforma inferiore (terra)
+            platforms.push({
+                x: 0,
+                y: canvas.height - platformHeight,
+                width: canvas.width,
+                height: platformHeight
+            });
+            
+            // Altre piattaforme
+            for (let i = 0; i < platformCount; i++) {
+                const width = Math.random() * 200 + 100;
+                const x = Math.random() * (canvas.width - width);
+                const y = (i + 1) * (canvas.height / (platformCount + 2));
+                
+                platforms.push({
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: platformHeight
+                });
+            }
+            
+            // Crea i nemici
+            const enemyCount = Math.min(level * ENEMY_COUNT_PER_LEVEL, 20);
+            for (let i = 0; i < enemyCount; i++) {
+                const x = Math.random() * (canvas.width - sprites.enemy.width);
+                const y = Math.random() * (canvas.height / 2);
+                enemies.push(new Enemy(x, y));
+            }
+        }
+        
+        // Funzione per disegnare il livello
+        function drawLevel() {
+            // Disegna sfondo
+            ctx.fillStyle = '#000066';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna piattaforme
+            for (let platform of platforms) {
+                ctx.fillStyle = sprites.platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Pattern decorativo
+                ctx.fillStyle = '#8855BB';
+                for (let i = 0; i < platform.width; i += 20) {
+                    ctx.fillRect(platform.x + i, platform.y, 10, 5);
+                }
+            }
+        }
+        
+        // Disegna bolle
+        function drawBubbles() {
+            for (let bubble of bubbles) {
+                if (bubble.popping) {
+                    // Animazione di scoppio
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = i * Math.PI / 4;
+                        const length = 5 + bubble.poppingFrame * 2;
+                        ctx.moveTo(bubble.x + bubble.width / 2, bubble.y + bubble.height / 2);
+                        ctx.lineTo(
+                            bubble.x + bubble.width / 2 + Math.cos(angle) * length,
+                            bubble.y + bubble.height / 2 + Math.sin(angle) * length
+                        );
+                    }
+                    ctx.stroke();
+                } else {
+                    // Bolla normale
+                    ctx.fillStyle = bubble.hasEnemy ? '#FFCCFF' : sprites.bubble.color;
+                    ctx.beginPath();
+                    ctx.arc(
+                        bubble.x + bubble.width / 2, 
+                        bubble.y + bubble.height / 2, 
+                        bubble.width / 2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Riflesso
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.beginPath();
+                    ctx.arc(
+                        bubble.x + bubble.width / 2 - 5, 
+                        bubble.y + bubble.height / 2 - 5, 
+                        5, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Disegna nemico intrappolato
+                    if (bubble.hasEnemy && bubble.enemy) {
+                        const enemy = bubble.enemy;
+                        const scale = 0.7;
+                        const offsetX = (bubble.width - enemy.width * scale) / 2;
+                        const offsetY = (bubble.height - enemy.height * scale) / 2;
+                        
+                        ctx.fillStyle = enemy.color;
+                        ctx.fillRect(
+                            bubble.x + offsetX,
+                            bubble.y + offsetY,
+                            enemy.width * scale, 
+                            enemy.height * scale
+                        );
+                    }
+                }
+            }
+        }
+        
+        // Disegna frutti
+        function drawFruits() {
+            for (let fruit of fruits) {
+                ctx.fillStyle = fruit.color;
+                ctx.beginPath();
+                ctx.arc(
+                    fruit.x + fruit.width / 2,
+                    fruit.y + fruit.height / 2,
+                    fruit.width / 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Gambo
+                ctx.fillStyle = '#66AA33';
+                ctx.fillRect(
+                    fruit.x + fruit.width / 2 - 2,
+                    fruit.y,
+                    4,
+                    5
+                );
+            }
+        }
+        
+        // Funzione per aggiornare le bolle
+        function updateBubbles() {
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const bubble = bubbles[i];
+                
+                if (bubble.popping) {
+                    // Avanza animazione di scoppio
+                    bubble.poppingFrame++;
+                    if (bubble.poppingFrame >= 5) {
+                        // Crea frutto se aveva un nemico
+                        if (bubble.hasEnemy) {
+                            createFruit(bubble.x, bubble.y);
+                        }
+                        bubbles.splice(i, 1);
+                    }
+                    continue;
+                }
+                
+                // Aggiorna posizione
+                if (!bubble.hasEnemy) {
+                    bubble.x += bubble.vx;
+                    bubble.vy = -BUBBLE_FLOAT_SPEED; // Bolle vuote salgono
+                } else {
+                    bubble.vy = -BUBBLE_FLOAT_SPEED * 0.5; // Bolle con nemici salgono più lentamente
+                }
+                
+                bubble.y += bubble.vy;
+                
+                // Rimbalza contro le pareti laterali
+                if (bubble.x <= 0 || bubble.x + bubble.width >= canvas.width) {
+                    bubble.vx = -bubble.vx;
+                }
+                
+                // Scompare se esce dalla parte superiore
+                if (bubble.y + bubble.height < 0) {
+                    bubbles.splice(i, 1);
+                    continue;
+                }
+                
+                // Controllo durata
+                bubble.lifetime--;
+                if (bubble.lifetime <= 0) {
+                    if (bubble.hasEnemy) {
+                        // Il nemico scappa
+                        const enemy = bubble.enemy;
+                        enemy.trapped = false;
+                        enemy.x = bubble.x;
+                        enemy.y = bubble.y;
+                        enemy.vx = Math.random() > 0.5 ? 2 : -2;
+                        enemy.vy = 0;
+                        enemies.push(enemy);
+                    }
+                    
+                    bubble.popping = true;
+                    bubble.poppingFrame = 0;
+                    continue;
+                }
+                
+                // Controlla collisione con nemici (solo per bolle vuote)
+                if (!bubble.hasEnemy) {
+                    for (let j = 0; j < enemies.length; j++) {
+                        const enemy = enemies[j];
+                        if (!enemy.trapped && checkCollision(bubble, enemy)) {
+                            enemy.trap(bubble);
+                            score += 50;
+                            break;
+                        }
+                    }
+                }
+                
+                // Controlla se il giocatore fa scoppiare la bolla
+                if (player && checkCollision(bubble, player)) {
+                    if (bubble.hasEnemy) {
+                        score += 100;
+                    }
+                    bubble.popping = true;
+                    bubble.poppingFrame = 0;
+                }
+            }
+        }
+        
+        // Funzione per aggiornare i frutti
+        function updateFruits() {
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+                
+                // Applica gravità
+                fruit.vy += GRAVITY * 0.5;
+                
+                // Aggiorna posizione
+                fruit.y += fruit.vy;
+                
+                // Controlla collisione con il giocatore
+                if (player && checkCollision(fruit, player)) {
+                    score += 200;
+                    fruits.splice(i, 1);
+                    continue;
+                }
+                
+                // Controlla collisione con piattaforme
+                for (let platform of platforms) {
+                    if (fruit.vy >= 0 && // Sta cadendo
+                        fruit.y + fruit.height >= platform.y && 
+                        fruit.y + fruit.height <= platform.y + platform.height + 5 && 
+                        fruit.x + fruit.width > platform.x && 
+                        fruit.x < platform.x + platform.width) {
+                        fruit.y = platform.y - fruit.height;
+                        fruit.vy = -fruit.vy * 0.6; // Rimbalza un po'
+                        
+                        // Se il rimbalzo è piccolo, ferma il frutto
+                        if (Math.abs(fruit.vy) < 1) {
+                            fruit.vy = 0;
+                        }
+                    }
+                }
+                
+                // Rimuovi se esce fuori dallo schermo
+                if (fruit.y > canvas.height) {
+                    fruits.splice(i, 1);
+                }
+            }
+        }
+        
+        // Crea un frutto
+        function createFruit(x, y) {
+            const type = Math.floor(Math.random() * sprites.fruit.colors.length);
+            
+            fruits.push({
+                x: x,
+                y: y,
+                width: sprites.fruit.width,
+                height: sprites.fruit.height,
+                vy: -5, // Salta leggermente
+                type: type,
+                color: sprites.fruit.colors[type]
+            });
+        }
+        
+        // Funzione per rilevare collisioni tra oggetti
+        function checkCollision(obj1, obj2) {
+            return (
+                obj1.x < obj2.x + obj2.width &&
+                obj1.x + obj1.width > obj2.x &&
+                obj1.y < obj2.y + obj2.height &&
+                obj1.y + obj1.height > obj2.y
+            );
+        }
+        
+        // Funzione per disegnare l'interfaccia
+        function drawUI() {
+            // Punteggio
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`SCORE: ${score}`, 20, 30);
+            
+            // Livello
+            ctx.textAlign = 'center';
+            ctx.fillText(`LEVEL: ${level}`, canvas.width / 2, 30);
+            
+            // Vite
+            ctx.textAlign = 'right';
+            ctx.fillText(`LIVES: ${lives}`, canvas.width - 20, 30);
+        }
+        
+        // Funzione per iniziare una nuova partita
+        function startNewGame() {
+            // Nascondi schermate
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            
+            // Resetta variabili di gioco
+            level = 1;
+            score = 0;
+            lives = 3;
+            
+            // Crea il player
+            player = new Player();
+            
+            // Crea il primo livello
+            createLevel();
+            
+            // Avvia il gioco
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Funzione per terminare il gioco
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreElement.textContent = `Punteggio: ${score}`;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Controlla se il livello è stato completato
+        function checkLevelComplete() {
+            // Il livello è completato quando non ci sono più nemici né bolle con nemici
+            let enemiesTrapped = false;
+            for (let bubble of bubbles) {
+                if (bubble.hasEnemy) {
+                    enemiesTrapped = true;
+                    break;
+                }
+            }
+            
+            if (enemies.length === 0 && !enemiesTrapped) {
+                level++;
+                createLevel();
+                
+                // Bonus passaggio livello
+                score += level * 500;
+            }
+        }
+        
+        // Game loop
+        function gameLoop() {
+            // Pulisci il canvas
+            ctx.fillStyle = '#000066';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameRunning) {
+                // Disegna livello
+                drawLevel();
+                
+                // Aggiorna e disegna nemici
+                for (let enemy of enemies) {
+                    enemy.update();
+                    enemy.draw();
+                    
+                    // Controlla collisione con il giocatore
+                    if (player && !enemy.trapped && checkCollision(enemy, player)) {
+                        player.hit();
+                    }
+                }
+                
+                // Aggiorna e disegna bolle
+                updateBubbles();
+                drawBubbles();
+                
+                // Aggiorna e disegna frutti
+                updateFruits();
+                drawFruits();
+                
+                // Aggiorna e disegna il giocatore
+                if (player) {
+                    player.update();
+                    player.draw();
+                }
+                
+                // Disegna UI
+                drawUI();
+                
+                // Controlla completamento livello
+                checkLevelComplete();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Gestione input da tastiera
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        // Event listeners per i pulsanti
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        
+        // Avvia il game loop
+        gameLoop();
+    </script>
+</body>
+</html>

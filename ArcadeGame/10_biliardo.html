@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billiards Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #076324;
+            display: block;
+            border: 2px solid #553311;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #8B4513;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>BILLIARDS</h1>
+            <p>Pot all the balls to win!</p>
+            <p>Click and drag to aim and set power</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Level Complete!</h1>
+            <p>Great job! Ready for the next challenge?</p>
+            <button id="nextLevelButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Game constants
+        const BALL_RADIUS = 15;
+        const CUE_BALL_RADIUS = 15;
+        const TABLE_PADDING = 50;
+        const POCKET_RADIUS = 25;
+        const FRICTION = 0.99;
+        const MAX_POWER = 20;
+        
+        // Game colors
+        const COLORS = {
+            table: '#076324',
+            rail: '#553311',
+            pocket: '#000000',
+            cueBall: '#FFFFFF',
+            ball1: '#FFFF00',
+            ball2: '#0000FF',
+            ball3: '#FF0000',
+            ball4: '#800080',
+            ball5: '#FFA500',
+            ball6: '#008000',
+            ball7: '#800000',
+            ball8: '#000000',
+            cue: '#8B4513',
+            powerMeter: '#FF0000'
+        };
+        
+        // Game state variables
+        let gameRunning = false;
+        let gameOver = false;
+        let level = 1;
+        let score = 0;
+        let shots = 0;
+        let ballsRemaining = 0;
+        
+        // Game objects
+        let cueBall = null;
+        let balls = [];
+        let pockets = [];
+        let aiming = false;
+        let power = 0;
+        let aimAngle = 0;
+        let ballsMoving = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseDown = false;
+        
+        // Ball class
+        class Ball {
+            constructor(x, y, radius, color, number) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.number = number;
+                this.vx = 0;
+                this.vy = 0;
+                this.inPocket = false;
+            }
+            
+            update() {
+                // Apply velocity
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Apply friction
+                this.vx *= FRICTION;
+                this.vy *= FRICTION;
+                
+                // Stop if velocity is very low
+                if (Math.abs(this.vx) < 0.1 && Math.abs(this.vy) < 0.1) {
+                    this.vx = 0;
+                    this.vy = 0;
+                }
+                
+                // Wall collisions
+                this.handleWallCollisions();
+                
+                // Check pocket collisions
+                this.checkPocketCollisions();
+            }
+            
+            handleWallCollisions() {
+                // Table bounds with cushion rebounds
+                if (this.x - this.radius < TABLE_PADDING) {
+                    this.x = TABLE_PADDING + this.radius;
+                    this.vx = -this.vx * 0.8; // Lose some energy on bounce
+                }
+                if (this.x + this.radius > canvas.width - TABLE_PADDING) {
+                    this.x = canvas.width - TABLE_PADDING - this.radius;
+                    this.vx = -this.vx * 0.8;
+                }
+                if (this.y - this.radius < TABLE_PADDING) {
+                    this.y = TABLE_PADDING + this.radius;
+                    this.vy = -this.vy * 0.8;
+                }
+                if (this.y + this.radius > canvas.height - TABLE_PADDING) {
+                    this.y = canvas.height - TABLE_PADDING - this.radius;
+                    this.vy = -this.vy * 0.8;
+                }
+            }
+            
+            checkPocketCollisions() {
+                for (const pocket of pockets) {
+                    const dx = this.x - pocket.x;
+                    const dy = this.y - pocket.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < pocket.radius) {
+                        this.inPocket = true;
+                        
+                        // Score based on ball type
+                        if (this.number === 0) {
+                            // Cue ball potted
+                            this.inPocket = false;
+                            this.x = canvas.width / 4;
+                            this.y = canvas.height / 2;
+                            this.vx = 0;
+                            this.vy = 0;
+                            score -= 10;
+                        } else {
+                            // Regular ball potted
+                            score += 10;
+                            ballsRemaining--;
+                            
+                            // Check if all balls are potted
+                            if (ballsRemaining <= 0) {
+                                levelComplete();
+                            }
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+            
+            handleCollision(other) {
+                const dx = other.x - this.x;
+                const dy = other.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.radius + other.radius) {
+                    // Calculate collision angle
+                    const angle = Math.atan2(dy, dx);
+                    
+                    // Calculate velocities after collision
+                    const v1 = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                    const v2 = Math.sqrt(other.vx * other.vx + other.vy * other.vy);
+                    
+                    // Calculate directions
+                    const dir1 = Math.atan2(this.vy, this.vx);
+                    const dir2 = Math.atan2(other.vy, other.vx);
+                    
+                    // Calculate new velocities
+                    const vx1 = v2 * Math.cos(dir2 - angle) * Math.cos(angle);
+                    const vy1 = v2 * Math.cos(dir2 - angle) * Math.sin(angle);
+                    const vx2 = v1 * Math.cos(dir1 - angle) * Math.cos(angle);
+                    const vy2 = v1 * Math.cos(dir1 - angle) * Math.sin(angle);
+                    
+                    // Apply new velocities
+                    this.vx = vx1;
+                    this.vy = vy1;
+                    other.vx = vx2;
+                    other.vy = vy2;
+                    
+                    // Move balls apart to prevent sticking
+                    const overlap = this.radius + other.radius - distance;
+                    const moveX = (overlap * dx) / distance / 2;
+                    const moveY = (overlap * dy) / distance / 2;
+                    
+                    this.x -= moveX;
+                    this.y -= moveY;
+                    other.x += moveX;
+                    other.y += moveY;
+                }
+            }
+            
+            draw() {
+                if (this.inPocket) return;
+                
+                // Draw the ball
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Draw ball number (if not cue ball)
+                if (this.number > 0) {
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.number, this.x, this.y);
+                }
+            }
+        }
+        
+        // Pocket class
+        class Pocket {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = POCKET_RADIUS;
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = COLORS.pocket;
+                ctx.fill();
+            }
+        }
+        
+        // Initialize game level
+        function initLevel() {
+            // Create pockets
+            pockets = [
+                new Pocket(TABLE_PADDING, TABLE_PADDING),
+                new Pocket(canvas.width / 2, TABLE_PADDING),
+                new Pocket(canvas.width - TABLE_PADDING, TABLE_PADDING),
+                new Pocket(TABLE_PADDING, canvas.height - TABLE_PADDING),
+                new Pocket(canvas.width / 2, canvas.height - TABLE_PADDING),
+                new Pocket(canvas.width - TABLE_PADDING, canvas.height - TABLE_PADDING)
+            ];
+            
+            // Create cue ball
+            cueBall = new Ball(canvas.width / 4, canvas.height / 2, CUE_BALL_RADIUS, COLORS.cueBall, 0);
+            
+            // Create other balls
+            balls = [cueBall];
+            
+            // Set up balls in triangle formation
+            const startX = canvas.width * 3/4;
+            const startY = canvas.height / 2;
+            const ballCount = 7 + level; // More balls in higher levels
+            ballsRemaining = ballCount;
+            
+            // Triangle formation
+            let row = 0;
+            let ballNum = 1;
+            let rowBall = 0;
+            
+            while (ballNum <= ballCount) {
+                // Calculate position in the triangle
+                const x = startX + row * BALL_RADIUS * 2 * Math.sqrt(3) / 2;
+                const y = startY - (row * BALL_RADIUS) + (rowBall * BALL_RADIUS * 2);
+                
+                // Create ball with color based on number
+                const color = COLORS[`ball${(ballNum % 8) + 1}`];
+                balls.push(new Ball(x, y, BALL_RADIUS, color, ballNum));
+                
+                ballNum++;
+                rowBall++;
+                
+                // Move to next row when complete
+                if (rowBall > row) {
+                    row++;
+                    rowBall = 0;
+                }
+            }
+            
+            // Reset game state
+            shots = 0;
+            aiming = false;
+            power = 0;
+            ballsMoving = false;
+        }
+        
+        // Check if any balls are still moving
+        function checkBallsMoving() {
+            for (const ball of balls) {
+                if (!ball.inPocket && (ball.vx !== 0 || ball.vy !== 0)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Handle ball collisions
+        function handleBallCollisions() {
+            for (let i = 0; i < balls.length; i++) {
+                if (balls[i].inPocket) continue;
+                
+                for (let j = i + 1; j < balls.length; j++) {
+                    if (balls[j].inPocket) continue;
+                    
+                    balls[i].handleCollision(balls[j]);
+                }
+            }
+        }
+        
+        // Game over
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            level++;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Start new game
+        function startNewGame() {
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            levelCompleteScreen.style.visibility = 'hidden';
+            
+            // Reset game variables
+            score = 0;
+            level = 1;
+            
+            // Initialize level
+            initLevel();
+            
+            // Start the game
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Start next level
+        function startNextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Draw the table
+        function drawTable() {
+            // Draw table background
+            ctx.fillStyle = COLORS.table;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw cushions (rails)
+            ctx.fillStyle = COLORS.rail;
+            ctx.fillRect(0, 0, canvas.width, TABLE_PADDING);
+            ctx.fillRect(0, canvas.height - TABLE_PADDING, canvas.width, TABLE_PADDING);
+            ctx.fillRect(0, 0, TABLE_PADDING, canvas.height);
+            ctx.fillRect(canvas.width - TABLE_PADDING, 0, TABLE_PADDING, canvas.height);
+            
+            // Draw pockets
+            for (const pocket of pockets) {
+                pocket.draw();
+            }
+        }
+        
+        // Draw aiming line and power meter
+        function drawAimingLine() {
+            if (!aiming || ballsMoving) return;
+            
+            // Draw aiming line
+            const lineLength = 200;
+            const endX = cueBall.x - Math.cos(aimAngle) * lineLength;
+            const endY = cueBall.y - Math.sin(aimAngle) * lineLength;
+            
+            ctx.beginPath();
+            ctx.moveTo(cueBall.x, cueBall.y);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Draw cue stick
+            const cueLength = 150;
+            const cueEndX = cueBall.x + Math.cos(aimAngle) * (cueLength + power * 2 + cueBall.radius);
+            const cueEndY = cueBall.y + Math.sin(aimAngle) * (cueLength + power * 2 + cueBall.radius);
+            const cueStartX = cueBall.x + Math.cos(aimAngle) * (cueBall.radius + power * 2);
+            const cueStartY = cueBall.y + Math.sin(aimAngle) * (cueBall.radius + power * 2);
+            
+            ctx.beginPath();
+            ctx.moveTo(cueStartX, cueStartY);
+            ctx.lineTo(cueEndX, cueEndY);
+            ctx.strokeStyle = COLORS.cue;
+            ctx.lineWidth = 8;
+            ctx.stroke();
+            
+            // Draw power meter
+            ctx.fillStyle = COLORS.powerMeter;
+            ctx.fillRect(30, canvas.height - 50, power * 10, 20);
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(30, canvas.height - 50, MAX_POWER * 10, 20);
+        }
+        
+        // Draw game UI
+        function drawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            
+            // Draw shots
+            ctx.fillText(`Shots: ${shots}`, 20, 60);
+            
+            // Draw level
+            ctx.fillText(`Level: ${level}`, 20, 90);
+            
+            // Draw balls remaining
+            ctx.fillText(`Balls: ${ballsRemaining}`, 20, 120);
+        }
+        
+        // Shoot the cue ball
+        function shootCueBall() {
+            if (!aiming || ballsMoving) return;
+            
+            // Apply force to cue ball
+            cueBall.vx = Math.cos(aimAngle) * power;
+            cueBall.vy = Math.sin(aimAngle) * power;
+            
+            // Reset aiming
+            aiming = false;
+            power = 0;
+            shots++;
+            ballsMoving = true;
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameRunning) {
+                // Draw the table
+                drawTable();
+                
+                // Check if balls are moving
+                ballsMoving = checkBallsMoving();
+                
+                // Handle ball collisions and update
+                handleBallCollisions();
+                
+                // Update and draw balls
+                for (const ball of balls) {
+                    if (!ball.inPocket) {
+                        ball.update();
+                        ball.draw();
+                    }
+                }
+                
+                // Allow aiming if balls are not moving
+                if (!ballsMoving && !aiming && mouseDown) {
+                    aiming = true;
+                    aimAngle = Math.atan2(cueBall.y - mouseY, cueBall.x - mouseX);
+                }
+                
+                // Update aiming if active
+                if (aiming && mouseDown) {
+                    aimAngle = Math.atan2(cueBall.y - mouseY, cueBall.x - mouseX);
+                    
+                    // Calculate power based on distance from cue ball to mouse
+                    const dx = mouseX - cueBall.x;
+                    const dy = mouseY - cueBall.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    power = Math.min(MAX_POWER, distance / 10);
+                }
+                
+                // Draw aiming line and power meter
+                drawAimingLine();
+            }
+            
+            // Draw UI
+            drawUI();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle mouse events
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mousedown', function() {
+            mouseDown = true;
+        });
+        
+        canvas.addEventListener('mouseup', function() {
+            if (aiming) {
+                shootCueBall();
+            }
+            mouseDown = false;
+        });
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', function(e) {
+            // Spacebar to shoot
+            if (e.key === ' ' && aiming) {
+                shootCueBall();
+                e.preventDefault();
+            }
+        });
+        
+        // Button event listeners
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        nextLevelButton.addEventListener('click', startNextLevel);
+        
+        // Start the game loop
+        gameLoop();
+        
+        console.log("Billiards game loaded");
+    </script>
+</body>
+</html>

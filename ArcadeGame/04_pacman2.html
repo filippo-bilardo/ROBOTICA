@@ -1,0 +1,302 @@
+// ...existing code...
+
+    <script>
+        // ...existing code...
+        
+        // Classe per Pac-Man
+        class Pacman {
+            // ...existing code...
+            
+            canMove(x, y) {
+                // Fix: Migliorare la rilevazione delle collisioni controllando tutti e quattro gli angoli
+                const radius = this.radius * 0.8; // Usa un raggio leggermente più piccolo per evitare collisioni imprecise
+                
+                // Controlla tutti e quattro gli angoli di un quadrato inscritto nella circonferenza
+                const points = [
+                    {x: x - radius, y: y - radius},
+                    {x: x + radius, y: y - radius},
+                    {x: x - radius, y: y + radius},
+                    {x: x + radius, y: y + radius}
+                ];
+                
+                // Verifica se è un tunnel
+                if (Math.floor(y / CELL_SIZE) === 9 && (x < 0 || x > canvas.width)) {
+                    return true;
+                }
+                
+                // Controlla ciascun punto
+                for (let point of points) {
+                    const cellX = Math.floor(point.x / CELL_SIZE);
+                    const cellY = Math.floor(point.y / CELL_SIZE);
+                    
+                    // Verifica se è fuori dal labirinto o se c'è un muro
+                    if (cellX < 0 || cellX >= GRID_WIDTH || cellY < 0 || cellY >= GRID_HEIGHT || 
+                        MAZE_LAYOUT[cellY][cellX] === 1) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            // ...existing code...
+            
+            checkDotCollision() {
+                // Verifica collisione con i puntini
+                for (let i = dots.length - 1; i >= 0; i--) {
+                    const dot = dots[i];
+                    const dx = this.x - dot.x;
+                    const dy = this.y - dot.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.radius) {
+                        dots.splice(i, 1);
+                        score += 10;
+                        // Aggiunta del suono (commentato)
+                        console.log('dot eaten');
+                    }
+                }
+                
+                // Verifica collisione con i power dots
+                for (let i = powerDots.length - 1; i >= 0; i--) {
+                    const dot = powerDots[i];
+                    const dx = this.x - dot.x;
+                    const dy = this.y - dot.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.radius) {
+                        powerDots.splice(i, 1);
+                        score += 50;
+                        
+                        // Attiva invincibilità
+                        this.invincible = true;
+                        this.invincibleTimer = 600; // 10 secondi a 60 FPS
+                        
+                        // Rendi vulnerabili i fantasmi
+                        ghosts.forEach(ghost => {
+                            if (ghost.state === GHOST_STATE.NORMAL) {
+                                ghost.state = GHOST_STATE.VULNERABLE;
+                            }
+                        });
+                        
+                        console.log('power dot eaten');
+                    }
+                }
+                
+                // Controlla se tutti i puntini sono stati mangiati
+                if (dots.length === 0 && powerDots.length === 0) {
+                    levelComplete();
+                }
+            }
+            
+            checkGhostCollision() {
+                for (let ghost of ghosts) {
+                    const dx = this.x - ghost.x;
+                    const dy = this.y - ghost.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.radius + ghost.radius - 5) { // Ridotto leggermente per maggiore precisione
+                        if (ghost.state === GHOST_STATE.VULNERABLE) {
+                            // Mangia il fantasma
+                            ghost.state = GHOST_STATE.EATEN;
+                            score += 200;
+                            console.log('ghost eaten');
+                        } else if (ghost.state === GHOST_STATE.NORMAL) {
+                            // Pac-Man perde una vita
+                            if (!this.invincible) {
+                                loseLife();
+                                console.log('life lost');
+                                return; // Evita collisioni multiple nello stesso frame
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Classe per i fantasmi
+        class Ghost {
+            // ...existing code...
+            
+            canMove(x, y) {
+                // Fix: Migliorare la rilevazione delle collisioni simile a Pac-Man
+                const radius = this.radius * 0.8;
+                
+                // Verifica se è un tunnel
+                if (Math.floor(y / CELL_SIZE) === 9 && (x < 0 || x > canvas.width)) {
+                    return true;
+                }
+                
+                // Controlla il centro del fantasma
+                const cellX = Math.floor(x / CELL_SIZE);
+                const cellY = Math.floor(y / CELL_SIZE);
+                
+                // Verifica se è fuori dal labirinto
+                if (cellX < 0 || cellX >= GRID_WIDTH || cellY < 0 || cellY >= GRID_HEIGHT) {
+                    return false;
+                }
+                
+                // Verifica se c'è un muro
+                return MAZE_LAYOUT[cellY][cellX] === 0;
+            }
+            
+            // ...existing code...
+        }
+        
+        // ...existing code...
+        
+        // Funzione per creare il labirinto
+        function createMaze() {
+            // Azzera gli array dei puntini quando si crea un nuovo livello
+            dots = [];
+            powerDots = [];
+            
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (MAZE_LAYOUT[y][x] === 0) {
+                        // Posiziona un puntino in ogni cella percorribile
+                        // Evita di posizionare puntini nella zona dei fantasmi e nella posizione iniziale di Pac-Man
+                        if (!(y >= 8 && y <= 10 && x >= 8 && x <= 11) && 
+                            !(y === 15 && x === 10)) {
+                            dots.push({
+                                x: x * CELL_SIZE + CELL_SIZE / 2,
+                                y: y * CELL_SIZE + CELL_SIZE / 2
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Posiziona i power dots
+            const powerDotPositions = [
+                {x: 1, y: 1},
+                {x: 18, y: 1},
+                {x: 1, y: 19},
+                {x: 18, y: 19}
+            ];
+            
+            for (let pos of powerDotPositions) {
+                // Rimuovi il puntino normale in questa posizione
+                for (let i = dots.length - 1; i >= 0; i--) {
+                    const dot = dots[i];
+                    if (Math.abs(dot.x - (pos.x * CELL_SIZE + CELL_SIZE / 2)) < 5 &&
+                        Math.abs(dot.y - (pos.y * CELL_SIZE + CELL_SIZE / 2)) < 5) {
+                        dots.splice(i, 1);
+                        break;
+                    }
+                }
+                
+                // Aggiungi il power dot
+                powerDots.push({
+                    x: pos.x * CELL_SIZE + CELL_SIZE / 2,
+                    y: pos.y * CELL_SIZE + CELL_SIZE / 2
+                });
+            }
+            
+            console.log(`Created ${dots.length} dots and ${powerDots.length} power dots`);
+        }
+        
+        // ...existing code...
+        
+        // Funzione per iniziare una nuova partita
+        function startNewGame() {
+            // Nascondi schermate
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            
+            // Resetta variabili di gioco
+            score = 0;
+            lives = 3;
+            level = 1;
+            dots = [];
+            powerDots = [];
+            ghosts = [];
+            
+            // Inizializza il gioco
+            initGame();
+            
+            // Debug: Stampa informazioni sullo stato iniziale del gioco
+            console.log("Game initialized");
+            console.log(`Dots: ${dots.length}, Power Dots: ${powerDots.length}`);
+            console.log(`Ghosts: ${ghosts.length}`);
+            console.log(`Pacman position: ${pacman.x}, ${pacman.y}`);
+            
+            // Avvia il gioco
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Gestione input da tastiera
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+            
+            if (gameRunning && pacman) {
+                switch (e.key) {
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        pacman.setDirection(0);
+                        e.preventDefault(); // Evita lo scrolling della pagina
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        pacman.setDirection(1);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        pacman.setDirection(2);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        pacman.setDirection(3);
+                        e.preventDefault();
+                        break;
+                }
+            }
+        });
+        
+        // ...existing code...
+        
+        // Game loop principale
+        function gameLoop() {
+            // Pulisci il canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna il labirinto
+            drawMaze();
+            
+            // Disegna i puntini
+            drawDots();
+            
+            if (gameRunning) {
+                // Aggiorna e disegna Pac-Man
+                pacman.update();
+                pacman.draw();
+                
+                // Aggiorna e disegna i fantasmi
+                for (let ghost of ghosts) {
+                    ghost.update();
+                    ghost.draw();
+                }
+            }
+            
+            // Disegna l'interfaccia
+            drawUI();
+            
+            // Richiedi il prossimo frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Aggiungi il logging per il debug
+        console.log("Pac-Man game loaded");
+        
+        // Avvia il game loop
+        gameLoop();
+    </script>
+// ...existing code...

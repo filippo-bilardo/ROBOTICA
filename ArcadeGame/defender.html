@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defender</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #fuel-display {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #radar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 50px;
+            background-color: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0F0;
+        }
+        
+        #smart-bombs {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 18px;
+            color: white;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        #start-screen h1 {
+            font-size: 60px;
+            color: #0F0;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #060;
+        }
+        
+        #start-button {
+            background-color: #0F0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        #start-button:hover {
+            background-color: #060;
+            color: #FFF;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="fuel-display">Fuel: 100%</div>
+        <div id="radar"></div>
+        <div id="smart-bombs">Smart Bombs: 3</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>DEFENDER</h1>
+            <button id="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('score-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const fuelDisplay = document.getElementById('fuel-display');
+            const radarDisplay = document.getElementById('radar');
+            const smartBombsDisplay = document.getElementById('smart-bombs');
+            const gameOverDisplay = document.getElementById('game-over');
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            
+            // Game variables
+            let gameRunning = false;
+            let score = 0;
+            let lives = 3;
+            let fuel = 100;
+            let smartBombs = 3;
+            let player;
+            let bullets = [];
+            let enemies = [];
+            let humans = [];
+            let landscape = [];
+            let gameLoopId;
+            let worldWidth = 5000; // Wider than screen for scrolling
+            let cameraX = 0;
+            let stars = [];
+            
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                generateStars();
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Generate stars for background
+            function generateStars() {
+                stars = [];
+                const starCount = 100;
+                for (let i = 0; i < starCount; i++) {
+                    stars.push({
+                        x: Math.random() * worldWidth,
+                        y: Math.random() * (canvas.height - 200),
+                        size: Math.random() * 2 + 1,
+                        color: `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.3})`
+                    });
+                }
+            }
+            
+            // Generate landscape
+            function generateLandscape() {
+                landscape = [];
+                let x = 0;
+                let y = canvas.height - 100 + Math.random() * 20;
+                
+                while (x < worldWidth) {
+                    // Add current point
+                    landscape.push({x, y});
+                    
+                    // Move to next point
+                    x += Math.random() * 100 + 50;
+                    y = Math.max(canvas.height - 150, Math.min(canvas.height - 50, 
+                                y + (Math.random() * 50 - 25)));
+                }
+            }
+            
+            // Player ship
+            class Player {
+                constructor() {
+                    this.width = 40;
+                    this.height = 20;
+                    this.x = canvas.width / 2 - this.width / 2;
+                    this.y = canvas.height / 2;
+                    this.speed = 5;
+                    this.isMovingLeft = false;
+                    this.isMovingRight = false;
+                    this.isMovingUp = false;
+                    this.isMovingDown = false;
+                    this.isShooting = false;
+                    this.direction = 1; // 1 for right, -1 for left
+                    this.lastShot = Date.now();
+                    this.shootCooldown = 200; // ms
+                    this.color = '#00FF00';
+                }
+                
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x - cameraX + this.width / 2, this.y + this.height / 2);
+                    ctx.scale(this.direction, 1);
+                    ctx.fillStyle = this.color;
+                    
+                    // Draw ship body
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2, 0);
+                    ctx.lineTo(this.width / 2, 0);
+                    ctx.lineTo(this.width / 2 - 5, -this.height / 2);
+                    ctx.lineTo(-this.width / 2 + 5, -this.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Draw engines
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(-this.width / 2 + 5, 0, 5, this.height / 2);
+                    
+                    ctx.restore();
+                }
+                
+                update() {
+                    if (this.isMovingLeft) {
+                        this.x -= this.speed;
+                        this.direction = -1;
+                        if (this.x < 0) this.x = 0;
+                    }
+                    
+                    if (this.isMovingRight) {
+                        this.x += this.speed;
+                        this.direction = 1;
+                        if (this.x > worldWidth - this.width) this.x = worldWidth - this.width;
+                    }
+                    
+                    if (this.isMovingUp) {
+                        this.y -= this.speed;
+                        if (this.y < 0) this.y = 0;
+                    }
+                    
+                    if (this.isMovingDown) {
+                        this.y += this.speed;
+                        if (this.y > canvas.height - 150 - this.height) this.y = canvas.height - 150 - this.height;
+                    }
+                    
+                    // Update camera to follow player
+                    cameraX = this.x - canvas.width / 2 + this.width / 2;
+                    if (cameraX < 0) cameraX = 0;
+                    if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+                    
+                    if (this.isShooting && Date.now() - this.lastShot > this.shootCooldown) {
+                        this.shoot();
+                        this.lastShot = Date.now();
+                    }
+                    
+                    // Consume fuel
+                    fuel -= 0.01;
+                    fuelDisplay.textContent = `Fuel: ${Math.floor(fuel)}%`;
+                    
+                    if (fuel <= 0) {
+                        gameOver();
+                    }
+                }
+                
+                shoot() {
+                    const bullet = {
+                        x: this.x + (this.direction > 0 ? this.width : 0),
+                        y: this.y + this.height / 2 - 2,
+                        width: 10,
+                        height: 4,
+                        speed: 10 * this.direction,
+                        color: '#FFFF00'
+                    };
+                    
+                    bullets.push(bullet);
+                    playSound('shoot');
+                }
+                
+                useSmartBomb() {
+                    if (smartBombs > 0) {
+                        smartBombs--;
+                        smartBombsDisplay.textContent = `Smart Bombs: ${smartBombs}`;
+                        
+                        // Destroy all enemies on screen
+                        const visibleEnemies = enemies.filter(enemy => 
+                            enemy.x >= cameraX && enemy.x <= cameraX + canvas.width);
+                        
+                        for (const enemy of visibleEnemies) {
+                            const index = enemies.indexOf(enemy);
+                            if (index !== -1) {
+                                enemies.splice(index, 1);
+                                score += 100;
+                            }
+                        }
+                        
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        playSound('explosion');
+                        
+                        // Visual effect
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    }
+                }
+            }
+            
+            // Enemy
+            class Enemy {
+                constructor(x, y) {
+                    this.width = 30;
+                    this.height = 20;
+                    this.x = x;
+                    this.y = y;
+                    this.speed = 2;
+                    this.direction = Math.random() > 0.5 ? 1 : -1;
+                    this.color = '#FF0000';
+                    this.capturedHuman = null;
+                    this.state = 'hunting'; // hunting, capturing, returning
+                }
+                
+                draw() {
+                    const screenX = this.x - cameraX;
+                    
+                    if (screenX < -this.width || screenX > canvas.width) return;
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(screenX, this.y, this.width, this.height);
+                    
+                    // Draw captured human
+                    if (this.capturedHuman) {
+                        ctx.fillStyle = '#00FFFF';
+                        ctx.fillRect(screenX + this.width / 2 - 5, this.y + this.height, 10, 15);
+                    }
+                }
+                
+                update() {
+                    if (this.state === 'hunting') {
+                        // Move horizontally searching for humans
+                        this.x += this.speed * this.direction;
+                        
+                        // Change direction at world bounds
+                        if (this.x <= 0 || this.x >= worldWidth - this.width) {
+                            this.direction *= -1;
+                        }
+                        
+                        // Check for humans below
+                        for (const human of humans) {
+                            if (Math.abs(this.x - human.x) < 50 && !human.captured) {
+                                this.state = 'capturing';
+                                this.targetHuman = human;
+                                break;
+                            }
+                        }
+                    } else if (this.state === 'capturing') {
+                        // Move towards human
+                        if (this.targetHuman && !this.targetHuman.captured) {
+                            const dx = this.targetHuman.x - this.x;
+                            const dy = this.targetHuman.y - this.y - this.height;
+                            
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance > 5) {
+                                this.x += dx / distance * this.speed;
+                                this.y += dy / distance * this.speed;
+                            } else {
+                                // Captured human
+                                this.capturedHuman = this.targetHuman;
+                                this.targetHuman.captured = true;
+                                this.state = 'returning';
+                            }
+                        } else {
+                            this.state = 'hunting';
+                        }
+                    } else if (this.state === 'returning') {
+                        // Return to top with captured human
+                        this.y -= this.speed;
+                        
+                        // Update human position
+                        if (this.capturedHuman) {
+                            this.capturedHuman.x = this.x + this.width / 2 - 5;
+                            this.capturedHuman.y = this.y + this.height;
+                        }
+                        
+                        // If reached top, human is lost
+                        if (this.y < -50) {
+                            if (this.capturedHuman) {
+                                const index = humans.indexOf(this.capturedHuman);
+                                if (index !== -1) {
+                                    humans.splice(index, 1);
+                                    
+                                    // If all humans are captured, game over
+                                    if (humans.length === 0) {
+                                        gameOver();
+                                    }
+                                }
+                            }
+                            
+                            // Reset enemy
+                            this.y = Math.random() * 100;
+                            this.capturedHuman = null;
+                            this.state = 'hunting';
+                        }
+                    }
+                }
+            }
+            
+            // Human
+            class Human {
+                constructor(x) {
+                    this.width = 10;
+                    this.height = 15;
+                    this.x = x;
+                    this.y = canvas.height - 120;
+                    this.color = '#00FFFF';
+                    this.captured = false;
+                    this.rescued = false;
+                }
+                
+                draw() {
+                    if (this.captured || this.rescued) return;
+                    
+                    const screenX = this.x - cameraX;
+                    
+                    if (screenX < -this.width || screenX > canvas.width) return;
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(screenX, this.y, this.width, this.height);
+                }
+            }
+            
+            // Event listeners for controls
+            function setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        player.isMovingLeft = true;
+                    } else if (e.key === 'ArrowRight') {
+                        player.isMovingRight = true;
+                    } else if (e.key === 'ArrowUp') {
+                        player.isMovingUp = true;
+                    } else if (e.key === 'ArrowDown') {
+                        player.isMovingDown = true;
+                    } else if (e.key === ' ') {
+                        player.isShooting = true;
+                    } else if (e.key === 'b' || e.key === 'B') {
+                        player.useSmartBomb();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        player.isMovingLeft = false;
+                    } else if (e.key === 'ArrowRight') {
+                        player.isMovingRight = false;
+                    } else if (e.key === 'ArrowUp') {
+                        player.isMovingUp = false;
+                    } else if (e.key === 'ArrowDown') {
+                        player.isMovingDown = false;
+                    } else if (e.key === ' ') {
+                        player.isShooting = false;
+                    }
+                });
+                
+                // Mobile controls
+                let touchStartX = 0;
+                let touchStartY = 0;
+                
+                canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    
+                    // Shoot on touch
+                    player.isShooting = true;
+                    
+                    // Smart bomb on double tap
+                    const now = Date.now();
+                    if (now - lastTapTime < 300) {
+                        player.useSmartBomb();
+                    }
+                    lastTapTime = now;
+                });
+                
+                let lastTapTime = 0;
+                
+                canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - touchStartX;
+                    const deltaY = touch.clientY - touchStartY;
+                    
+                    if (Math.abs(deltaX) > 10) {
+                        if (deltaX > 0) {
+                            player.isMovingLeft = false;
+                            player.isMovingRight = true;
+                        } else {
+                            player.isMovingRight = false;
+                            player.isMovingLeft = true;
+                        }
+                    }
+                    
+                    if (Math.abs(deltaY) > 10) {
+                        if (deltaY > 0) {
+                            player.isMovingUp = false;
+                            player.isMovingDown = true;
+                        } else {
+                            player.isMovingDown = false;
+                            player.isMovingUp = true;
+                        }
+                    }
+                });
+                
+                canvas.addEventListener('touchend', () => {
+                    player.isMovingLeft = false;
+                    player.isMovingRight = false;
+                    player.isMovingUp = false;
+                    player.isMovingDown = false;
+                    player.isShooting = false;
+                });
+            }
+            
+            // Initialize humans and enemies
+            function createHumansAndEnemies() {
+                humans = [];
+                enemies = [];
+                
+                // Create humans
+                for (let i = 0; i < 10; i++) {
+                    const x = Math.random() * (worldWidth - 100) + 50;
+                    humans.push(new Human(x));
+                }
+                
+                // Create enemies
+                for (let i = 0; i < 15; i++) {
+                    const x = Math.random() * (worldWidth - 100) + 50;
+                    const y = Math.random() * 200;
+                    enemies.push(new Enemy(x, y));
+                }
+            }
+            
+            // Draw the radar display
+            function updateRadar() {
+                const radarCtx = document.createElement('canvas').getContext('2d');
+                radarCtx.canvas.width = radarDisplay.clientWidth;
+                radarCtx.canvas.height = radarDisplay.clientHeight;
+                
+                radarCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                radarCtx.fillRect(0, 0, radarCtx.canvas.width, radarCtx.canvas.height);
+                
+                // Scale for radar
+                const xScale = radarCtx.canvas.width / worldWidth;
+                
+                // Draw player position
+                radarCtx.fillStyle = '#00FF00';
+                radarCtx.fillRect(player.x * xScale, radarCtx.canvas.height / 2, 4, 4);
+                
+                // Draw enemy positions
+                radarCtx.fillStyle = '#FF0000';
+                for (const enemy of enemies) {
+                    radarCtx.fillRect(enemy.x * xScale, 2 + (enemy.y / 200) * (radarCtx.canvas.height / 2), 2, 2);
+                }
+                
+                // Draw human positions
+                radarCtx.fillStyle = '#00FFFF';
+                for (const human of humans) {
+                    if (!human.captured && !human.rescued) {
+                        radarCtx.fillRect(human.x * xScale, radarCtx.canvas.height - 4, 2, 2);
+                    }
+                }
+                
+                // Draw camera view
+                radarCtx.strokeStyle = '#FFFFFF';
+                radarCtx.strokeRect(cameraX * xScale, 0, canvas.width * xScale, radarCtx.canvas.height);
+                
+                // Update radar display
+                radarDisplay.style.backgroundImage = `url(${radarCtx.canvas.toDataURL()})`;
+            }
+            
+            // Main game loop
+            function gameLoop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw stars (background)
+                for (const star of stars) {
+                    const screenX = star.x - cameraX;
+                    if (screenX >= 0 && screenX <= canvas.width) {
+                        ctx.fillStyle = star.color;
+                        ctx.fillRect(screenX, star.y, star.size, star.size);
+                    }
+                }
+                
+                // Draw landscape
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height);
+                
+                for (let i = 0; i < landscape.length; i++) {
+                    const screenX = landscape[i].x - cameraX;
+                    if (screenX >= -100 && screenX <= canvas.width + 100) {
+                        ctx.lineTo(screenX, landscape[i].y);
+                    }
+                }
+                
+                ctx.lineTo(canvas.width, canvas.height);
+                ctx.closePath();
+                
+                ctx.fillStyle = '#006600';
+                ctx.fill();
+                
+                // Draw fuel stations
+                for (let x = 500; x < worldWidth; x += 1000) {
+                    const screenX = x - cameraX;
+                    if (screenX >= -50 && screenX <= canvas.width + 50) {
+                        ctx.fillStyle = '#0099FF';
+                        ctx.fillRect(screenX - 25, canvas.height - 130, 50, 30);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = '12px Arial';
+                        ctx.fillText('FUEL', screenX - 15, canvas.height - 110);
+                        
+                        // Check if player is over fuel station
+                        if (player.x + player.width > x - 25 && player.x < x + 25 && 
+                            player.y + player.height > canvas.height - 130) {
+                            fuel = Math.min(100, fuel + 0.5);
+                            fuelDisplay.textContent = `Fuel: ${Math.floor(fuel)}%`;
+                        }
+                    }
+                }
+                
+                // Update and draw humans
+                for (const human of humans) {
+                    if (!human.captured && !human.rescued) {
+                        human.draw();
+                    }
+                }
+                
+                // Update and draw player
+                player.update();
+                player.draw();
+                
+                // Update and draw bullets
+                bullets = bullets.filter(bullet => {
+                    bullet.x += bullet.speed;
+                    
+                    const screenX = bullet.x - cameraX;
+                    if (screenX < -bullet.width || screenX > canvas.width) return false;
+                    
+                    // Check for collision with enemies
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        
+                        if (
+                            bullet.x < enemy.x + enemy.width &&
+                            bullet.x + bullet.width > enemy.x &&
+                            bullet.y < enemy.y + enemy.height &&
+                            bullet.y + bullet.height > enemy.y
+                        ) {
+                            // Release human if enemy was carrying one
+                            if (enemy.capturedHuman) {
+                                enemy.capturedHuman.captured = false;
+                                enemy.capturedHuman.x = enemy.x;
+                                enemy.capturedHuman.y = enemy.y + enemy.height;
+                            }
+                            
+                            // Enemy hit
+                            enemies.splice(i, 1);
+                            score += 100;
+                            scoreDisplay.textContent = `Score: ${score}`;
+                            playSound('explosion');
+                            return false;
+                        }
+                    }
+                    
+                    // Draw bullet
+                    ctx.fillStyle = bullet.color;
+                    ctx.fillRect(screenX, bullet.y, bullet.width, bullet.height);
+                    
+                    return true;
+                });
+                
+                // Update and draw enemies
+                for (const enemy of enemies) {
+                    enemy.update();
+                    enemy.draw();
+                    
+                    // Check collision with player
+                    if (
+                        player.x < enemy.x + enemy.width &&
+                        player.x + player.width > enemy.x &&
+                        player.y < enemy.y + enemy.height &&
+                        player.y + player.height > enemy.y
+                    ) {
+                        // Player hit
+                        lives--;
+                        livesDisplay.textContent = `Lives: ${lives}`;
+                        playSound('playerHit');
+                        
+                        // Reset player position
+                        player.x = canvas.width / 2 - player.width / 2 + cameraX;
+                        player.y = canvas.height / 2;
+                        
+                        if (lives <= 0) {
+                            gameOver();
+                        }
+                        
+                        // Release human if enemy was carrying one
+                        if (enemy.capturedHuman) {
+                            enemy.capturedHuman.captured = false;
+                        }
+                        
+                        // Remove enemy
+                        const index = enemies.indexOf(enemy);
+                        if (index !== -1) {
+                            enemies.splice(index, 1);
+                        }
+                    }
+                }
+                
+                // Check if player rescues humans (by touching them)
+                for (const human of humans) {
+                    if (!human.captured && !human.rescued &&
+                        player.x < human.x + human.width &&
+                        player.x + player.width > human.x &&
+                        player.y < human.y + human.height &&
+                        player.y + player.height > human.y) {
+                        
+                        human.rescued = true;
+                        score += 500;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        playSound('rescue');
+                    }
+                }
+                
+                // Update radar display
+                updateRadar();
+                
+                // Check for game win condition
+                const allHumansRescued = humans.every(human => human.rescued);
+                if (allHumansRescued) {
+                    levelUp();
+                }
+                
+                // Create new enemies periodically
+                if (Math.random() < 0.005 && enemies.length < 20) {
+                    const x = Math.random() * (worldWidth - 100) + 50;
+                    const y = Math.random() * 200;
+                    enemies.push(new Enemy(x, y));
+                }
+                
+                if (gameRunning) {
+                    gameLoopId = requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            // Level up - reset and make harder
+            function levelUp() {
+                score += 1000;
+                scoreDisplay.textContent = `Score: ${score}`;
+                
+                // Refill fuel
+                fuel = 100;
+                fuelDisplay.textContent = `Fuel: ${Math.floor(fuel)}%`;
+                
+                // Grant extra smart bomb
+                smartBombs++;
+                smartBombsDisplay.textContent = `Smart Bombs: ${smartBombs}`;
+                
+                // Create new humans and enemies
+                createHumansAndEnemies();
+            }
+            
+            // Game over function
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(gameLoopId);
+                gameOverDisplay.style.display = 'block';
+                
+                setTimeout(() => {
+                    gameOverDisplay.style.display = 'none';
+                    startScreen.style.display = 'block';
+                }, 3000);
+            }
+            
+            // Simple sound effects
+            function playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                if (type === 'shoot') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                } else if (type === 'explosion') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(10, audioContext.currentTime + 0.5);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } else if (type === 'playerHit') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.8);
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.8);
+                } else if (type === 'rescue') {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+                    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+                    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+                    
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }
+            }
+            
+            // Initialize the game
+            function initGame() {
+                player = new Player();
+                bullets = [];
+                enemies = [];
+                humans = [];
+                score = 0;
+                lives = 3;
+                fuel = 100;
+                smartBombs = 3;
+                gameRunning = true;
+                cameraX = 0;
+                
+                scoreDisplay.textContent = `Score: ${score}`;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                fuelDisplay.textContent = `Fuel: ${Math.floor(fuel)}%`;
+                smartBombsDisplay.textContent = `Smart Bombs: ${smartBombs}`;
+                
+                generateStars();
+                generateLandscape();
+                createHumansAndEnemies();
+                setupControls();
+                
+                gameLoop();
+            }
+            
+            // Start the game when the button is clicked
+            startButton.addEventListener('click', () => {
+                startScreen.style.display = 'none';
+                initGame();
+            });
+        });
+    </script>
+</body>
+</html>

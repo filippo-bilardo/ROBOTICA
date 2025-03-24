@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>River Raid</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #fuel-display {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #fuel-bar {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 150px;
+            height: 20px;
+            background-color: #333;
+            border: 1px solid #666;
+        }
+        
+        #fuel-level {
+            width: 100%;
+            height: 100%;
+            background-color: #0f0;
+            transition: width 0.3s;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #0f0;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        #start-button, #restart-button {
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        #start-button:hover, #restart-button:hover {
+            background-color: #00ff00;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #0f0;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="fuel-display">Fuel: 100%</div>
+        <div id="fuel-bar"><div id="fuel-level"></div></div>
+        <div id="game-over">GAME OVER</div>
+        
+        <div id="start-screen">
+            <h1>RIVER RAID</h1>
+            <div id="controls">
+                ← → : Move left/right<br>
+                SPACE : Fire<br>
+                ↑ : Speed up<br>
+                ↓ : Slow down
+            </div>
+            <button id="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('score-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const fuelDisplay = document.getElementById('fuel-display');
+            const fuelLevel = document.getElementById('fuel-level');
+            const gameOverDisplay = document.getElementById('game-over');
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            
+            // Set canvas size
+            canvas.width = 480;
+            canvas.height = 640;
+            
+            // Game variables
+            let score = 0;
+            let lives = 3;
+            let fuel = 100;
+            let gameRunning = false;
+            let animationId;
+            let lastTime = 0;
+            let player;
+            let bullets = [];
+            let enemies = [];
+            let fuelDepots = [];
+            let bridges = [];
+            let riverBanks = [];
+            let riverWidth = 300;
+            let minRiverWidth = 150;
+            let scrollSpeed = 2;
+            let difficulty = 1;
+            
+            // Colors
+            const COLORS = {
+                player: '#0f0',
+                bullet: '#ff0',
+                enemy: '#f00',
+                fuelDepot: '#00f',
+                bridge: '#ff8c00',
+                river: '#00f',
+                bank: '#008000'
+            };
+            
+            // Player class
+            class Player {
+                constructor() {
+                    this.width = 30;
+                    this.height = 40;
+                    this.x = canvas.width / 2 - this.width / 2;
+                    this.y = canvas.height - this.height - 20;
+                    this.speed = 5;
+                    this.isMovingLeft = false;
+                    this.isMovingRight = false;
+                    this.isFiring = false;
+                    this.lastFired = 0;
+                    this.fireRate = 300; // ms between shots
+                }
+                
+                draw() {
+                    // Draw player plane
+                    ctx.fillStyle = COLORS.player;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y); // nose
+                    ctx.lineTo(this.x + this.width, this.y + this.height); // right corner
+                    ctx.lineTo(this.x, this.y + this.height); // left corner
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Draw wings
+                    ctx.fillRect(this.x - 10, this.y + this.height / 2, 50, 5);
+                    
+                    // Draw tail
+                    ctx.fillRect(this.x + this.width / 2 - 5, this.y + this.height - 5, 10, 10);
+                }
+                
+                update() {
+                    // Move left/right
+                    if (this.isMovingLeft && this.x > 0) {
+                        this.x -= this.speed;
+                    }
+                    
+                    if (this.isMovingRight && this.x + this.width < canvas.width) {
+                        this.x += this.speed;
+                    }
+                    
+                    // Check for river bank collisions
+                    for (const bank of riverBanks) {
+                        if (
+                            this.x < bank.x + bank.width &&
+                            this.x + this.width > bank.x &&
+                            this.y < bank.y + bank.height &&
+                            this.y + this.height > bank.y
+                        ) {
+                            this.crash();
+                            return;
+                        }
+                    }
+                    
+                    // Check for bridge collisions
+                    for (const bridge of bridges) {
+                        if (
+                            this.x < bridge.x + bridge.width &&
+                            this.x + this.width > bridge.x &&
+                            this.y < bridge.y + bridge.height &&
+                            this.y + this.height > bridge.y
+                        ) {
+                            this.crash();
+                            return;
+                        }
+                    }
+                    
+                    // Check for enemy collisions
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        if (
+                            this.x < enemy.x + enemy.width &&
+                            this.x + this.width > enemy.x &&
+                            this.y < enemy.y + enemy.height &&
+                            this.y + this.height > enemy.y
+                        ) {
+                            this.crash();
+                            return;
+                        }
+                    }
+                    
+                    // Check for fuel depot collisions
+                    for (let i = fuelDepots.length - 1; i >= 0; i--) {
+                        const depot = fuelDepots[i];
+                        if (
+                            this.x < depot.x + depot.width &&
+                            this.x + this.width > depot.x &&
+                            this.y < depot.y + depot.height &&
+                            this.y + this.height > depot.y
+                        ) {
+                            // Destroy fuel depot if hit
+                            fuelDepots.splice(i, 1);
+                            this.crash();
+                            return;
+                        }
+                    }
+                    
+                    // Fire bullet
+                    if (this.isFiring && Date.now() - this.lastFired > this.fireRate) {
+                        this.fire();
+                    }
+                }
+                
+                fire() {
+                    bullets.push({
+                        x: this.x + this.width / 2 - 2,
+                        y: this.y,
+                        width: 4,
+                        height: 10,
+                        speed: 10
+                    });
+                    
+                    this.lastFired = Date.now();
+                    playSound('fire');
+                }
+                
+                crash() {
+                    lives--;
+                    livesDisplay.textContent = `Lives: ${lives}`;
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        // Reset player position
+                        this.x = canvas.width / 2 - this.width / 2;
+                        playSound('crash');
+                    }
+                }
+            }
+            
+            // Generate river banks
+            function generateRiverBanks() {
+                // Clear current banks
+                riverBanks = [];
+                
+                // Create river with bends
+                const segments = 20;
+                const segmentHeight = canvas.height / segments;
+                
+                let currentWidth = riverWidth;
+                let currentCenterX = canvas.width / 2;
+                
+                for (let i = 0; i < segments; i++) {
+                    // Add some randomness to river width and position
+                    const nextWidth = Math.max(minRiverWidth, 
+                        currentWidth + (Math.random() * 60 - 30));
+                    
+                    const nextCenterX = Math.max(nextWidth / 2, 
+                        Math.min(canvas.width - nextWidth / 2, 
+                        currentCenterX + (Math.random() * 40 - 20)));
+                    
+                    // Left bank
+                    riverBanks.push({
+                        x: 0,
+                        y: i * segmentHeight,
+                        width: nextCenterX - nextWidth / 2,
+                        height: segmentHeight
+                    });
+                    
+                    // Right bank
+                    riverBanks.push({
+                        x: nextCenterX + nextWidth / 2,
+                        y: i * segmentHeight,
+                        width: canvas.width - (nextCenterX + nextWidth / 2),
+                        height: segmentHeight
+                    });
+                    
+                    currentWidth = nextWidth;
+                    currentCenterX = nextCenterX;
+                }
+            }
+            
+            // Spawn enemies, bridges and fuel depots randomly
+            function spawnObjects() {
+                // Randomly create a bridge
+                if (Math.random() < 0.01) {
+                    createBridge();
+                }
+                
+                // Randomly create enemies
+                if (Math.random() < 0.03 * difficulty) {
+                    createEnemy();
+                }
+                
+                // Randomly create fuel depots
+                if (Math.random() < 0.01) {
+                    createFuelDepot();
+                }
+            }
+            
+            function createBridge() {
+                // Find a suitable location for the bridge
+                const y = -50;
+                const width = Math.min(canvas.width - 100, 200 + Math.random() * 100);
+                const x = Math.random() * (canvas.width - width);
+                
+                bridges.push({
+                    x,
+                    y,
+                    width,
+                    height: 20
+                });
+            }
+            
+            function createEnemy() {
+                // Random position within river
+                const y = -40;
+                
+                // Find valid x position within river (not on banks)
+                let validX = false;
+                let x, width, height;
+                
+                // Try to find a valid position
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    x = 50 + Math.random() * (canvas.width - 100);
+                    width = 30 + Math.random() * 20;
+                    height = 30 + Math.random() * 20;
+                    
+                    // Check if position conflicts with banks
+                    let conflict = false;
+                    for (const bank of riverBanks) {
+                        if (bank.y < y + height && 
+                            x < bank.x + bank.width && 
+                            x + width > bank.x) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!conflict) {
+                        validX = true;
+                        break;
+                    }
+                }
+                
+                if (validX) {
+                    enemies.push({
+                        x,
+                        y,
+                        width,
+                        height,
+                        type: Math.random() < 0.5 ? 'boat' : 'helicopter',
+                        speed: Math.random() * 2 + 1,
+                        moveDirection: Math.random() < 0.5 ? -1 : 1,
+                        points: 100
+                    });
+                }
+            }
+            
+            function createFuelDepot() {
+                // Random position within river
+                const y = -60;
+                
+                // Find valid x position within river (not on banks)
+                let validX = false;
+                let x;
+                
+                // Try to find a valid position
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    x = 50 + Math.random() * (canvas.width - 100);
+                    
+                    // Check if position conflicts with banks
+                    let conflict = false;
+                    for (const bank of riverBanks) {
+                        if (bank.y < y + 40 && 
+                            x < bank.x + bank.width && 
+                            x + 40 > bank.x) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!conflict) {
+                        validX = true;
+                        break;
+                    }
+                }
+                
+                if (validX) {
+                    fuelDepots.push({
+                        x,
+                        y,
+                        width: 40,
+                        height: 40
+                    });
+                }
+            }
+            
+            // Draw all game objects
+            function drawObjects() {
+                // Draw river (blue background)
+                ctx.fillStyle = COLORS.river;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw river banks
+                ctx.fillStyle = COLORS.bank;
+                for (const bank of riverBanks) {
+                    ctx.fillRect(bank.x, bank.y, bank.width, bank.height);
+                }
+                
+                // Draw bridges
+                ctx.fillStyle = COLORS.bridge;
+                for (const bridge of bridges) {
+                    ctx.fillRect(bridge.x, bridge.y, bridge.width, bridge.height);
+                }
+                
+                // Draw fuel depots
+                ctx.fillStyle = COLORS.fuelDepot;
+                for (const depot of fuelDepots) {
+                    ctx.fillRect(depot.x, depot.y, depot.width, depot.height);
+                    
+                    // Draw "FUEL" text
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('FUEL', depot.x + 5, depot.y + 25);
+                    ctx.fillStyle = COLORS.fuelDepot;
+                }
+                
+                // Draw enemies
+                ctx.fillStyle = COLORS.enemy;
+                for (const enemy of enemies) {
+                    if (enemy.type === 'boat') {
+                        // Draw boat
+                        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                        
+                        // Draw deck
+                        ctx.fillStyle = '#888';
+                        ctx.fillRect(enemy.x + 5, enemy.y + 5, enemy.width - 10, 10);
+                        ctx.fillStyle = COLORS.enemy;
+                    } else {
+                        // Draw helicopter
+                        ctx.fillRect(enemy.x, enemy.y + 10, enemy.width, enemy.height - 10);
+                        
+                        // Draw rotor
+                        ctx.fillRect(enemy.x - 10, enemy.y, enemy.width + 20, 5);
+                    }
+                }
+                
+                // Draw bullets
+                ctx.fillStyle = COLORS.bullet;
+                for (const bullet of bullets) {
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
+                
+                // Draw player
+                player.draw();
+            }
+            
+            // Update game state
+            function updateObjects(deltaTime) {
+                // Scroll all objects down
+                for (const bank of riverBanks) {
+                    bank.y += scrollSpeed;
+                }
+                
+                for (const bridge of bridges) {
+                    bridge.y += scrollSpeed;
+                }
+                
+                for (const enemy of enemies) {
+                    enemy.y += scrollSpeed;
+                    
+                    // Move enemies horizontally
+                    enemy.x += enemy.moveDirection * enemy.speed;
+                    
+                    // Reverse direction if approaching banks
+                    for (const bank of riverBanks) {
+                        if (bank.y + bank.height > enemy.y && 
+                            bank.y < enemy.y + enemy.height) {
+                            if ((enemy.moveDirection < 0 && enemy.x < bank.x + bank.width + 20) ||
+                                (enemy.moveDirection > 0 && enemy.x + enemy.width > bank.x - 20)) {
+                                enemy.moveDirection *= -1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                for (const depot of fuelDepots) {
+                    depot.y += scrollSpeed;
+                }
+                
+                // Remove objects that have gone off-screen
+                riverBanks = riverBanks.filter(bank => bank.y < canvas.height);
+                bridges = bridges.filter(bridge => bridge.y < canvas.height);
+                enemies = enemies.filter(enemy => enemy.y < canvas.height);
+                fuelDepots = fuelDepots.filter(depot => depot.y < canvas.height);
+                
+                // Generate new river sections if needed
+                if (riverBanks.length < 20) {
+                    generateRiverBanks();
+                }
+                
+                // Update player
+                player.update();
+                
+                // Update bullets
+                bullets = bullets.filter(bullet => {
+                    bullet.y -= bullet.speed;
+                    
+                    // Check for collisions with enemies
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        if (
+                            bullet.x < enemy.x + enemy.width &&
+                            bullet.x + bullet.width > enemy.x &&
+                            bullet.y < enemy.y + enemy.height &&
+                            bullet.y + bullet.height > enemy.y
+                        ) {
+                            // Hit enemy
+                            score += enemy.points;
+                            scoreDisplay.textContent = `Score: ${score}`;
+                            enemies.splice(i, 1);
+                            playSound('explosion');
+                            return false; // Remove bullet
+                        }
+                    }
+                    
+                    // Check for collisions with bridges
+                    for (let i = bridges.length - 1; i >= 0; i--) {
+                        const bridge = bridges[i];
+                        if (
+                            bullet.x < bridge.x + bridge.width &&
+                            bullet.x + bullet.width > bridge.x &&
+                            bullet.y < bridge.y + bridge.height &&
+                            bullet.y + bullet.height > bridge.y
+                        ) {
+                            // Hit bridge
+                            score += 200;
+                            scoreDisplay.textContent = `Score: ${score}`;
+                            bridges.splice(i, 1);
+                            playSound('explosion');
+                            return false; // Remove bullet
+                        }
+                    }
+                    
+                    // Check for collisions with fuel depots
+                    for (let i = fuelDepots.length - 1; i >= 0; i--) {
+                        const depot = fuelDepots[i];
+                        if (
+                            bullet.x < depot.x + depot.width &&
+                            bullet.x + bullet.width > depot.x &&
+                            bullet.y < depot.y + depot.height &&
+                            bullet.y + bullet.height > depot.y
+                        ) {
+                            // Hit fuel depot
+                            fuel = Math.min(100, fuel + 25);
+                            updateFuelDisplay();
+                            fuelDepots.splice(i, 1);
+                            playSound('fuelPickup');
+                            return false; // Remove bullet
+                        }
+                    }
+                    
+                    // Check if bullet is off screen
+                    return bullet.y > 0;
+                });
+                
+                // Consume fuel
+                fuel -= 0.1 * (scrollSpeed / 2);
+                updateFuelDisplay();
+                
+                if (fuel <= 0) {
+                    player.crash();
+                    fuel = 0;
+                    updateFuelDisplay();
+                }
+                
+                // Spawn new objects
+                spawnObjects();
+                
+                // Increase difficulty over time
+                difficulty += 0.0002;
+            }
+            
+            function updateFuelDisplay() {
+                fuelDisplay.textContent = `Fuel: ${Math.floor(fuel)}%`;
+                fuelLevel.style.width = `${fuel}%`;
+                
+                // Change color based on fuel level
+                if (fuel < 25) {
+                    fuelLevel.style.backgroundColor = '#f00';
+                } else if (fuel < 50) {
+                    fuelLevel.style.backgroundColor = '#ff0';
+                } else {
+                    fuelLevel.style.backgroundColor = '#0f0';
+                }
+            }
+            
+            // Game loop
+            function gameLoop(time = 0) {
+                if (!gameRunning) return;
+                
+                const deltaTime = time - lastTime;
+                lastTime = time;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Update game objects
+                updateObjects(deltaTime);
+                
+                // Draw game objects
+                drawObjects();
+                
+                // Continue the game loop
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            // Event listeners for controls
+            function setupControls() {
+                document.addEventListener('keydown', e => {
+                    if (!gameRunning) return;
+                    
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            player.isMovingLeft = true;
+                            break;
+                        case 'ArrowRight':
+                            player.isMovingRight = true;
+                            break;
+                        case 'ArrowUp':
+                            scrollSpeed = Math.min(5, scrollSpeed + 1);
+                            break;
+                        case 'ArrowDown':
+                            scrollSpeed = Math.max(1, scrollSpeed - 1);
+                            break;
+                        case ' ':
+                            player.isFiring = true;
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', e => {
+                    if (!gameRunning) return;
+                    
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            player.isMovingLeft = false;
+                            break;
+                        case 'ArrowRight':
+                            player.isMovingRight = false;
+                            break;
+                        case ' ':
+                            player.isFiring = false;
+                            break;
+                    }
+                });
+                
+                // Touch controls for mobile
+                let touchStartX = 0;
+                
+                canvas.addEventListener('touchstart', e => {
+                    if (!gameRunning) return;
+                    
+                    touchStartX = e.touches[0].clientX;
+                    player.isFiring = true;
+                });
+                
+                canvas.addEventListener('touchmove', e => {
+                    if (!gameRunning) return;
+                    
+                    e.preventDefault();
+                    const touchX = e.touches[0].clientX;
+                    const diffX = touchX - touchStartX;
+                    
+                    if (Math.abs(diffX) > 20) {
+                        player.isMovingLeft = diffX < 0;
+                        player.isMovingRight = diffX > 0;
+                        touchStartX = touchX;
+                    }
+                });
+                
+                canvas.addEventListener('touchend', () => {
+                    if (!gameRunning) return;
+                    
+                    player.isMovingLeft = false;
+                    player.isMovingRight = false;
+                    player.isFiring = false;
+                });
+            }
+            
+            // Sound effects
+            function playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                switch (type) {
+                    case 'fire':
+                        const osc1 = audioContext.createOscillator();
+                        osc1.type = 'square';
+                        osc1.frequency.setValueAtTime(880, audioContext.currentTime);
+                        
+                        const gain1 = audioContext.createGain();
+                        gain1.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        osc1.connect(gain1);
+                        gain1.connect(audioContext.destination);
+                        
+                        osc1.start();
+                        osc1.stop(audioContext.currentTime + 0.1);
+                        break;
+                        
+                    case 'explosion':
+                        const osc2 = audioContext.createOscillator();
+                        osc2.type = 'sawtooth';
+                        osc2.frequency.setValueAtTime(220, audioContext.currentTime);
+                        osc2.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.3);
+                        
+                        const gain2 = audioContext.createGain();
+                        gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        osc2.connect(gain2);
+                        gain2.connect(audioContext.destination);
+                        
+                        osc2.start();
+                        osc2.stop(audioContext.currentTime + 0.3);
+                        break;
+                        
+                    case 'crash':
+                        const osc3 = audioContext.createOscillator();
+                        osc3.type = 'sawtooth';
+                        osc3.frequency.setValueAtTime(440, audioContext.currentTime);
+                        osc3.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.5);
+                        
+                        const gain3 = audioContext.createGain();
+                        gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        
+                        osc3.connect(gain3);
+                        gain3.connect(audioContext.destination);
+                        
+                        osc3.start();
+                        osc3.stop(audioContext.currentTime + 0.5);
+                        break;
+                        
+                    case 'fuelPickup':
+                        const osc4 = audioContext.createOscillator();
+                        osc4.type = 'sine';
+                        osc4.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+                        osc4.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+                        
+                        const gain4 = audioContext.createGain();
+                        gain4.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gain4.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                        
+                        osc4.connect(gain4);
+                        gain4.connect(audioContext.destination);
+                        
+                        osc4.start();
+                        osc4.stop(audioContext.currentTime + 0.2);
+                        break;
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                gameOverDisplay.style.display = 'block';
+                
+                // Create restart button
+                const restartButton = document.createElement('button');
+                restartButton.id = 'restart-button';
+                restartButton.textContent = 'PLAY AGAIN';
+                restartButton.addEventListener('click', startGame);
+                
+                // Add button below game over text
+                gameOverDisplay.appendChild(restartButton);
+                
+                playSound('crash');
+            }
+            
+            // Start game
+            function startGame() {
+                // Hide start screen and game over display
+                startScreen.style.display = 'none';
+                gameOverDisplay.style.display = 'none';
+                
+                // Remove restart button if exists
+                const restartButton = document.getElementById('restart-button');
+                if (restartButton) {
+                    restartButton.remove();
+                }
+                
+                // Reset game state
+                score = 0;
+                lives = 3;
+                fuel = 100;
+                difficulty = 1;
+                scrollSpeed = 2;
+                
+                player = new Player();
+                bullets = [];
+                enemies = [];
+                fuelDepots = [];
+                bridges = [];
+                riverBanks = [];
+                
+                // Update displays
+                scoreDisplay.textContent = `Score: ${score}`;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                updateFuelDisplay();
+                
+                // Generate initial river
+                generateRiverBanks();
+                
+                // Start game
+                gameRunning = true;
+                lastTime = 0;
+                gameLoop();
+            }
+            
+            // Set up controls
+            setupControls();
+            
+            // Start button event listener
+            startButton.addEventListener('click', startGame);
+        });
+    </script>
+</body>
+</html>

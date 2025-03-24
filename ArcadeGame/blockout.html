@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockout</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #level-display {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #4CAF50;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #4CAF50;
+        }
+        
+        #start-button, #restart-button {
+            background-color: #4CAF50;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        #start-button:hover, #restart-button:hover {
+            background-color: #45a049;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #4CAF50;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-display">Score: 0</div>
+        <div id="level-display">Level: 1</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="game-over">GAME OVER</div>
+        
+        <div id="start-screen">
+            <h1>BLOCKOUT</h1>
+            <div id="controls">
+                ← → : Move left/right<br>
+                ↑ ↓ : Move forward/backward<br>
+                Z X : Rotate X axis<br>
+                A S : Rotate Y axis<br>
+                Q W : Rotate Z axis<br>
+                SPACE : Drop instantly
+            </div>
+            <button id="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <!-- Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const gameContainer = document.getElementById('game-container');
+            const scoreDisplay = document.getElementById('score-display');
+            const levelDisplay = document.getElementById('level-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const gameOverDisplay = document.getElementById('game-over');
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            
+            // Game variables
+            let score = 0;
+            let level = 1;
+            let lives = 3;
+            let gameRunning = false;
+            let dropCounter = 0;
+            let dropInterval = 1000; // ms
+            let lastTime = 0;
+            let animationId;
+            
+            // Three.js variables
+            let scene, camera, renderer;
+            let pit; // The 3D pit container
+            let currentPiece; // Current falling piece
+            let nextPiece; // Next piece to fall
+            let grid; // 3D array representing the pit contents
+            
+            // Pit dimensions
+            const PIT_WIDTH = 6;
+            const PIT_HEIGHT = 12;
+            const PIT_DEPTH = 6;
+            const BLOCK_SIZE = 1;
+            
+            // Colors
+            const COLORS = [
+                0xff0000, // Red
+                0x00ff00, // Green
+                0x0000ff, // Blue
+                0xffff00, // Yellow
+                0xff00ff, // Magenta
+                0x00ffff, // Cyan
+                0xff8000, // Orange
+                0x8000ff  // Purple
+            ];
+            
+            // 3D piece definitions - Each piece is a array of [x,y,z] coordinates
+            const PIECES = [
+                // Cube (2x2x1)
+                [
+                    [0, 0, 0], [1, 0, 0],
+                    [0, 1, 0], [1, 1, 0]
+                ],
+                // Line (4x1x1)
+                [
+                    [0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0]
+                ],
+                // T shape
+                [
+                    [1, 0, 0],
+                    [0, 1, 0], [1, 1, 0], [2, 1, 0]
+                ],
+                // L shape
+                [
+                    [0, 0, 0],
+                    [0, 1, 0], [0, 2, 0], [1, 2, 0]
+                ],
+                // Reverse L shape
+                [
+                    [1, 0, 0],
+                    [1, 1, 0], [1, 2, 0], [0, 2, 0]
+                ],
+                // S shape
+                [
+                    [1, 0, 0], [2, 0, 0],
+                    [0, 1, 0], [1, 1, 0]
+                ],
+                // Z shape
+                [
+                    [0, 0, 0], [1, 0, 0],
+                    [1, 1, 0], [2, 1, 0]
+                ],
+                // 2x2x2 cube
+                [
+                    [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
+                    [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]
+                ],
+                // 3D L shape
+                [
+                    [0, 0, 0], [0, 1, 0], [0, 2, 0],
+                    [0, 0, 1], [0, 0, 2]
+                ]
+            ];
+            
+            // Initialize Three.js scene
+            function initThreeJS() {
+                // Create scene
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x000000);
+                
+                // Create camera
+                camera = new THREE.PerspectiveCamera(
+                    75, window.innerWidth / window.innerHeight, 0.1, 1000
+                );
+                camera.position.set(PIT_WIDTH * 1.5, PIT_HEIGHT * 1.2, PIT_DEPTH * 2);
+                camera.lookAt(PIT_WIDTH / 2, PIT_HEIGHT / 2, PIT_DEPTH / 2);
+                
+                // Create renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                gameContainer.appendChild(renderer.domElement);
+                
+                // Add lights
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(PIT_WIDTH, PIT_HEIGHT * 2, PIT_DEPTH);
+                scene.add(directionalLight);
+                
+                const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+                directionalLight2.position.set(-PIT_WIDTH, PIT_HEIGHT, -PIT_DEPTH);
+                scene.add(directionalLight2);
+                
+                // Add camera controls (for debug only)
+                /*
+                const controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.25;
+                controls.screenSpacePanning = false;
+                controls.maxPolarAngle = Math.PI / 2;
+                */
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            // Create the 3D pit
+            function createPit() {
+                // Create an empty container for the pit
+                pit = new THREE.Group();
+                scene.add(pit);
+                
+                // Position pit so its center is at origin
+                pit.position.set(-PIT_WIDTH / 2, 0, -PIT_DEPTH / 2);
+                
+                // Create wireframe for the pit
+                const pitGeometry = new THREE.BoxGeometry(
+                    PIT_WIDTH, PIT_HEIGHT, PIT_DEPTH
+                );
+                const wireframeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x444444,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const pitWireframe = new THREE.Mesh(pitGeometry, wireframeMaterial);
+                pitWireframe.position.set(PIT_WIDTH / 2, PIT_HEIGHT / 2, PIT_DEPTH / 2);
+                pit.add(pitWireframe);
+                
+                // Create bottom plane
+                const bottomGeometry = new THREE.PlaneGeometry(PIT_WIDTH, PIT_DEPTH);
+                const bottomMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x222222,
+                    side: THREE.DoubleSide
+                });
+                const bottom = new THREE.Mesh(bottomGeometry, bottomMaterial);
+                bottom.rotation.x = Math.PI / 2;
+                bottom.position.set(PIT_WIDTH / 2, 0, PIT_DEPTH / 2);
+                pit.add(bottom);
+                
+                // Create walls (transparent)
+                const wallMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x444444,
+                    transparent: true,
+                    opacity: 0.1,
+                    side: THREE.DoubleSide
+                });
+                
+                // Back wall
+                const backGeometry = new THREE.PlaneGeometry(PIT_WIDTH, PIT_HEIGHT);
+                const backWall = new THREE.Mesh(backGeometry, wallMaterial);
+                backWall.position.set(PIT_WIDTH / 2, PIT_HEIGHT / 2, 0);
+                backWall.rotation.y = Math.PI;
+                pit.add(backWall);
+                
+                // Left wall
+                const leftGeometry = new THREE.PlaneGeometry(PIT_DEPTH, PIT_HEIGHT);
+                const leftWall = new THREE.Mesh(leftGeometry, wallMaterial);
+                leftWall.position.set(0, PIT_HEIGHT / 2, PIT_DEPTH / 2);
+                leftWall.rotation.y = Math.PI / 2;
+                pit.add(leftWall);
+                
+                // Right wall
+                const rightGeometry = new THREE.PlaneGeometry(PIT_DEPTH, PIT_HEIGHT);
+                const rightWall = new THREE.Mesh(rightGeometry, wallMaterial);
+                rightWall.position.set(PIT_WIDTH, PIT_HEIGHT / 2, PIT_DEPTH / 2);
+                rightWall.rotation.y = -Math.PI / 2;
+                pit.add(rightWall);
+                
+                // Far wall
+                const farGeometry = new THREE.PlaneGeometry(PIT_WIDTH, PIT_HEIGHT);
+                const farWall = new THREE.Mesh(farGeometry, wallMaterial);
+                farWall.position.set(PIT_WIDTH / 2, PIT_HEIGHT / 2, PIT_DEPTH);
+                pit.add(farWall);
+            }
+            
+            // Initialize the game grid (3D array)
+            function initGrid() {
+                grid = Array(PIT_HEIGHT)
+                    .fill()
+                    .map(() => Array(PIT_WIDTH)
+                        .fill()
+                        .map(() => Array(PIT_DEPTH).fill(null)));
+            }
+            
+            // Create a new piece
+            function createPiece() {
+                const pieceType = Math.floor(Math.random() * PIECES.length);
+                const pieceColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                
+                const piece = {
+                    blocks: JSON.parse(JSON.stringify(PIECES[pieceType])),
+                    color: pieceColor,
+                    position: {
+                        x: Math.floor(PIT_WIDTH / 2) - 1,
+                        y: PIT_HEIGHT - 1,
+                        z: Math.floor(PIT_DEPTH / 2) - 1
+                    },
+                    mesh: new THREE.Group()
+                };
+                
+                // Create the blocks for the piece
+                const blockGeometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                const blockMaterial = new THREE.MeshPhongMaterial({ color: piece.color });
+                
+                // Add cubes for each block in the piece
+                for (const block of piece.blocks) {
+                    const cube = new THREE.Mesh(blockGeometry, blockMaterial);
+                    cube.position.set(
+                        piece.position.x + block[0],
+                        piece.position.y - block[1],
+                        piece.position.z + block[2]
+                    );
+                    piece.mesh.add(cube);
+                }
+                
+                pit.add(piece.mesh);
+                return piece;
+            }
+            
+            // Update the position of the current piece mesh
+            function updatePieceMesh() {
+                for (let i = 0; i < currentPiece.blocks.length; i++) {
+                    const block = currentPiece.blocks[i];
+                    const cube = currentPiece.mesh.children[i];
+                    
+                    cube.position.set(
+                        currentPiece.position.x + block[0],
+                        currentPiece.position.y - block[1],
+                        currentPiece.position.z + block[2]
+                    );
+                }
+            }
+            
+            // Check if the current piece collides with the walls or other blocks
+            function checkCollision() {
+                for (const block of currentPiece.blocks) {
+                    const x = currentPiece.position.x + block[0];
+                    const y = currentPiece.position.y - block[1];
+                    const z = currentPiece.position.z + block[2];
+                    
+                    // Check wall collisions
+                    if (
+                        x < 0 || x >= PIT_WIDTH ||
+                        y < 0 || y >= PIT_HEIGHT ||
+                        z < 0 || z >= PIT_DEPTH
+                    ) {
+                        return true;
+                    }
+                    
+                    // Check collision with other blocks in the grid
+                    if (y >= 0 && y < PIT_HEIGHT && grid[y][x][z] !== null) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Move the current piece
+            function movePiece(dx, dy, dz) {
+                currentPiece.position.x += dx;
+                currentPiece.position.y += dy;
+                currentPiece.position.z += dz;
+                
+                if (checkCollision()) {
+                    // Revert the move if there's a collision
+                    currentPiece.position.x -= dx;
+                    currentPiece.position.y -= dy;
+                    currentPiece.position.z -= dz;
+                    return false;
+                }
+                
+                updatePieceMesh();
+                return true;
+            }
+            
+            // Drop the current piece down one unit
+            function dropPiece() {
+                if (!movePiece(0, -1, 0)) {
+                    // Can't move down anymore, lock the piece in place
+                    mergePiece();
+                    return false;
+                }
+                return true;
+            }
+            
+            // Instantly drop the piece to the bottom
+            function hardDrop() {
+                let dropped = false;
+                while (dropPiece()) {
+                    dropped = true;
+                    score += 1; // Extra points for hard dropping
+                }
+                
+                if (dropped) {
+                    playSound('hardDrop');
+                    scoreDisplay.textContent = `Score: ${score}`;
+                }
+            }
+            
+            // Rotate the current piece around the X axis
+            function rotatePieceX() {
+                // Save original blocks in case rotation causes a collision
+                const originalBlocks = JSON.parse(JSON.stringify(currentPiece.blocks));
+                
+                // Apply rotation matrix
+                for (let i = 0; i < currentPiece.blocks.length; i++) {
+                    const [x, y, z] = currentPiece.blocks[i];
+                    // Rotate around X (y and z change)
+                    currentPiece.blocks[i] = [x, z, -y];
+                }
+                
+                if (checkCollision()) {
+                    // Revert rotation if there's a collision
+                    currentPiece.blocks = originalBlocks;
+                    return false;
+                }
+                
+                updatePieceMesh();
+                return true;
+            }
+            
+            // Rotate the current piece around the Y axis
+            function rotatePieceY() {
+                // Save original blocks in case rotation causes a collision
+                const originalBlocks = JSON.parse(JSON.stringify(currentPiece.blocks));
+                
+                // Apply rotation matrix
+                for (let i = 0; i < currentPiece.blocks.length; i++) {
+                    const [x, y, z] = currentPiece.blocks[i];
+                    // Rotate around Y (x and z change)
+                    currentPiece.blocks[i] = [z, y, -x];
+                }
+                
+                if (checkCollision()) {
+                    // Revert rotation if there's a collision
+                    currentPiece.blocks = originalBlocks;
+                    return false;
+                }
+                
+                updatePieceMesh();
+                return true;
+            }
+            
+            // Rotate the current piece around the Z axis
+            function rotatePieceZ() {
+                // Save original blocks in case rotation causes a collision
+                const originalBlocks = JSON.parse(JSON.stringify(currentPiece.blocks));
+                
+                // Apply rotation matrix
+                for (let i = 0; i < currentPiece.blocks.length; i++) {
+                    const [x, y, z] = currentPiece.blocks[i];
+                    // Rotate around Z (x and y change)
+                    currentPiece.blocks[i] = [-y, x, z];
+                }
+                
+                if (checkCollision()) {
+                    // Revert rotation if there's a collision
+                    currentPiece.blocks = originalBlocks;
+                    return false;
+                }
+                
+                updatePieceMesh();
+                return true;
+            }
+            
+            // Merge the current piece into the grid
+            function mergePiece() {
+                // Add blocks to the grid
+                for (const block of currentPiece.blocks) {
+                    const x = currentPiece.position.x + block[0];
+                    const y = currentPiece.position.y - block[1];
+                    const z = currentPiece.position.z + block[2];
+                    
+                    if (y >= PIT_HEIGHT) {
+                        // Game over if blocks stack beyond the top
+                        gameOver();
+                        return;
+                    }
+                    
+                    // Store the mesh in the grid
+                    grid[y][x][z] = {
+                        color: currentPiece.color
+                    };
+                }
+                
+                // Keep the blocks in the scene but remove them from the piece
+                for (const cube of currentPiece.mesh.children) {
+                    pit.add(cube);
+                }
+                currentPiece.mesh.children = [];
+                pit.remove(currentPiece.mesh);
+                
+                // Check for completed layers
+                checkLayers();
+                
+                // Create new piece
+                currentPiece = createPiece();
+                
+                playSound('pieceLock');
+            }
+            
+            // Check for and remove completed layers
+            function checkLayers() {
+                // Check each Y layer (horizontal layer)
+                let layersCleared = 0;
+                
+                for (let y = 0; y < PIT_HEIGHT; y++) {
+                    let layerFull = true;
+                    
+                    // Check if the layer is full
+                    outer: for (let x = 0; x < PIT_WIDTH; x++) {
+                        for (let z = 0; z < PIT_DEPTH; z++) {
+                            if (grid[y][x][z] === null) {
+                                layerFull = false;
+                                break outer;
+                            }
+                        }
+                    }
+                    
+                    // If layer is full, remove it
+                    if (layerFull) {
+                        // Find and remove all cubes in this layer from the scene
+                        const objectsToRemove = [];
+                        pit.children.forEach(child => {
+                            if (child.position.y === y && child.type === 'Mesh') {
+                                objectsToRemove.push(child);
+                            }
+                        });
+                        
+                        for (const obj of objectsToRemove) {
+                            pit.remove(obj);
+                        }
+                        
+                        // Shift all blocks above this layer down
+                        for (let yy = y; yy < PIT_HEIGHT - 1; yy++) {
+                            for (let x = 0; x < PIT_WIDTH; x++) {
+                                for (let z = 0; z < PIT_DEPTH; z++) {
+                                    grid[yy][x][z] = grid[yy + 1][x][z];
+                                    
+                                    // Find and move down cubes above this layer
+                                    pit.children.forEach(child => {
+                                        if (child.position.y === yy + 1 && 
+                                            child.position.x === x && 
+                                            child.position.z === z && 
+                                            child.type === 'Mesh') {
+                                            child.position.y = yy;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Clear the top layer
+                        for (let x = 0; x < PIT_WIDTH; x++) {
+                            for (let z = 0; z < PIT_DEPTH; z++) {
+                                grid[PIT_HEIGHT - 1][x][z] = null;
+                            }
+                        }
+                        
+                        layersCleared++;
+                        y--; // Check the same layer again after shifting
+                    }
+                }
+                
+                // Update score based on layers cleared
+                if (layersCleared > 0) {
+                    // Scoring: more points for clearing multiple layers at once
+                    const points = [0, 100, 300, 500, 800];
+                    score += points[Math.min(layersCleared, 4)] * level;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    
+                    // Increase level every 10 layers cleared
+                    const newLevel = Math.floor(score / 1000) + 1;
+                    if (newLevel > level) {
+                        level = newLevel;
+                        levelDisplay.textContent = `Level: ${level}`;
+                        
+                        // Speed up as level increases
+                        dropInterval = Math.max(100, 1000 - (level - 1) * 100);
+                    }
+                    
+                    playSound(layersCleared > 1 ? 'multiLayer' : 'layerClear');
+                }
+            }
+            
+            // Game loop
+            function gameLoop(time = 0) {
+                if (!gameRunning) return;
+                
+                const deltaTime = time - lastTime;
+                lastTime = time;
+                
+                dropCounter += deltaTime;
+                if (dropCounter > dropInterval) {
+                    dropPiece();
+                    dropCounter = 0;
+                }
+                
+                renderer.render(scene, camera);
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            // Set up controls
+            function setupControls() {
+                document.addEventListener('keydown', e => {
+                    if (!gameRunning) return;
+                    
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            movePiece(-1, 0, 0); // Move left
+                            break;
+                        case 'ArrowRight':
+                            movePiece(1, 0, 0); // Move right
+                            break;
+                        case 'ArrowUp':
+                            movePiece(0, 0, -1); // Move forward
+                            break;
+                        case 'ArrowDown':
+                            movePiece(0, 0, 1); // Move backward
+                            break;
+                        case 'z':
+                            rotatePieceX(); // Rotate around X axis (clockwise)
+                            break;
+                        case 'x':
+                            rotatePieceX(); rotatePieceX(); rotatePieceX(); // Rotate X counterclockwise
+                            break;
+                        case 'a':
+                            rotatePieceY(); // Rotate around Y axis (clockwise)
+                            break;
+                        case 's':
+                            rotatePieceY(); rotatePieceY(); rotatePieceY(); // Rotate Y counterclockwise
+                            break;
+                        case 'q':
+                            rotatePieceZ(); // Rotate around Z axis (clockwise)
+                            break;
+                        case 'w':
+                            rotatePieceZ(); rotatePieceZ(); rotatePieceZ(); // Rotate Z counterclockwise
+                            break;
+                        case ' ':
+                            hardDrop(); // Drop instantly
+                            break;
+                    }
+                });
+                
+                // Touch controls for mobile
+                let touchStartX = 0;
+                let touchStartY = 0;
+                
+                renderer.domElement.addEventListener('touchstart', e => {
+                    if (!gameRunning) return;
+                    
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    
+                    // Double tap for hard drop
+                    const now = Date.now();
+                    if (now - lastTapTime < 300) {
+                        hardDrop();
+                        e.preventDefault();
+                    }
+                    lastTapTime = now;
+                });
+                
+                let lastTapTime = 0;
+                
+                renderer.domElement.addEventListener('touchmove', e => {
+                    if (!gameRunning) return;
+                    
+                    e.preventDefault();
+                    const touchX = e.touches[0].clientX;
+                    const touchY = e.touches[0].clientY;
+                    
+                    const diffX = touchX - touchStartX;
+                    const diffY = touchY - touchStartY;
+                    
+                    // Determine swipe direction
+                    if (Math.abs(diffX) > 30 || Math.abs(diffY) > 30) {
+                        if (Math.abs(diffX) > Math.abs(diffY)) {
+                            // Horizontal swipe
+                            movePiece(diffX > 0 ? 1 : -1, 0, 0);
+                        } else {
+                            // Vertical swipe
+                            if (diffY > 0) {
+                                // Down swipe - move backward
+                                movePiece(0, 0, 1);
+                            } else {
+                                // Up swipe - move forward
+                                movePiece(0, 0, -1);
+                            }
+                        }
+                        
+                        touchStartX = touchX;
+                        touchStartY = touchY;
+                    }
+                });
+                
+                // Multi-touch for rotation
+                renderer.domElement.addEventListener('touchstart', e => {
+                    if (!gameRunning || e.touches.length !== 2) return;
+                    
+                    // Two finger touch - rotate
+                    rotatePieceY();
+                });
+            }
+            
+            // Game over
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                gameOverDisplay.style.display = 'block';
+                
+                // Create restart button
+                const restartButton = document.createElement('button');
+                restartButton.id = 'restart-button';
+                restartButton.textContent = 'PLAY AGAIN';
+                restartButton.addEventListener('click', startGame);
+                
+                // Add button below game over text
+                gameOverDisplay.appendChild(restartButton);
+                
+                playSound('gameOver');
+            }
+            
+            // Sound effects
+            function playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                switch (type) {
+                    case 'pieceLock':
+                        const osc1 = audioContext.createOscillator();
+                        osc1.type = 'square';
+                        osc1.frequency.setValueAtTime(440, audioContext.currentTime);
+                        
+                        const gain1 = audioContext.createGain();
+                        gain1.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        osc1.connect(gain1);
+                        gain1.connect(audioContext.destination);
+                        
+                        osc1.start();
+                        osc1.stop(audioContext.currentTime + 0.1);
+                        break;
+                        
+                    case 'layerClear':
+                        const osc2 = audioContext.createOscillator();
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(330, audioContext.currentTime);
+                        osc2.frequency.setValueAtTime(660, audioContext.currentTime + 0.1);
+                        
+                        const gain2 = audioContext.createGain();
+                        gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        osc2.connect(gain2);
+                        gain2.connect(audioContext.destination);
+                        
+                        osc2.start();
+                        osc2.stop(audioContext.currentTime + 0.3);
+                        break;
+                        
+                    case 'multiLayer':
+                        const osc3 = audioContext.createOscillator();
+                        osc3.type = 'sawtooth';
+                        osc3.frequency.setValueAtTime(330, audioContext.currentTime);
+                        osc3.frequency.setValueAtTime(440, audioContext.currentTime + 0.1);
+                        osc3.frequency.setValueAtTime(550, audioContext.currentTime + 0.2);
+                        
+                        const gain3 = audioContext.createGain();
+                        gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        osc3.connect(gain3);
+                        gain3.connect(audioContext.destination);
+                        
+                        osc3.start();
+                        osc3.stop(audioContext.currentTime + 0.3);
+                        break;
+                        
+                    case 'hardDrop':
+                        const osc5 = audioContext.createOscillator();
+                        osc5.type = 'square';
+                        osc5.frequency.setValueAtTime(880, audioContext.currentTime);
+                        osc5.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.2);
+                        
+                        const gain5 = audioContext.createGain();
+                        gain5.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gain5.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                        
+                        osc5.connect(gain5);
+                        gain5.connect(audioContext.destination);
+                        
+                        osc5.start();
+                        osc5.stop(audioContext.currentTime + 0.2);
+                        break;
+                        
+                    case 'gameOver':
+                        const osc6 = audioContext.createOscillator();
+                        osc6.type = 'sawtooth';
+                        osc6.frequency.setValueAtTime(440, audioContext.currentTime);
+                        osc6.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 1);
+                        
+                        const gain6 = audioContext.createGain();
+                        gain6.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gain6.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                        
+                        osc6.connect(gain6);
+                        gain6.connect(audioContext.destination);
+                        
+                        osc6.start();
+                        osc6.stop(audioContext.currentTime + 1);
+                        break;
+                }
+            }
+            
+            // Initialize and start the game
+            function startGame() {
+                // Hide start screen and game over display
+                startScreen.style.display = 'none';
+                gameOverDisplay.style.display = 'none';
+                
+                // Remove restart button if exists
+                const restartButton = document.getElementById('restart-button');
+                if (restartButton) {
+                    restartButton.remove();
+                }
+                
+                // Clear the pit
+                while (pit && pit.children.length > 0) {
+                    pit.remove(pit.children[0]);
+                }
+                scene.remove(pit);
+                
+                // Reset game state
+                score = 0;
+                level = 1;
+                lives = 3;
+                dropCounter = 0;
+                dropInterval = 1000;
+                
+                // Update displays
+                scoreDisplay.textContent = `Score: ${score}`;
+                levelDisplay.textContent = `Level: ${level}`;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                
+                // Initialize game components
+                createPit();
+                initGrid();
+                currentPiece = createPiece();
+                
+                // Start game
+                gameRunning = true;
+                lastTime = 0;
+                gameLoop();
+            }
+            
+            // Initialize Three.js
+            initThreeJS();
+            
+            // Set up controls
+            setupControls();
+            
+            // Start button event listener
+            startButton.addEventListener('click', () => {
+                startGame();
+            });
+        });
+    </script>
+</body>
+</html>

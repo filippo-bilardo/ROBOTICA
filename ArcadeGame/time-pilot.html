@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Pilot</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #time-period {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #mini-map {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid #444;
+            border-radius: 50%;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #FF4500;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #FF4500;
+        }
+        
+        #start-button, #restart-button {
+            background-color: #FF4500;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        #start-button:hover, #restart-button:hover {
+            background-color: #FF6347;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #FF4500;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="time-period">1910</div>
+        <div id="mini-map"></div>
+        <div id="game-over">GAME OVER</div>
+        
+        <div id="start-screen">
+            <h1>TIME PILOT</h1>
+            <div id="controls">
+                ← → ↑ ↓ : Move in all directions<br>
+                SPACE : Fire<br>
+                P : Pause game
+            </div>
+            <button id="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('score-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const timePeriodDisplay = document.getElementById('time-period');
+            const miniMap = document.getElementById('mini-map');
+            const miniMapCtx = document.createElement('canvas').getContext('2d');
+            miniMapCtx.canvas.width = 150;
+            miniMapCtx.canvas.height = 150;
+            miniMap.appendChild(miniMapCtx.canvas);
+            const gameOverDisplay = document.getElementById('game-over');
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            
+            // Set canvas size
+            canvas.width = 800;
+            canvas.height = 600;
+            
+            // Game variables
+            let score = 0;
+            let lives = 3;
+            let currentPeriod = 0;
+            let gameRunning = false;
+            let paused = false;
+            let animationId;
+            let player;
+            let bullets = [];
+            let enemies = [];
+            let enemyBullets = [];
+            let explosions = [];
+            let bosses = [];
+            let timeTunnels = [];
+            let isPowerUp = false;
+            let powerUpTimer = 0;
+            
+            // Time periods - each has different enemies and backgrounds
+            const TIME_PERIODS = [
+                { year: "1910", color: "#87CEEB", enemies: "biplanes" },
+                { year: "1940", color: "#808080", enemies: "propeller planes" },
+                { year: "1970", color: "#A0522D", enemies: "helicopters" },
+                { year: "1985", color: "#4682B4", enemies: "jets" },
+                { year: "2001", color: "#000080", enemies: "UFOs" }
+            ];
+            
+            // Player object
+            class Player {
+                constructor() {
+                    this.x = canvas.width / 2;
+                    this.y = canvas.height / 2;
+                    this.radius = 15;
+                    this.speed = 5;
+                    this.angle = 0; // Facing right initially
+                    this.moveX = 0;
+                    this.moveY = 0;
+                    this.isFiring = false;
+                    this.lastFired = 0;
+                    this.fireRate = 200; // ms between shots
+                    this.invulnerable = false;
+                    this.invulnerableTimer = 0;
+                    this.wrapPosition = true; // Player is fixed at center, world wraps
+                }
+                
+                draw() {
+                    // Don't draw if invulnerable and blinking
+                    if (this.invulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
+                        return;
+                    }
+                    
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    
+                    // Draw player ship
+                    ctx.fillStyle = isPowerUp ? '#FF0' : '#FFF';
+                    ctx.beginPath();
+                    ctx.moveTo(15, 0); // Nose
+                    ctx.lineTo(-10, -10); // Left wing
+                    ctx.lineTo(-5, 0); // Body indent
+                    ctx.lineTo(-10, 10); // Right wing
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    if (isPowerUp) {
+                        // Draw power-up glow
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                        ctx.fill();
+                    }
+                    
+                    ctx.restore();
+                }
+                
+                update() {
+                    // Update angle based on movement
+                    if (this.moveX !== 0 || this.moveY !== 0) {
+                        this.angle = Math.atan2(this.moveY, this.moveX);
+                    }
+                    
+                    // Update invulnerability timer
+                    if (this.invulnerable) {
+                        this.invulnerableTimer--;
+                        if (this.invulnerableTimer <= 0) {
+                            this.invulnerable = false;
+                        }
+                    }
+                    
+                    // Fire bullets
+                    if (this.isFiring && Date.now() - this.lastFired > this.fireRate) {
+                        this.shoot();
+                        this.lastFired = Date.now();
+                    }
+                }
+                
+                shoot() {
+                    const bulletSpeed = 10;
+                    
+                    bullets.push({
+                        x: this.x + Math.cos(this.angle) * 20,
+                        y: this.y + Math.sin(this.angle) * 20,
+                        vx: Math.cos(this.angle) * bulletSpeed,
+                        vy: Math.sin(this.angle) * bulletSpeed,
+                        radius: 3,
+                        lifespan: 60, // frames
+                        isPowerUp: isPowerUp
+                    });
+                    
+                    playSound('playerShoot');
+                }
+                
+                hit() {
+                    if (!this.invulnerable) {
+                        lives--;
+                        livesDisplay.textContent = `Lives: ${lives}`;
+                        
+                        // Create explosion
+                        createExplosion(this.x, this.y);
+                        
+                        if (lives <= 0) {
+                            gameOver();
+                        } else {
+                            this.invulnerable = true;
+                            this.invulnerableTimer = 120; // 2 seconds at 60fps
+                            
+                            playSound('playerHit');
+                        }
+                    }
+                }
+            }
+            
+            // Enemy class
+            class Enemy {
+                constructor(type, period) {
+                    this.period = period;
+                    this.type = type; // 'normal', 'bomber', 'boss'
+                    
+                    // Random position outside the screen but not too far
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = canvas.width / 2 + 100 + Math.random() * 200;
+                    this.x = player.x + Math.cos(angle) * distance;
+                    this.y = player.y + Math.sin(angle) * distance;
+                    
+                    this.radius = type === 'boss' ? 40 : (type === 'bomber' ? 20 : 15);
+                    this.speed = type === 'boss' ? 1.5 : (type === 'bomber' ? 2 : 3);
+                    this.health = type === 'boss' ? 20 : (type === 'bomber' ? 3 : 1);
+                    this.points = type === 'boss' ? 5000 : (type === 'bomber' ? 500 : 100);
+                    this.angle = 0;
+                    this.targetAngle = 0;
+                    this.rotationSpeed = 0.05;
+                    this.canShoot = type === 'boss' || type === 'bomber';
+                    this.lastShot = 0;
+                    this.shootRate = type === 'boss' ? 1000 : 2000; // ms
+                    this.movePattern = Math.floor(Math.random() * 3); // Different movement patterns
+                    this.sinOffset = Math.random() * Math.PI * 2; // Offset for sine wave movement
+                    this.frameCount = 0;
+                    this.dropsPowerUp = Math.random() < 0.1; // 10% chance to drop power-up
+                }
+                
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    
+                    // Different designs based on time period and type
+                    switch (this.period) {
+                        case 0: // 1910 - Biplanes
+                            if (this.type === 'boss') {
+                                this.drawBiplaneAce();
+                            } else {
+                                this.drawBiplane();
+                            }
+                            break;
+                        case 1: // 1940 - Propeller planes
+                            if (this.type === 'boss') {
+                                this.drawWWIIBoss();
+                            } else {
+                                this.drawPropellerPlane();
+                            }
+                            break;
+                        case 2: // 1970 - Helicopters
+                            if (this.type === 'boss') {
+                                this.drawHelicarrier();
+                            } else {
+                                this.drawHelicopter();
+                            }
+                            break;
+                        case 3: // 1985 - Jets
+                            if (this.type === 'boss') {
+                                this.drawSuperJet();
+                            } else {
+                                this.drawJet();
+                            }
+                            break;
+                        case 4: // 2001 - UFOs
+                            if (this.type === 'boss') {
+                                this.drawMotherShip();
+                            } else {
+                                this.drawUFO();
+                            }
+                            break;
+                    }
+                    
+                    ctx.restore();
+                    
+                    // Draw health bar for bosses
+                    if (this.type === 'boss') {
+                        const barWidth = 60;
+                        const barHeight = 6;
+                        const healthPercent = this.health / 20;
+                        
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.fillRect(this.x - barWidth / 2, this.y - this.radius - 10, barWidth, barHeight);
+                        
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                        ctx.fillRect(this.x - barWidth / 2, this.y - this.radius - 10, barWidth * healthPercent, barHeight);
+                    }
+                }
+                
+                // Different enemy designs based on time period
+                drawBiplane() {
+                    ctx.fillStyle = '#8B4513'; // Brown
+                    ctx.fillRect(-15, -5, 30, 10); // Body
+                    ctx.fillRect(-10, -12, 20, 5); // Top wing
+                    ctx.fillRect(-10, 5, 20, 5); // Bottom wing
+                    ctx.fillRect(10, -3, 5, 6); // Tail
+                }
+                
+                drawBiplaneAce() {
+                    ctx.fillStyle = '#FF0000'; // Red
+                    ctx.fillRect(-25, -10, 50, 20); // Body
+                    ctx.fillRect(-20, -22, 40, 10); // Top wing
+                    ctx.fillRect(-20, 10, 40, 10); // Bottom wing
+                    ctx.fillRect(25, -8, 10, 16); // Tail
+                }
+                
+                drawPropellerPlane() {
+                    ctx.fillStyle = '#708090'; // Slate gray
+                    ctx.fillRect(-15, -6, 30, 12); // Body
+                    ctx.fillRect(-10, -12, 25, 4); // Wing
+                    ctx.fillRect(10, -3, 8, 6); // Tail
+                    
+                    // Propeller animation
+                    if (Math.floor(Date.now() / 50) % 2 === 0) {
+                        ctx.fillRect(-17, -1, 3, 2); // Horizontal
+                    } else {
+                        ctx.fillRect(-16, -3, 2, 6); // Vertical
+                    }
+                }
+                
+                drawWWIIBoss() {
+                    ctx.fillStyle = '#556B2F'; // Dark olive green
+                    ctx.fillRect(-30, -15, 60, 30); // Body
+                    ctx.fillRect(-25, -25, 50, 8); // Wings
+                    ctx.fillRect(-25, 15, 50, 8); // Wings
+                    ctx.fillRect(30, -10, 15, 20); // Tail
+                    
+                    // Propeller animation
+                    if (Math.floor(Date.now() / 40) % 2 === 0) {
+                        ctx.fillRect(-32, -5, 5, 10); // Horizontal
+                    } else {
+                        ctx.fillRect(-30, -10, 2, 20); // Vertical
+                    }
+                }
+                
+                drawHelicopter() {
+                    ctx.fillStyle = '#556B2F'; // Dark olive green
+                    ctx.fillRect(-12, -6, 24, 12); // Body
+                    ctx.fillRect(-5, -12, 10, 6); // Top
+                    ctx.fillRect(-15, 0, 5, 3); // Landing skid
+                    ctx.fillRect(10, 0, 5, 3); // Landing skid
+                    
+                    // Rotor animation
+                    const rotorAngle = (Date.now() / 50) % (Math.PI * 2);
+                    ctx.save();
+                    ctx.rotate(rotorAngle);
+                    ctx.fillRect(-20, -1, 40, 2); // Main rotor
+                    ctx.restore();
+                }
+                
+                drawHelicarrier() {
+                    ctx.fillStyle = '#444';
+                    ctx.fillRect(-35, -20, 70, 40); // Body
+                    
+                    // Landing deck
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(-30, -15, 60, 30);
+                    
+                    // Markings
+                    ctx.fillStyle = '#FFF';
+                    ctx.fillRect(-20, -2, 40, 4);
+                    
+                    // Bridge
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(-5, -25, 15, 10);
+                }
+                
+                drawJet() {
+                    ctx.fillStyle = '#808080'; // Gray
+                    ctx.beginPath();
+                    ctx.moveTo(15, 0); // Nose
+                    ctx.lineTo(-10, -8); // Left wing
+                    ctx.lineTo(-10, 8); // Right wing
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Afterburner
+                    ctx.fillStyle = '#FF4500';
+                    ctx.fillRect(-10, -2, 5, 4);
+                }
+                
+                drawSuperJet() {
+                    ctx.fillStyle = '#000080'; // Navy blue
+                    ctx.beginPath();
+                    ctx.moveTo(35, 0); // Nose
+                    ctx.lineTo(20, -5);
+                    ctx.lineTo(-20, -20); // Left wing tip
+                    ctx.lineTo(-10, -10);
+                    ctx.lineTo(-10, 10);
+                    ctx.lineTo(-20, 20); // Right wing tip
+                    ctx.lineTo(20, 5);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Cockpit
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(15, -3, 8, 6);
+                    
+                    // Afterburners
+                    ctx.fillStyle = '#FFA500';
+                    ctx.fillRect(-15, -12, 8, 4);
+                    ctx.fillRect(-15, 8, 8, 4);
+                }
+                
+                drawUFO() {
+                    ctx.fillStyle = '#C0C0C0'; // Silver
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#87CEEB'; // Sky blue
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Pulsating glow
+                    const glowSize = 15 + Math.sin(Date.now() / 200) * 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(135, 206, 235, 0.3)';
+                    ctx.fill();
+                }
+                
+                drawMotherShip() {
+                    ctx.fillStyle = '#A9A9A9'; // Dark gray
+                    
+                    // Main saucer
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 35, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Top dome
+                    ctx.fillStyle = '#87CEEB'; // Sky blue
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 15, 0, Math.PI, true);
+                    ctx.fill();
+                    
+                    // Lights around rim
+                    for (let i = 0; i < 8; i++) {
+                        const angle = i * Math.PI / 4;
+                        const x = Math.cos(angle) * 25;
+                        const y = Math.sin(angle) * 12;
+                        
+                        ctx.fillStyle = (Math.floor(Date.now() / 200) + i) % 3 === 0 ? '#FF0' : '#F00';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // Energy beam
+                    if (Math.random() < 0.05) {
+                        ctx.fillStyle = 'rgba(135, 206, 235, 0.7)';
+                        ctx.fillRect(-5, 15, 10, 20);
+                    }
+                }
+                
+                update() {
+                    this.frameCount++;
+                    
+                    // Calculate relative position to player
+                    const dx = player.x - this.x;
+                    const dy = player.y - this.y;
+                    const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Update target angle to face player
+                    this.targetAngle = Math.atan2(dy, dx);
+                    
+                    // Smoothly rotate towards target angle
+                    let angleDiff = this.targetAngle - this.angle;
+                    
+                    // Handle angle wrap-around
+                    if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    
+                    this.angle += angleDiff * this.rotationSpeed;
+                    
+                    // Different movement patterns
+                    switch (this.movePattern) {
+                        case 0: // Direct approach
+                            this.x += Math.cos(this.angle) * this.speed;
+                            this.y += Math.sin(this.angle) * this.speed;
+                            break;
+                        case 1: // Sine wave approach
+                            const perpAngle = this.angle + Math.PI / 2;
+                            const sineAmp = 2 * Math.sin(this.frameCount / 30 + this.sinOffset);
+                            this.x += Math.cos(this.angle) * this.speed + Math.cos(perpAngle) * sineAmp;
+                            this.y += Math.sin(this.angle) * this.speed + Math.sin(perpAngle) * sineAmp;
+                            break;
+                        case 2: // Circle around player
+                            const circleAngle = this.angle + 0.3;
+                            if (distToPlayer > 200) {
+                                // Approach until within circle range
+                                this.x += Math.cos(this.angle) * this.speed;
+                                this.y += Math.sin(this.angle) * this.speed;
+                            } else {
+                                // Circle around
+                                this.x += Math.cos(circleAngle) * this.speed;
+                                this.y += Math.sin(circleAngle) * this.speed;
+                            }
+                            break;
+                    }
+                    
+                    // Check if can shoot and in range
+                    if (this.canShoot && Date.now() - this.lastShot > this.shootRate && distToPlayer < 400) {
+                        this.shoot();
+                        this.lastShot = Date.now();
+                    }
+                }
+                
+                shoot() {
+                    const bulletSpeed = 5;
+                    
+                    enemyBullets.push({
+                        x: this.x + Math.cos(this.angle) * this.radius,
+                        y: this.y + Math.sin(this.angle) * this.radius,
+                        vx: Math.cos(this.angle) * bulletSpeed,
+                        vy: Math.sin(this.angle) * bulletSpeed,
+                        radius: this.type === 'boss' ? 5 : 3,
+                        color: this.type === 'boss' ? '#F00' : '#FF0'
+                    });
+                    
+                    playSound('enemyShoot');
+                }
+                
+                hit() {
+                    this.health--;
+                    
+                    if (this.health <= 0) {
+                        // Create explosion
+                        createExplosion(this.x, this.y, this.type === 'boss' ? 2 : 1);
+                        
+                        // Add score
+                        score += this.points;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        
+                        // Create power-up
+                        if (this.dropsPowerUp) {
+                            createPowerUp(this.x, this.y);
+                        }
+                        
+                        // Create time tunnel if it's a boss
+                        if (this.type === 'boss') {
+                            createTimeTunnel(this.x, this.y);
+                            playSound('bossDeath');
+                        } else {
+                            playSound('enemyDeath');
+                        }
+                        
+                        return true; // Enemy destroyed
+                    }
+                    
+                    return false; // Enemy still alive
+                }
+            }
+            
+            // Create an explosion effect
+            function createExplosion(x, y, size = 1) {
+                explosions.push({
+                    x,
+                    y,
+                    radius: 5,
+                    maxRadius: 30 * size,
+                    expandSpeed: 1.5,
+                    particles: [],
+                    frame: 0
+                });
+                
+                // Create particles
+                const particleCount = 20 * size;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 3;
+                    
+                    explosions[explosions.length - 1].particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: 1 + Math.random() * 2 * size,
+                        color: `hsl(${Math.random() * 60 + 10}, 100%, 50%)`, // Red to yellow
+                        lifespan: 30 + Math.random() * 20
+                    });
+                }
+            }
+            
+            // Create a power-up
+            function createPowerUp(x, y) {
+                enemies.push({
+                    x,
+                    y,
+                    radius: 10,
+                    type: 'powerup',
+                    speed: 0.5,
+                    angle: 0,
+                    health: 1,
+                    points: 1000,
+                    draw: function() {
+                        ctx.save();
+                        ctx.translate(this.x, this.y);
+                        
+                        // Draw power-up icon
+                        ctx.fillStyle = '#FF0';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Star shape
+                        ctx.fillStyle = '#FFF';
+                        ctx.beginPath();
+                        for (let i = 0; i < 5; i++) {
+                            const angle = i * Math.PI * 2 / 5 - Math.PI / 2;
+                            const x = Math.cos(angle) * 5;
+                            const y = Math.sin(angle) * 5;
+                            if (i === 0) {
+                                ctx.moveTo(x, y);
+                            } else {
+                                ctx.lineTo(x, y);
+                            }
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Pulsating glow
+                        const glowSize = 12 + Math.sin(Date.now() / 200) * 2;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                        ctx.fill();
+                        
+                        ctx.restore();
+                    },
+                    update: function() {
+                        // Drift slowly in a random direction
+                        this.angle += 0.01;
+                        this.x += Math.cos(this.angle) * this.speed;
+                        this.y += Math.sin(this.angle) * this.speed;
+                    },
+                    hit: function() {
+                        // When collected
+                        isPowerUp = true;
+                        powerUpTimer = 600; // 10 seconds at 60fps
+                        playSound('powerUp');
+                        return true; // Remove from enemies array
+                    }
+                });
+            }
+            
+            // Create a time tunnel
+            function createTimeTunnel(x, y) {
+                timeTunnels.push({
+                    x,
+                    y,
+                    radius: 30,
+                    maxRadius: 60,
+                    expandSpeed: 0.5,
+                    shrinkSpeed: 0.2,
+                    expanding: true,
+                    phase: 0
+                });
+            }
+            
+            // Draw and update time tunnels
+            function updateTimeTunnels() {
+                for (let i = timeTunnels.length - 1; i >= 0; i--) {
+                    const tunnel = timeTunnels[i];
+                    
+                    // Update radius
+                    if (tunnel.expanding) {
+                        tunnel.radius += tunnel.expandSpeed;
+                        if (tunnel.radius >= tunnel.maxRadius) {
+                            tunnel.expanding = false;
+                        }
+                    } else {
+                        tunnel.radius -= tunnel.shrinkSpeed;
+                        if (tunnel.radius <= 0) {
+                            timeTunnels.splice(i, 1);
+                            continue;
+                        }
+                    }
+                    
+                    // Update phase for animation
+                    tunnel.phase = (tunnel.phase + 0.05) % (Math.PI * 2);
+                    
+                    // Draw tunnel
+                    ctx.save();
+                    ctx.translate(tunnel.x, tunnel.y);
+                    
+                    // Multiple concentric circles with different colors
+                    for (let j = 0; j < 5; j++) {
+                        const radius = tunnel.radius * (0.6 + j * 0.1);
+                        const hue = (j * 60 + Math.floor(Date.now() / 100)) % 360;
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                        ctx.strokeStyle = `hsla(${hue}, 100%, 50%, 0.7)`;
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    }
+                    
+                    // Swirling effect
+                    for (let j = 0; j < 8; j++) {
+                        const angle = j * Math.PI / 4 + tunnel.phase;
+                        const x1 = Math.cos(angle) * (tunnel.radius * 0.3);
+                        const y1 = Math.sin(angle) * (tunnel.radius * 0.3);
+                        const x2 = Math.cos(angle) * tunnel.radius;
+                        const y2 = Math.sin(angle) * tunnel.radius;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.strokeStyle = `hsla(${(j * 45 + Math.floor(Date.now() / 50)) % 360}, 100%, 50%, 0.5)`;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                    
+                    ctx.restore();
+                    
+                    // Check if player enters tunnel
+                    const dx = player.x - tunnel.x;
+                    const dy = player.y - tunnel.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < tunnel.radius * 0.5 && !tunnel.entered) {
+                        tunnel.entered = true;
+                        currentPeriod = (currentPeriod + 1) % TIME_PERIODS.length;
+                        timePeriodDisplay.textContent = TIME_PERIODS[currentPeriod].year;
+                        
+                        // Clear all enemies except the time tunnel
+                        enemies = enemies.filter(enemy => enemy.type === 'powerup');
+                        enemyBullets = [];
+                        
+                        // Spawn new boss for the new time period
+                        spawnBoss();
+                        
+                        playSound('timeTravel');
+                    }
+                }
+            }
+            
+            // Add stars to the background for parallax effect
+            let stars = [];
+            function createStars() {
+                stars = [];
+                for (let i = 0; i < 200; i++) {
+                    stars.push({
+                        x: Math.random() * canvas.width * 3 - canvas.width,
+                        y: Math.random() * canvas.height * 3 - canvas.height,
+                        radius: Math.random() * 1.5 + 0.5,
+                        opacity: Math.random() * 0.8 + 0.2
+                    });
+                }
+            }
+            
+            // Draw background based on time period
+            function drawBackground() {
+                // Fill background
+                const bgColor = TIME_PERIODS[currentPeriod].color;
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw stars with parallax effect
+                for (const star of stars) {
+                    // Adjust star position based on player movement
+                    const relativeX = star.x - player.moveX * 0.5;
+                    const relativeY = star.y - player.moveY * 0.5;
+                    
+                    // Wrap stars within view area
+                    const starX = ((relativeX + canvas.width * 1.5) % (canvas.width * 3)) - canvas.width;
+                    const starY = ((relativeY + canvas.height * 1.5) % (canvas.height * 3)) - canvas.height;
+                    
+                    ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(starX, starY, star.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw additional background elements based on time period
+                switch (currentPeriod) {
+                    case 0: // 1910
+                        drawClouds();
+                        break;
+                    case 1: // 1940
+                        drawClouds();
+                        break;
+                    case 2: // 1970
+                        drawMountains();
+                        break;
+                    case 3: // 1985
+                        drawClouds();
+                        drawMountains();
+                        break;
+                    case 4: // 2001
+                        drawPlanets();
+                        break;
+                }
+            }
+            
+            // Draw clouds
+            function drawClouds() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                
+                // Several static cloud positions
+                const cloudPositions = [
+                    { x: 100, y: 100, size: 40 },
+                    { x: 300, y: 200, size: 60 },
+                    { x: 600, y: 150, size: 50 },
+                    { x: 200, y: 400, size: 45 },
+                    { x: 700, y: 300, size: 55 }
+                ];
+                
+                for (const cloud of cloudPositions) {
+                    // Adjust position based on player movement for parallax
+                    const relX = ((cloud.x - player.moveX * 0.3 + canvas.width * 2) % canvas.width);
+                    const relY = ((cloud.y - player.moveY * 0.3 + canvas.height * 2) % canvas.height);
+                    
+                    // Draw cloud as a group of circles
+                    drawPuffyCloud(relX, relY, cloud.size);
+                }
+            }
+            
+            // Draw a puffy cloud
+            function drawPuffyCloud(x, y, size) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(x + size * 0.4, y + size * 0.1, size * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(x - size * 0.4, y + size * 0.05, size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(x + size * 0.1, y - size * 0.3, size * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw mountains
+            function drawMountains() {
+                const mountainColor = currentPeriod === 2 ? '#8B4513' : '#3A5F0B';
+                ctx.fillStyle = mountainColor;
+                
+                // Create a mountain range along the bottom
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height);
+                
+                // Mountain peaks
+                const peaks = 6;
+                const peakWidth = canvas.width / peaks;
+                
+                for (let i = 0; i <= peaks; i++) {
+                    const x = i * peakWidth;
+                    const y = canvas.height - (100 + Math.sin(i * 0.5) * 50);
+                    
+                    if (i === 0) {
+                        ctx.lineTo(x, y);
+                    } else {
+                        // Create jagged mountain effect
+                        const midX = x - peakWidth / 2;
+                        const midY = canvas.height - (50 + Math.cos(i * 0.7) * 30);
+                        
+                        ctx.quadraticCurveTo(midX, midY, x, y);
+                    }
+                }
+                
+                ctx.lineTo(canvas.width, canvas.height);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Mountain details (snow caps)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                for (let i = 0; i < peaks; i++) {
+                    const x = (i + 0.5) * peakWidth;
+                    const y = canvas.height - (100 + Math.sin(i * 0.5) * 50);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x - 20, y + 30);
+                    ctx.lineTo(x + 20, y + 30);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+            
+            // Draw planets for space theme
+            function drawPlanets() {
+                // Draw a couple of planets
+                const planets = [
+                    { x: 150, y: 150, radius: 40, color: '#FFD700' }, // Gold
+                    { x: 600, y: 400, radius: 60, color: '#CD5C5C' }, // Red
+                    { x: 350, y: 300, radius: 30, color: '#87CEEB' }  // Blue
+                ];
+                
+                for (const planet of planets) {
+                    // Adjust position for parallax
+                    const relX = ((planet.x - player.moveX * 0.1 + canvas.width * 2) % canvas.width);
+                    const relY = ((planet.y - player.moveY * 0.1 + canvas.height * 2) % canvas.height);
+                    
+                    // Draw planet
+                    ctx.beginPath();
+                    ctx.arc(relX, relY, planet.radius, 0, Math.PI * 2);
+                    
+                    // Create gradient for 3D effect
+                    const gradient = ctx.createRadialGradient(
+                        relX - planet.radius / 3, relY - planet.radius / 3, 0,
+                        relX, relY, planet.radius
+                    );
+                    
+                    gradient.addColorStop(0, planet.color);
+                    gradient.addColorStop(1, '#000');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                    
+                    // Add rings to one planet
+                    if (planet.color === '#CD5C5C') {
+                        ctx.beginPath();
+                        ctx.ellipse(relX, relY, planet.radius * 1.5, planet.radius * 0.3, Math.PI / 6, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 4;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Draw the mini-map
+            function updateMiniMap() {
+                miniMapCtx.clearRect(0, 0, miniMapCtx.canvas.width, miniMapCtx.canvas.height);
+                
+                // Draw background
+                miniMapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                miniMapCtx.beginPath();
+                miniMapCtx.arc(75, 75, 75, 0, Math.PI * 2);
+                miniMapCtx.fill();
+                
+                // Draw radar sweep
+                const sweepAngle = (Date.now() / 2000) % (Math.PI * 2);
+                miniMapCtx.beginPath();
+                miniMapCtx.moveTo(75, 75);
+                miniMapCtx.arc(75, 75, 75, sweepAngle - 0.2, sweepAngle, false);
+                miniMapCtx.closePath();
+                miniMapCtx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+                miniMapCtx.fill();
+                
+                // Draw player at center
+                miniMapCtx.fillStyle = '#0F0';
+                miniMapCtx.beginPath();
+                miniMapCtx.arc(75, 75, 4, 0, Math.PI * 2);
+                miniMapCtx.fill();
+                
+                // Draw enemies
+                for (const enemy of enemies) {
+                    // Calculate relative position to player
+                    const dx = enemy.x - player.x;
+                    const dy = enemy.y - player.y;
+                    
+                    // Scale to fit on mini-map (1/5 scale)
+                    const mapX = 75 + dx / 5;
+                    const mapY = 75 + dy / 5;
+                    
+                    // Check if within mini-map radius
+                    const distSq = (mapX - 75) * (mapX - 75) + (mapY - 75) * (mapY - 75);
+                    if (distSq < 75 * 75) {
+                        // Choose color based on enemy type
+                        let color;
+                        if (enemy.type === 'boss') {
+                            color = '#F00'; // Red for bosses
+                        } else if (enemy.type === 'powerup') {
+                            color = '#FF0'; // Yellow for power-ups
+                        } else {
+                            color = '#F90'; // Orange for regular enemies
+                        }
+                        
+                        miniMapCtx.fillStyle = color;
+                        miniMapCtx.beginPath();
+                        miniMapCtx.arc(mapX, mapY, enemy.type === 'boss' ? 4 : 2, 0, Math.PI * 2);
+                        miniMapCtx.fill();
+                    }
+                }
+                
+                // Draw time tunnels
+                for (const tunnel of timeTunnels) {
+                    // Calculate relative position to player
+                    const dx = tunnel.x - player.x;
+                    const dy = tunnel.y - player.y;
+                    
+                    // Scale to fit on mini-map
+                    const mapX = 75 + dx / 5;
+                    const mapY = 75 + dy / 5;
+                    
+                    // Check if within mini-map radius
+                    const distSq = (mapX - 75) * (mapX - 75) + (mapY - 75) * (mapY - 75);
+                    if (distSq < 75 * 75) {
+                        // Pulsing effect
+                        const pulseSize = 3 + Math.sin(Date.now() / 200) * 2;
+                        
+                        // Rainbow color cycling
+                        const hue = (Date.now() / 30) % 360;
+                        miniMapCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                        
+                        miniMapCtx.beginPath();
+                        miniMapCtx.arc(mapX, mapY, pulseSize, 0, Math.PI * 2);
+                        miniMapCtx.fill();
+                    }
+                }
+            }
+            
+            // Spawn enemies
+            function spawnEnemies() {
+                // Limit number of enemies on screen
+                if (enemies.length < 10 && Math.random() < 0.02) {
+                    // Occasionally spawn a bomber (tougher enemy)
+                    const type = Math.random() < 0.2 ? 'bomber' : 'normal';
+                    enemies.push(new Enemy(type, currentPeriod));
+                }
+            }
+            
+            // Spawn a boss
+            function spawnBoss() {
+                // Clear other enemies first
+                enemies = enemies.filter(enemy => enemy.type === 'powerup');
+                
+                // Create boss at a random position away from player
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 400;
+                
+                enemies.push(new Enemy('boss', currentPeriod));
+                
+                // Show boss warning message
+                const warning = document.createElement('div');
+                warning.textContent = `WARNING: ${TIME_PERIODS[currentPeriod].year} BOSS APPROACHING`;
+                warning.style.position = 'absolute';
+                warning.style.top = '50%';
+                warning.style.left = '50%';
+                warning.style.transform = 'translate(-50%, -50%)';
+                warning.style.color = '#F00';
+                warning.style.fontSize = '24px';
+                warning.style.fontWeight = 'bold';
+                warning.style.textShadow = '0 0 5px #F00';
+                
+                document.body.appendChild(warning);
+                
+                // Flashing effect
+                let visible = true;
+                const flashInterval = setInterval(() => {
+                    visible = !visible;
+                    warning.style.visibility = visible ? 'visible' : 'hidden';
+                }, 200);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    clearInterval(flashInterval);
+                    document.body.removeChild(warning);
+                }, 3000);
+                
+                playSound('bossWarning');
+            }
+            
+            // Update game objects
+            function updateGameObjects() {
+                // Update player movement
+                if (player.moveX !== 0 || player.moveY !== 0) {
+                    // Instead of moving player, move all other objects in opposite direction
+                    for (const enemy of enemies) {
+                        enemy.x -= player.moveX * player.speed;
+                        enemy.y -= player.moveY * player.speed;
+                    }
+                    
+                    for (const bullet of bullets) {
+                        bullet.x -= player.moveX * player.speed;
+                        bullet.y -= player.moveY * player.speed;
+                    }
+                    
+                    for (const bullet of enemyBullets) {
+                        bullet.x -= player.moveX * player.speed;
+                        bullet.y -= player.moveY * player.speed;
+                    }
+                    
+                    for (const explosion of explosions) {
+                        explosion.x -= player.moveX * player.speed;
+                        explosion.y -= player.moveY * player.speed;
+                        
+                        for (const particle of explosion.particles) {
+                            particle.x -= player.moveX * player.speed;
+                            particle.y -= player.moveY * player.speed;
+                        }
+                    }
+                    
+                    for (const tunnel of timeTunnels) {
+                        tunnel.x -= player.moveX * player.speed;
+                        tunnel.y -= player.moveY * player.speed;
+                    }
+                }
+                
+                // Update player
+                player.update();
+                
+                // Update bullets
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const bullet = bullets[i];
+                    
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                    bullet.lifespan--;
+                    
+                    // Check if bullet is out of bounds or expired
+                    if (bullet.lifespan <= 0 ||
+                        bullet.x < -canvas.width ||
+                        bullet.x > canvas.width * 2 ||
+                        bullet.y < -canvas.height ||
+                        bullet.y > canvas.height * 2) {
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Check collision with enemies
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        
+                        const dx = bullet.x - enemy.x;
+                        const dy = bullet.y - enemy.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < enemy.radius + bullet.radius) {
+                            // Hit enemy
+                            if (enemy.hit()) {
+                                enemies.splice(j, 1);
+                            }
+                            
+                            // Remove bullet unless it's a powered-up shot
+                            if (!bullet.isPowerUp) {
+                                bullets.splice(i, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Update enemy bullets, explosions, and other game elements
+                // ...existing code...
+                
+                // Spawn new enemies
+                spawnEnemies();
+                
+                // Check if all bosses are defeated and no time tunnels exist
+                if (!enemies.some(enemy => enemy.type === 'boss') && timeTunnels.length === 0) {
+                    // Check if there should be a boss in this time period
+                    const hasBoss = enemies.some(enemy => enemy.type === 'boss');
+                    const hasTimeTunnel = timeTunnels.length > 0;
+                    
+                    if (!hasBoss && !hasTimeTunnel && Math.random() < 0.005) {
+                        spawnBoss();
+                    }
+                }
+            }
+            
+            // Pause/unpause game
+            function togglePause() {
+                paused = !paused;
+                
+                if (paused) {
+                    cancelAnimationFrame(animationId);
+                    
+                    // Show pause message
+                    const pauseMsg = document.createElement('div');
+                    pauseMsg.id = 'pause-message';
+                    pauseMsg.textContent = 'PAUSED';
+                    pauseMsg.style.position = 'absolute';
+                    pauseMsg.style.top = '50%';
+                    pauseMsg.style.left = '50%';
+                    pauseMsg.style.transform = 'translate(-50%, -50%)';
+                    pauseMsg.style.color = '#FFF';
+                    pauseMsg.style.fontSize = '36px';
+                    pauseMsg.style.fontWeight = 'bold';
+                    document.body.appendChild(pauseMsg);
+                } else {
+                    // Remove pause message if exists
+                    const pauseMsg = document.getElementById('pause-message');
+                    if (pauseMsg) {
+                        document.body.removeChild(pauseMsg);
+                    }
+                    
+                    // Resume game loop
+                    lastTime = performance.now();
+                    animationId = requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            // Sound effects
+            function playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                switch (type) {
+                    case 'playerShoot':
+                        const osc1 = audioContext.createOscillator();
+                        osc1.type = 'square';
+                        osc1.frequency.setValueAtTime(880, audioContext.currentTime);
+                        
+                        const gain1 = audioContext.createGain();
+                        gain1.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        osc1.connect(gain1);
+                        gain1.connect(audioContext.destination);
+                        
+                        osc1.start();
+                        osc1.stop(audioContext.currentTime + 0.1);
+                        break;
+                    
+                    case 'enemyShoot':
+                    case 'enemyDeath':
+                    case 'playerHit':
+                    case 'bossDeath':
+                    case 'bossWarning':
+                    case 'powerUp':
+                    case 'timeTravel':
+                        // Other sound implementations
+                        // ...existing code...
+                        break;
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                gameOverDisplay.style.display = 'block';
+                
+                // Create restart button
+                const restartButton = document.createElement('button');
+                restartButton.id = 'restart-button';
+                restartButton.textContent = 'PLAY AGAIN';
+                restartButton.addEventListener('click', startGame);
+                
+                // Add button below game over text
+                gameOverDisplay.appendChild(restartButton);
+                
+                playSound('playerHit');
+            }
+            
+            // Initialize and start the game
+            function startGame() {
+                // Hide start screen and game over display
+                startScreen.style.display = 'none';
+                gameOverDisplay.style.display = 'none';
+                
+                // Remove restart button if exists
+                const restartButton = document.getElementById('restart-button');
+                if (restartButton) {
+                    restartButton.remove();
+                }
+                
+                // Reset game state
+                score = 0;
+                lives = 3;
+                currentPeriod = 0;
+                gameRunning = true;
+                paused = false;
+                enemies = [];
+                bullets = [];
+                enemyBullets = [];
+                explosions = [];
+                timeTunnels = [];
+                isPowerUp = false;
+                powerUpTimer = 0;
+                
+                // Update displays
+                scoreDisplay.textContent = `Score: ${score}`;
+                livesDisplay.textContent = `Lives: ${lives}`;
+                timePeriodDisplay.textContent = TIME_PERIODS[currentPeriod].year;
+                
+                // Create player
+                player = new Player();
+                
+                // Create stars
+                createStars();
+                
+                // Set up game loop
+                lastTime = performance.now();
+                gameLoop();
+            }
+            
+            // Main game loop
+            function gameLoop(time = 0) {
+                if (!gameRunning || paused) {
+                    return;
+                }
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background
+                drawBackground();
+                
+                // Update and draw game objects
+                updateGameObjects();
+                
+                // Draw bullets, enemies, player, and other visual elements
+                // ...existing code...
+                
+                // Update mini-map
+                updateMiniMap();
+                
+                // Continue the game loop
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            // Set up controls
+            function setupControls() {
+                document.addEventListener('keydown', e => {
+                    if (!gameRunning) return;
+                    
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            player.moveX = -1;
+                            break;
+                        case 'ArrowRight':
+                            player.moveX = 1;
+                            break;
+                        case 'ArrowUp':
+                            player.moveY = -1;
+                            break;
+                        case 'ArrowDown':
+                            player.moveY = 1;
+                            break;
+                        case ' ':
+                            player.isFiring = true;
+                            break;
+                        case 'p':
+                        case 'P':
+                            togglePause();
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', e => {
+                    if (!gameRunning) return;
+                    
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            if (player.moveX === -1) player.moveX = 0;
+                            break;
+                        case 'ArrowRight':
+                            if (player.moveX === 1) player.moveX = 0;
+                            break;
+                        case 'ArrowUp':
+                            if (player.moveY === -1) player.moveY = 0;
+                            break;
+                        case 'ArrowDown':
+                            if (player.moveY === 1) player.moveY = 0;
+                            break;
+                        case ' ':
+                            player.isFiring = false;
+                            break;
+                    }
+                });
+                
+                // Touch controls for mobile
+                // ...existing code...
+            }
+            
+            // Set up controls
+            setupControls();
+            
+            // Start button event listener
+            startButton.addEventListener('click', startGame);
+        });
+    </script>
+</body>
+</html>

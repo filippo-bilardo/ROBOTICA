@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frogger Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 560px;
+            height: 640px;
+        }
+        
+        canvas {
+            background-color: #000;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #00AA00;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #00FF00;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="560" height="640"></canvas>
+        
+        <div id="startScreen">
+            <h1>FROGGER</h1>
+            <p>Help the frog cross the road and river to reach home!</p>
+            <p>Use arrow keys to move</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Level Complete!</h1>
+            <p>Get ready for the next level</p>
+            <button id="nextLevelButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Game constants
+        const GRID_SIZE = 40; // Size of each grid cell
+        const GRID_WIDTH = 14; // Number of cells horizontally
+        const GRID_HEIGHT = 16; // Number of cells vertically
+        const FROG_SIZE = GRID_SIZE - 10; // Slightly smaller than grid
+        
+        // Game colors
+        const COLORS = {
+            frog: '#00FF00',
+            road: '#333333',
+            grass: '#003300',
+            water: '#0000AA',
+            car1: '#FF0000',
+            car2: '#FFAA00',
+            car3: '#0000FF',
+            truck: '#884400',
+            log: '#8B4513',
+            turtle: '#00AA00',
+            home: '#00FF00'
+        };
+        
+        // Game state variables
+        let gameRunning = false;
+        let gameOver = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let time = 60; // Time limit in seconds
+        let timer = null;
+        let homesReached = 0;
+        
+        // Game objects
+        let frog = null;
+        let vehicles = [];
+        let logs = [];
+        let turtles = [];
+        let homes = [];
+        let filledHomes = [];
+        
+        // Input handling
+        const keys = {};
+        
+        // Define rows for different elements
+        const ROAD_ROWS = [7, 8, 9, 10, 11]; // Rows with traffic
+        const WATER_ROWS = [2, 3, 4, 5, 6]; // Rows with water
+        const HOME_ROW = 1; // Row with home bases
+        const START_ROW = 15; // Starting row for frog
+        
+        // Create home positions (spots where frogs need to go)
+        const HOME_POSITIONS = [
+            {x: 1, y: HOME_ROW},
+            {x: 4, y: HOME_ROW},
+            {x: 7, y: HOME_ROW},
+            {x: 10, y: HOME_ROW},
+            {x: 13, y: HOME_ROW}
+        ];
+        
+        // Frog class
+        class Frog {
+            constructor() {
+                this.reset();
+                this.width = FROG_SIZE;
+                this.height = FROG_SIZE;
+                this.direction = 'up';
+                this.jumping = false;
+                this.jumpProgress = 0;
+                this.jumpSpeed = 0.15;
+                this.onLog = null;
+                this.onTurtle = null;
+            }
+            
+            reset() {
+                this.gridX = Math.floor(GRID_WIDTH / 2);
+                this.gridY = START_ROW;
+                this.x = this.gridX * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                this.y = this.gridY * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                this.onLog = null;
+                this.onTurtle = null;
+            }
+            
+            update() {
+                if (this.jumping) {
+                    this.updateJump();
+                } else {
+                    this.handleInput();
+                }
+                
+                // If on a moving platform (log or turtle), move with it
+                if (this.onLog) {
+                    this.x += this.onLog.speed;
+                    this.gridX = Math.floor(this.x / GRID_SIZE);
+                } else if (this.onTurtle && !this.onTurtle.submerged) {
+                    this.x += this.onTurtle.speed;
+                    this.gridX = Math.floor(this.x / GRID_SIZE);
+                }
+                
+                // Check if frog is out of bounds
+                if (this.x < 0 || this.x > canvas.width - this.width) {
+                    this.die();
+                }
+                
+                // Check for collision with vehicles
+                this.checkVehicleCollision();
+                
+                // Check for water collision
+                this.checkWaterCollision();
+                
+                // Check if frog reached a home
+                this.checkHomeCollision();
+            }
+            
+            handleInput() {
+                if (this.jumping) return;
+                
+                if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+                    this.move('up');
+                } else if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+                    this.move('down');
+                } else if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                    this.move('left');
+                } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                    this.move('right');
+                }
+            }
+            
+            move(direction) {
+                // Set the new direction the frog is facing
+                this.direction = direction;
+                
+                // Calculate the new grid position
+                let newGridX = this.gridX;
+                let newGridY = this.gridY;
+                
+                switch (direction) {
+                    case 'up':
+                        newGridY--;
+                        break;
+                    case 'down':
+                        newGridY++;
+                        break;
+                    case 'left':
+                        newGridX--;
+                        break;
+                    case 'right':
+                        newGridX++;
+                        break;
+                }
+                
+                // Check if the new position is valid (within grid boundaries)
+                if (newGridX >= 0 && newGridX < GRID_WIDTH && newGridY >= 0 && newGridY < GRID_HEIGHT) {
+                    // Valid move, start jump animation
+                    this.startJump(newGridX, newGridY);
+                    
+                    // If moving up, add points
+                    if (direction === 'up' && newGridY < this.gridY) {
+                        score += 10;
+                    }
+                    
+                    // Reset log/turtle state when jumping
+                    this.onLog = null;
+                    this.onTurtle = null;
+                }
+            }
+            
+            startJump(targetGridX, targetGridY) {
+                this.jumping = true;
+                this.jumpProgress = 0;
+                this.startGridX = this.gridX;
+                this.startGridY = this.gridY;
+                this.targetGridX = targetGridX;
+                this.targetGridY = targetGridY;
+                
+                // Clear keypress to prevent continuous movement
+                keys['ArrowUp'] = keys['ArrowDown'] = keys['ArrowLeft'] = keys['ArrowRight'] = false;
+                keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+                keys['W'] = keys['S'] = keys['A'] = keys['D'] = false;
+            }
+            
+            updateJump() {
+                this.jumpProgress += this.jumpSpeed;
+                
+                if (this.jumpProgress >= 1) {
+                    // Jump complete
+                    this.jumpProgress = 0;
+                    this.jumping = false;
+                    this.gridX = this.targetGridX;
+                    this.gridY = this.targetGridY;
+                    this.x = this.gridX * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                    this.y = this.gridY * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                } else {
+                    // Calculate position during jump
+                    const startX = this.startGridX * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                    const startY = this.startGridY * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                    const targetX = this.targetGridX * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                    const targetY = this.targetGridY * GRID_SIZE + (GRID_SIZE - FROG_SIZE) / 2;
+                    
+                    // Linear interpolation for jump
+                    this.x = startX + (targetX - startX) * this.jumpProgress;
+                    this.y = startY + (targetY - startY) * this.jumpProgress;
+                }
+            }
+            
+            checkVehicleCollision() {
+                // Only check if on a road row
+                if (!ROAD_ROWS.includes(this.gridY)) return;
+                
+                for (const vehicle of vehicles) {
+                    if (this.intersects(vehicle)) {
+                        this.die();
+                        return;
+                    }
+                }
+            }
+            
+            checkWaterCollision() {
+                // Only check if on a water row
+                if (!WATER_ROWS.includes(this.gridY)) {
+                    this.onLog = null;
+                    this.onTurtle = null;
+                    return;
+                }
+                
+                // Check if on a log
+                let onSomething = false;
+                
+                // Check logs first
+                for (const log of logs) {
+                    if (this.intersects(log)) {
+                        this.onLog = log;
+                        this.onTurtle = null;
+                        onSomething = true;
+                        break;
+                    }
+                }
+                
+                // If not on a log, check turtles
+                if (!onSomething) {
+                    for (const turtle of turtles) {
+                        if (this.intersects(turtle) && !turtle.submerged) {
+                            this.onLog = null;
+                            this.onTurtle = turtle;
+                            onSomething = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // If not on a log or turtle in water, die
+                if (!onSomething) {
+                    this.die();
+                }
+            }
+            
+            checkHomeCollision() {
+                // Only check if on the home row
+                if (this.gridY !== HOME_ROW) return;
+                
+                // Check if frog is at a valid home position
+                for (let i = 0; i < HOME_POSITIONS.length; i++) {
+                    const home = HOME_POSITIONS[i];
+                    if (this.gridX === home.x && !filledHomes.includes(i)) {
+                        // Reached a home!
+                        filledHomes.push(i);
+                        homesReached++;
+                        score += 50;
+                        
+                        // Reset frog
+                        this.reset();
+                        
+                        // Check if all homes are filled
+                        if (homesReached === HOME_POSITIONS.length) {
+                            levelComplete();
+                        }
+                        
+                        return;
+                    }
+                }
+                
+                // If got to home row but not at a valid home spot, die
+                if (!HOME_POSITIONS.some(home => this.gridX === home.x)) {
+                    this.die();
+                }
+            }
+            
+            intersects(entity) {
+                return (
+                    this.x < entity.x + entity.width &&
+                    this.x + this.width > entity.x &&
+                    this.y < entity.y + entity.height &&
+                    this.y + this.height > entity.y
+                );
+            }
+            
+            die() {
+                lives--;
+                if (lives <= 0) {
+                    endGame();
+                } else {
+                    this.reset();
+                }
+            }
+            
+            draw() {
+                // Draw frog based on direction
+                ctx.fillStyle = COLORS.frog;
+                
+                // Basic frog shape
+                ctx.beginPath();
+                
+                if (this.direction === 'up') {
+                    // Draw frog facing up
+                    ctx.fillRect(this.x + this.width/4, this.y, this.width/2, this.height*3/4);
+                    ctx.arc(this.x + this.width/4, this.y + this.height/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width*3/4, this.y + this.height/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width/2, this.y, this.width/4, 0, Math.PI, true);
+                } else if (this.direction === 'down') {
+                    // Draw frog facing down
+                    ctx.fillRect(this.x + this.width/4, this.y + this.height/4, this.width/2, this.height*3/4);
+                    ctx.arc(this.x + this.width/4, this.y + this.height*3/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width*3/4, this.y + this.height*3/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width/2, this.y + this.height, this.width/4, 0, Math.PI, false);
+                } else if (this.direction === 'left') {
+                    // Draw frog facing left
+                    ctx.fillRect(this.x, this.y + this.height/4, this.width*3/4, this.height/2);
+                    ctx.arc(this.x + this.width/4, this.y + this.width/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width/4, this.y + this.width*3/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y + this.height/2, this.width/4, -Math.PI/2, Math.PI/2, true);
+                } else {
+                    // Draw frog facing right
+                    ctx.fillRect(this.x + this.width/4, this.y + this.height/4, this.width*3/4, this.height/2);
+                    ctx.arc(this.x + this.width*3/4, this.y + this.width/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width*3/4, this.y + this.width*3/4, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width, this.y + this.height/2, this.width/4, Math.PI/2, -Math.PI/2, true);
+                }
+                
+                ctx.fill();
+            }
+        }
+        
+        // Vehicle class
+        class Vehicle {
+            constructor(type, row, speed, x = null) {
+                this.type = type; // 'car1', 'car2', 'car3', 'truck'
+                this.row = row;
+                this.speed = speed;
+                
+                // Set dimensions based on type
+                if (type === 'truck') {
+                    this.width = GRID_SIZE * 2;
+                } else {
+                    this.width = GRID_SIZE;
+                }
+                this.height = GRID_SIZE - 10;
+                
+                // Set position
+                this.y = row * GRID_SIZE + (GRID_SIZE - this.height) / 2;
+                
+                // If x is not provided, place off screen based on direction
+                if (x === null) {
+                    if (speed > 0) {
+                        this.x = -this.width;
+                    } else {
+                        this.x = canvas.width;
+                    }
+                } else {
+                    this.x = x;
+                }
+                
+                // Set color based on type
+                this.color = COLORS[this.type];
+            }
+            
+            update() {
+                this.x += this.speed;
+                
+                // Check if vehicle is off screen to remove it
+                if ((this.speed > 0 && this.x > canvas.width) || 
+                    (this.speed < 0 && this.x + this.width < 0)) {
+                    this.remove = true;
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                
+                // Draw the vehicle
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Add simple details for each vehicle type
+                if (this.type === 'car1') {
+                    // Car 1 details (e.g., windows)
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(this.x + this.width/5, this.y + this.height/4, this.width/5, this.height/4);
+                    ctx.fillRect(this.x + this.width*3/5, this.y + this.height/4, this.width/5, this.height/4);
+                } else if (this.type === 'car2') {
+                    // Car 2 details
+                    ctx.fillStyle = '#333333';
+                    ctx.fillRect(this.x + this.width/4, this.y + this.height/5, this.width/2, this.height/3);
+                } else if (this.type === 'car3') {
+                    // Car 3 details
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/4, this.y + this.height*2/3, this.width/8, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width*3/4, this.y + this.height*2/3, this.width/8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'truck') {
+                    // Truck details
+                    ctx.fillStyle = '#CCCCCC';
+                    ctx.fillRect(this.x + this.width/3, this.y + this.height/5, this.width/4, this.height/3);
+                }
+            }
+        }
+        
+        // Log class
+        class Log {
+            constructor(row, length, speed, x = null) {
+                this.row = row;
+                this.length = length; // in grid cells
+                this.speed = speed;
+                this.width = GRID_SIZE * length;
+                this.height = GRID_SIZE - 10;
+                
+                // Set position
+                this.y = row * GRID_SIZE + (GRID_SIZE - this.height) / 2;
+                
+                // If x is not provided, place off screen based on direction
+                if (x === null) {
+                    if (speed > 0) {
+                        this.x = -this.width;
+                    } else {
+                        this.x = canvas.width;
+                    }
+                } else {
+                    this.x = x;
+                }
+            }
+            
+            update() {
+                this.x += this.speed;
+                
+                // Check if log is off screen to remove it
+                if ((this.speed > 0 && this.x > canvas.width) || 
+                    (this.speed < 0 && this.x + this.width < 0)) {
+                    this.remove = true;
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = COLORS.log;
+                
+                // Draw the log
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Add simple wood texture
+                ctx.strokeStyle = '#6B4226';
+                ctx.lineWidth = 2;
+                for (let i = 1; i < this.length; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + i * GRID_SIZE, this.y);
+                    ctx.lineTo(this.x + i * GRID_SIZE, this.y + this.height);
+                    ctx.stroke();
+                }
+                
+                // Add a few knots in the wood
+                ctx.fillStyle = '#5D3A1F';
+                for (let i = 0; i < this.length; i++) {
+                    if (Math.random() < 0.5) {
+                        const knotX = this.x + i * GRID_SIZE + GRID_SIZE/2;
+                        const knotY = this.y + this.height/2;
+                        ctx.beginPath();
+                        ctx.arc(knotX, knotY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        // Turtle class (turtles can submerge periodically)
+        class Turtle {
+            constructor(row, count, speed, x = null) {
+                this.row = row;
+                this.count = count; // Number of turtles in group
+                this.speed = speed;
+                this.width = GRID_SIZE * count;
+                this.height = GRID_SIZE - 10;
+                this.submergeTimer = 0;
+                this.submergeInterval = 300; // Frames before submerging
+                this.submergeState = 0; // 0: normal, 1: starting to submerge, 2: submerged
+                this.submerged = false;
+                
+                // Set position
+                this.y = row * GRID_SIZE + (GRID_SIZE - this.height) / 2;
+                
+                // If x is not provided, place off screen based on direction
+                if (x === null) {
+                    if (speed > 0) {
+                        this.x = -this.width;
+                    } else {
+                        this.x = canvas.width;
+                    }
+                } else {
+                    this.x = x;
+                }
+            }
+            
+            update() {
+                this.x += this.speed;
+                
+                // Check if turtle group is off screen to remove it
+                if ((this.speed > 0 && this.x > canvas.width) || 
+                    (this.speed < 0 && this.x + this.width < 0)) {
+                    this.remove = true;
+                }
+                
+                // Handle submerging/emerging cycle
+                this.submergeTimer++;
+                if (this.submergeTimer >= this.submergeInterval) {
+                    this.submergeTimer = 0;
+                    this.submergeState = (this.submergeState + 1) % 6;
+                    
+                    // Update submerged state (submerged when state is 3)
+                    this.submerged = (this.submergeState === 3);
+                }
+            }
+            
+            draw() {
+                // Determine how much to submerge based on state
+                let submergeOffset = 0;
+                if (this.submergeState === 1) submergeOffset = this.height / 4;
+                else if (this.submergeState === 2) submergeOffset = this.height / 2;
+                else if (this.submergeState === 3) submergeOffset = this.height;
+                else if (this.submergeState === 4) submergeOffset = this.height / 2;
+                else if (this.submergeState === 5) submergeOffset = this.height / 4;
+                
+                // Don't draw if fully submerged
+                if (this.submergeState === 3) return;
+                
+                ctx.fillStyle = COLORS.turtle;
+                
+                // Draw each turtle in the group
+                for (let i = 0; i < this.count; i++) {
+                    const turtleX = this.x + i * GRID_SIZE;
+                    
+                    // Draw turtle body (submerged appropriately)
+                    ctx.beginPath();
+                    ctx.arc(turtleX + GRID_SIZE/2, this.y + this.height/2, 
+                             this.height/2 - submergeOffset, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw head
+                    ctx.beginPath();
+                    const headX = this.speed > 0 ? 
+                                  turtleX + GRID_SIZE*3/4 : 
+                                  turtleX + GRID_SIZE/4;
+                    ctx.arc(headX, this.y + this.height/2, this.height/4 - submergeOffset/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Shell details
+                    ctx.strokeStyle = '#005500';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(turtleX + GRID_SIZE/2, this.y + this.height/2, 
+                             this.height/3 - submergeOffset/2, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // Initialize level
+        function initLevel() {
+            // Reset variables
+            vehicles = [];
+            logs = [];
+            turtles = [];
+            homesReached = 0;
+            filledHomes = [];
+            
+            // Create frog
+            frog = new Frog();
+            
+            // Initialize vehicles, logs, and turtles
+            initVehicles();
+            initWaterObjects();
+            
+            // Set time limit
+            time = 60 - (level - 1) * 5; // Reduce time per level
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 1000);
+        }
+        
+        // Initialize vehicles in road rows
+        function initVehicles() {
+            // Different patterns for each row
+            const patterns = [
+                { row: 7, type: 'car1', speed: 2, spacing: 300 },
+                { row: 8, type: 'car2', speed: -3, spacing: 200 },
+                { row: 9, type: 'car3', speed: 1.5, spacing: 350 },
+                { row: 10, type: 'truck', speed: -2, spacing: 400 },
+                { row: 11, type: 'car1', speed: 4, spacing: 150 }
+            ];
+            
+            // Adjust speed based on level
+            const speedMultiplier = 1 + (level - 1) * 0.2;
+            
+            // Create initial vehicles
+            for (const pattern of patterns) {
+                const speed = pattern.speed * speedMultiplier;
+                
+                // Place vehicles evenly in each row
+                const spacing = pattern.spacing;
+                const totalWidth = canvas.width + Math.abs(speed) * spacing;
+                const count = Math.ceil(totalWidth / spacing);
+                
+                for (let i = 0; i < count; i++) {
+                    let x;
+                    if (speed > 0) {
+                        x = -pattern.type === 'truck' ? GRID_SIZE * 2 : GRID_SIZE + i * spacing;
+                    } else {
+                        x = canvas.width + i * spacing;
+                    }
+                    
+                    // Add some randomization to spacing
+                    x += (Math.random() - 0.5) * spacing * 0.5;
+                    
+                    vehicles.push(new Vehicle(pattern.type, pattern.row, speed, x));
+                }
+            }
+        }
+        
+        // Initialize logs and turtles in water rows
+        function initWaterObjects() {
+            // Different patterns for each row
+            const patterns = [
+                { row: 2, type: 'log', length: 3, speed: 1.5, spacing: 400 },
+                { row: 3, type: 'turtle', count: 3, speed: -2, spacing: 300 },
+                { row: 4, type: 'log', length: 5, speed: 2, spacing: 500 },
+                { row: 5, type: 'turtle', count: 2, speed: -1.5, spacing: 200 },
+                { row: 6, type: 'log', length: 4, speed: 3, spacing: 450 }
+            ];
+            
+            // Adjust speed based on level
+            const speedMultiplier = 1 + (level - 1) * 0.1;
+            
+            // Create initial water objects
+            for (const pattern of patterns) {
+                const speed = pattern.speed * speedMultiplier;
+                
+                // Place objects evenly in each row
+                const spacing = pattern.spacing;
+                const totalWidth = canvas.width + Math.abs(speed) * spacing;
+                const count = Math.ceil(totalWidth / spacing);
+                
+                for (let i = 0; i < count; i++) {
+                    let x;
+                    if (speed > 0) {
+                        x = -GRID_SIZE * (pattern.type === 'log' ? pattern.length : pattern.count) + i * spacing;
+                    } else {
+                        x = canvas.width + i * spacing;
+                    }
+                    
+                    // Add some randomization to spacing
+                    x += (Math.random() - 0.5) * spacing * 0.5;
+                    
+                    if (pattern.type === 'log') {
+                        logs.push(new Log(pattern.row, pattern.length, speed, x));
+                    } else {
+                        turtles.push(new Turtle(pattern.row, pattern.count, speed, x));
+                    }
+                }
+            }
+        }
+        
+        // Update timer
+        function updateTimer() {
+            if (gameRunning && !gameOver) {
+                time--;
+                if (time <= 0) {
+                    // Time's up!
+                    frog.die();
+                    time = 0;
+                }
+            }
+        }
+        
+        // Spawn new vehicles
+        function spawnVehicles() {
+            // Spawn vehicles from the left
+            if (Math.random() < 0.01) {
+                const row = ROAD_ROWS[Math.floor(Math.random() * ROAD_ROWS.length)];
+                const type = Math.random() < 0.3 ? 'truck' : `car${Math.floor(Math.random() * 3) + 1}`;
+                const speed = (row % 2 === 0 ? 1 : -1) * (1 + Math.random() * 3 + level);
+                
+                // Only spawn if there's enough space
+                const lastVehicleInRow = vehicles.filter(v => v.row === row && Math.sign(v.speed) === Math.sign(speed))
+                                                .sort((a, b) => speed > 0 ? a.x - b.x : b.x - a.x)[0];
+                
+                const minSpacing = 150;
+                
+                if (!lastVehicleInRow || 
+                   (speed > 0 && lastVehicleInRow.x > minSpacing) || 
+                   (speed < 0 && canvas.width - (lastVehicleInRow.x + lastVehicleInRow.width) > minSpacing)) {
+                    vehicles.push(new Vehicle(type, row, speed));
+                }
+            }
+        }
+        
+        // Spawn new logs and turtles
+        function spawnWaterObjects() {
+            // Spawn logs or turtles
+            if (Math.random() < 0.005) {
+                const row = WATER_ROWS[Math.floor(Math.random() * WATER_ROWS.length)];
+                const isLog = Math.random() < 0.5;
+                
+                const speed = (row % 2 === 0 ? 1 : -1) * (1 + Math.random() * 2 + level * 0.5);
+                
+                if (isLog) {
+                    const length = Math.floor(Math.random() * 3) + 2; // 2-4 grid cells
+                    logs.push(new Log(row, length, speed));
+                } else {
+                    const count = Math.floor(Math.random() * 2) + 2; // 2-3 turtles in group
+                    turtles.push(new Turtle(row, count, speed));
+                }
+            }
+        }
+        
+        // Game over
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            clearInterval(timer);
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            clearInterval(timer);
+            level++;
+            score += time * 10; // Bonus points for remaining time
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Start new game
+        function startNewGame() {
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            levelCompleteScreen.style.visibility = 'hidden';
+            
+            // Reset game variables
+            score = 0;
+            lives = 3;
+            level = 1;
+            
+            // Initialize level
+            initLevel();
+            
+            // Start the game
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Start next level
+        function startNextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Draw game background
+        function drawBackground() {
+            // Draw water area
+            ctx.fillStyle = COLORS.water;
+            ctx.fillRect(0, WATER_ROWS[0] * GRID_SIZE, canvas.width, WATER_ROWS.length * GRID_SIZE);
+            
+            // Draw road area
+            ctx.fillStyle = COLORS.road;
+            ctx.fillRect(0, ROAD_ROWS[0] * GRID_SIZE, canvas.width, ROAD_ROWS.length * GRID_SIZE);
+            
+            // Draw grass at top and bottom
+            ctx.fillStyle = COLORS.grass;
+            ctx.fillRect(0, 0, canvas.width, HOME_ROW * GRID_SIZE);
+            ctx.fillRect(0, (ROAD_ROWS[ROAD_ROWS.length-1] + 1) * GRID_SIZE, canvas.width, (GRID_HEIGHT - ROAD_ROWS[ROAD_ROWS.length-1] - 1) * GRID_SIZE);
+            
+            // Draw home bases
+            for (let i = 0; i < HOME_POSITIONS.length; i++) {
+                const home = HOME_POSITIONS[i];
+                
+                if (filledHomes.includes(i)) {
+                    // Draw filled home
+                    ctx.fillStyle = COLORS.frog;
+                    ctx.fillRect(home.x * GRID_SIZE, home.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                } else {
+                    // Draw empty home
+                    ctx.fillStyle = COLORS.home;
+                    ctx.fillRect(home.x * GRID_SIZE, home.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    
+                    // Draw a target marker
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(home.x * GRID_SIZE + GRID_SIZE/2, home.y * GRID_SIZE + GRID_SIZE/2, GRID_SIZE/3, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw row dividers
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.setLineDash([GRID_SIZE/2, GRID_SIZE/2]);
+            ctx.lineWidth = 2;
+            
+            for (let i = 1; i < ROAD_ROWS.length; i++) {
+                const y = (ROAD_ROWS[0] + i) * GRID_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]);
+        }
+        
+        // Draw the game UI
+        function drawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            
+            // Draw lives
+            ctx.fillText(`Lives: ${lives}`, 20, 60);
+            
+            // Draw level
+            ctx.fillText(`Level: ${level}`, 20, 90);
+            
+            // Draw time
+            ctx.textAlign = 'right';
+            ctx.fillText(`Time: ${time}`, canvas.width - 20, 30);
+            
+            // Draw progress
+            ctx.fillText(`Homes: ${homesReached}/${HOME_POSITIONS.length}`, canvas.width - 20, 60);
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            drawBackground();
+            
+            if (gameRunning) {
+                // Update and draw frog
+                frog.update();
+                
+                // Update and draw vehicles
+                for (let i = vehicles.length - 1; i >= 0; i--) {
+                    vehicles[i].update();
+                    
+                    if (vehicles[i].remove) {
+                        vehicles.splice(i, 1);
+                    } else {
+                        vehicles[i].draw();
+                    }
+                }
+                
+                // Update and draw logs
+                for (let i = logs.length - 1; i >= 0; i--) {
+                    logs[i].update();
+                    
+                    if (logs[i].remove) {
+                        logs.splice(i, 1);
+                    } else {
+                        logs[i].draw();
+                    }
+                }
+                
+                // Update and draw turtles
+                for (let i = turtles.length - 1; i >= 0; i--) {
+                    turtles[i].update();
+                    
+                    if (turtles[i].remove) {
+                        turtles.splice(i, 1);
+                    } else {
+                        turtles[i].draw();
+                    }
+                }
+                
+                // Draw frog on top of everything
+                frog.draw();
+                
+                // Spawn new objects
+                spawnVehicles();
+                spawnWaterObjects();
+            }
+            
+            // Draw UI
+            drawUI();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+            
+            // Prevent default for game control keys
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        // Button event listeners
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        nextLevelButton.addEventListener('click', startNextLevel);
+        
+        // Start the game loop
+        gameLoop();
+        
+        console.log("Frogger game loaded");
+    </script>
+</body>
+</html>

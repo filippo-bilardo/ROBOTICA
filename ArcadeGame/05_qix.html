@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qix Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 600px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #000;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>QIX</h1>
+            <p>Capture territory by drawing lines while avoiding the Qix and Sparx!</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Level Complete!</h1>
+            <p>Get ready for the next level</p>
+            <button id="nextLevelButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Game constants
+        const GRID_SIZE = 600;
+        const PLAYER_SIZE = 10;
+        const QIX_SIZE = 20;
+        const SPARX_SIZE = 8;
+        const PLAYER_SPEED = 3;
+        const QIX_SPEED = 2;
+        const SPARX_SPEED = 2;
+        const FILL_THRESHOLD = 75; // Percentage needed to complete level
+        
+        // Game state variables
+        let gameRunning = false;
+        let gameOver = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let percentageFilled = 0;
+        
+        // Game objects
+        let player;
+        let qix;
+        let sparxes = [];
+        let claimedArea = [];
+        let currentPath = [];
+        let isDrawing = false;
+        let gameArea = []; // Add a 2D grid to track claimed areas
+        
+        // Input handling
+        const keys = {};
+        let lastKeyPressed = null; // Track the last key pressed for more reliable movement
+        
+        // Initialize the game area grid
+        function initGameArea() {
+            gameArea = [];
+            // Create a 2D grid where 0 = unclaimed, 1 = claimed/border
+            for (let y = 0; y < GRID_SIZE; y++) {
+                gameArea.push([]);
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    // Set borders as claimed
+                    if (x === 0 || x === GRID_SIZE - 1 || y === 0 || y === GRID_SIZE - 1) {
+                        gameArea[y].push(1);
+                    } else {
+                        gameArea[y].push(0);
+                    }
+                }
+            }
+        }
+        
+        // Player class
+        class Player {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.width = PLAYER_SIZE;
+                this.height = PLAYER_SIZE;
+                this.speed = PLAYER_SPEED;
+                this.direction = null;
+                this.isOnEdge = true;
+                this.color = "#00FF00";
+            }
+            
+            update() {
+                // Store the previous position
+                const prevX = this.x;
+                const prevY = this.y;
+                
+                // Handle movement based on edge or drawing state
+                if (this.isOnEdge) {
+                    this.moveOnEdge();
+                } else if (isDrawing) {
+                    this.moveDrawing();
+                }
+                
+                // If drawing, add current position to path
+                if (isDrawing && (prevX !== this.x || prevY !== this.y)) {
+                    currentPath.push({x: this.x, y: this.y});
+                }
+                
+                // Check for collisions
+                this.checkCollisions();
+            }
+            
+            moveOnEdge() {
+                // Use last key pressed for more reliable movement along edges
+                const key = lastKeyPressed;
+                
+                if ((key === 'ArrowRight' || key === 'd' || key === 'D') && 
+                    (this.y === 0 || this.y === GRID_SIZE - this.height || 
+                     this.isOnClaimedArea(this.x + 1, this.y))) {
+                    this.x = Math.min(this.x + this.speed, GRID_SIZE - this.width);
+                }
+                else if ((key === 'ArrowLeft' || key === 'a' || key === 'A') && 
+                         (this.y === 0 || this.y === GRID_SIZE - this.height || 
+                          this.isOnClaimedArea(this.x - 1, this.y))) {
+                    this.x = Math.max(this.x - this.speed, 0);
+                }
+                else if ((key === 'ArrowDown' || key === 's' || key === 'S') && 
+                         (this.x === 0 || this.x === GRID_SIZE - this.width || 
+                          this.isOnClaimedArea(this.x, this.y + 1))) {
+                    this.y = Math.min(this.y + this.speed, GRID_SIZE - this.height);
+                }
+                else if ((key === 'ArrowUp' || key === 'w' || key === 'W') && 
+                         (this.x === 0 || this.x === GRID_SIZE - this.width || 
+                          this.isOnClaimedArea(this.x, this.y - 1))) {
+                    this.y = Math.max(this.y - this.speed, 0);
+                }
+                
+                // Handle starting to draw - only allow from edges/claimed areas
+                if ((keys[' '] || keys['Space']) && !isDrawing && this.isOnAnyEdge()) {
+                    console.log("Starting to draw from edge position");
+                    this.startDrawing();
+                }
+            }
+            
+            isOnAnyEdge() {
+                // Check if player is on any edge or claimed area perimeter
+                return this.x === 0 || this.x === GRID_SIZE - this.width || 
+                       this.y === 0 || this.y === GRID_SIZE - this.height ||
+                       this.isOnClaimedAreaPerimeter();
+            }
+            
+            isOnClaimedArea(x, y) {
+                // Check if a position is part of a claimed area
+                if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return false;
+                
+                const cellX = Math.floor(x / 1);
+                const cellY = Math.floor(y / 1);
+                
+                return gameArea[cellY] && gameArea[cellY][cellX] === 1;
+            }
+            
+            isOnClaimedAreaPerimeter() {
+                // Check surrounding cells to see if we're on a perimeter
+                const directions = [
+                    {dx:1, dy:0}, {dx:-1, dy:0}, {dx:0, dy:1}, {dx:0, dy:-1}
+                ];
+                
+                const cellX = Math.floor(this.x / 1);
+                const cellY = Math.floor(this.y / 1);
+                
+                if (!gameArea[cellY] || gameArea[cellY][cellX] !== 1) return false;
+                
+                // Check if at least one adjacent cell is unclaimed
+                for (const dir of directions) {
+                    const nx = cellX + dir.dx;
+                    const ny = cellY + dir.dy;
+                    
+                    if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && 
+                        gameArea[ny][nx] === 0) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            moveDrawing() {
+                // More direct movement when drawing
+                const key = lastKeyPressed;
+                
+                if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+                    this.x = Math.min(this.x + this.speed, GRID_SIZE - this.width);
+                    this.direction = 'right';
+                }
+                else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+                    this.x = Math.max(this.x - this.speed, 0);
+                    this.direction = 'left';
+                }
+                else if (key === 'ArrowDown' || key === 's' || key === 'S') {
+                    this.y = Math.min(this.y + this.speed, GRID_SIZE - this.height);
+                    this.direction = 'down';
+                }
+                else if (key === 'ArrowUp' || key === 'w' || key === 'W') {
+                    this.y = Math.max(this.y - this.speed, 0);
+                    this.direction = 'up';
+                }
+                
+                // Check if player reached a boundary
+                if (this.hasReachedBoundary()) {
+                    this.completePath();
+                }
+            }
+            
+            startDrawing() {
+                isDrawing = true;
+                this.isOnEdge = false;
+                currentPath = [{x: this.x, y: this.y}];
+                console.log("Drawing started at", this.x, this.y);
+            }
+            
+            hasReachedBoundary() {
+                // Check if player reached an edge of the canvas
+                if (this.x <= 0 || this.x >= GRID_SIZE - this.width || 
+                    this.y <= 0 || this.y >= GRID_SIZE - this.height) {
+                    console.log("Reached canvas edge at", this.x, this.y);
+                    return true;
+                }
+                
+                // Check if player is back on a claimed cell
+                const cellX = Math.floor(this.x / 1);
+                const cellY = Math.floor(this.y / 1);
+                
+                if (gameArea[cellY] && gameArea[cellY][cellX] === 1) {
+                    console.log("Reached claimed area at", this.x, this.y);
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            completePath() {
+                // Only complete the path if it's long enough and forms a valid loop
+                if (currentPath.length < 3) {
+                    console.log("Path too short to complete");
+                    isDrawing = false;
+                    this.isOnEdge = true;
+                    currentPath = [];
+                    return;
+                }
+                
+                // Calculate the area enclosed by the path
+                calculateClaimedArea();
+                
+                // Reset drawing state
+                isDrawing = false;
+                this.isOnEdge = true;
+                currentPath = [];
+            }
+            
+            checkCollisions() {
+                // Only check for collisions when drawing
+                if (!isDrawing) return;
+                
+                // Check collision with Qix
+                if (this.intersectsWithQix()) {
+                    console.log("Collided with Qix");
+                    this.die();
+                    return;
+                }
+                
+                // Check collision with Sparx
+                for (const sparx of sparxes) {
+                    if (this.intersectsWith(sparx)) {
+                        console.log("Collided with Sparx");
+                        this.die();
+                        return;
+                    }
+                }
+                
+                // Check collision with the drawing path itself (except start point)
+                if (currentPath.length > 2) {
+                    // Only check up to the second-to-last point to avoid false self-intersections
+                    for (let i = 0; i < currentPath.length - 2; i++) {
+                        const point = currentPath[i];
+                        const dx = this.x - point.x;
+                        const dy = this.y - point.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < this.width / 2) {
+                            console.log("Collided with own path");
+                            this.die();
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            intersectsWithQix() {
+                return (this.x < qix.x + qix.size && 
+                        this.x + this.width > qix.x && 
+                        this.y < qix.y + qix.size && 
+                        this.y + this.height > qix.y);
+            }
+            
+            intersectsWith(entity) {
+                return (this.x < entity.x + entity.size && 
+                        this.x + this.width > entity.x && 
+                        this.y < entity.y + entity.size && 
+                        this.y + this.height > entity.y);
+            }
+            
+            die() {
+                lives--;
+                isDrawing = false;
+                currentPath = [];
+                
+                if (lives <= 0) {
+                    endGame();
+                } else {
+                    resetPositions();
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Draw an indicator when over a valid drawing start point
+                if (!isDrawing && this.isOnAnyEdge()) {
+                    ctx.strokeStyle = "#FFFF00";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+                }
+            }
+        }
+        
+        // Qix enemy class
+        class Qix {
+            constructor() {
+                this.x = GRID_SIZE / 2;
+                this.y = GRID_SIZE / 2;
+                this.size = QIX_SIZE;
+                this.speed = QIX_SPEED;
+                this.dx = Math.random() > 0.5 ? this.speed : -this.speed;
+                this.dy = Math.random() > 0.5 ? this.speed : -this.speed;
+                this.color = "#FF0000";
+                this.points = this.generatePoints();
+            }
+            
+            generatePoints() {
+                // Generate points for the Qix shape
+                const points = [];
+                const numPoints = 5;
+                for (let i = 0; i < numPoints; i++) {
+                    points.push({
+                        x: Math.random() * this.size - this.size/2,
+                        y: Math.random() * this.size - this.size/2
+                    });
+                }
+                return points;
+            }
+            
+            update() {
+                // Move the Qix
+                this.x += this.dx;
+                this.y += this.dy;
+                
+                // Randomly change direction occasionally
+                if (Math.random() < 0.02) {
+                    this.dx = Math.random() * 2 * this.speed - this.speed;
+                    this.dy = Math.random() * 2 * this.speed - this.speed;
+                }
+                
+                // Bounce off boundaries of unclaimed area
+                const rightEdge = GRID_SIZE - this.size;
+                const bottomEdge = GRID_SIZE - this.size;
+                
+                if (this.x <= 0 || this.x >= rightEdge) {
+                    this.dx = -this.dx;
+                    this.x = Math.max(0, Math.min(this.x, rightEdge));
+                }
+                if (this.y <= 0 || this.y >= bottomEdge) {
+                    this.dy = -this.dy;
+                    this.y = Math.max(0, Math.min(this.y, bottomEdge));
+                }
+                
+                // Check for collision with claimed areas (more accurate than before)
+                this.checkAreaCollisions();
+                
+                // Regenerate points occasionally for animation
+                if (Math.random() < 0.1) {
+                    this.points = this.generatePoints();
+                }
+            }
+            
+            checkAreaCollisions() {
+                // Check collision with claimed areas
+                const corners = [
+                    {x: this.x, y: this.y},
+                    {x: this.x + this.size, y: this.y},
+                    {x: this.x, y: this.y + this.size},
+                    {x: this.x + this.size, y: this.y + this.size}
+                ];
+                
+                for (const corner of corners) {
+                    const cellX = Math.floor(corner.x / 1);
+                    const cellY = Math.floor(corner.y / 1);
+                    
+                    if (cellX >= 0 && cellX < GRID_SIZE && cellY >= 0 && cellY < GRID_SIZE &&
+                        gameArea[cellY][cellX] === 1) {
+                        // Reflect away from claimed area
+                        this.dx = -this.dx;
+                        this.dy = -this.dy;
+                        break;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                
+                // Draw the Qix as a changing polygon
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.points[0].x, this.y + this.points[0].y);
+                for (let i = 1; i < this.points.length; i++) {
+                    ctx.lineTo(this.x + this.points[i].x, this.y + this.points[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        
+        // Sparx enemy class
+        class Sparx {
+            constructor(startX, startY) {
+                this.x = startX;
+                this.y = startY;
+                this.size = SPARX_SIZE;
+                this.speed = SPARX_SPEED;
+                this.direction = Math.random() > 0.5 ? 'clockwise' : 'counterclockwise';
+                this.color = "#FFFF00";
+                this.position = 'top'; // Tracks which edge the sparx is on
+            }
+            
+            update() {
+                // Move along the edges of the game area
+                this.moveAlongEdge();
+                
+                // Occasionally change direction
+                if (Math.random() < 0.01) {
+                    this.direction = this.direction === 'clockwise' ? 'counterclockwise' : 'clockwise';
+                }
+            }
+            
+            moveAlongEdge() {
+                if (this.direction === 'clockwise') {
+                    this.moveClockwise();
+                } else {
+                    this.moveCounterClockwise();
+                }
+            }
+            
+            moveClockwise() {
+                switch(this.position) {
+                    case 'top':
+                        this.x += this.speed;
+                        if (this.x >= GRID_SIZE - this.size) {
+                            this.x = GRID_SIZE - this.size;
+                            this.position = 'right';
+                        }
+                        break;
+                    case 'right':
+                        this.y += this.speed;
+                        if (this.y >= GRID_SIZE - this.size) {
+                            this.y = GRID_SIZE - this.size;
+                            this.position = 'bottom';
+                        }
+                        break;
+                    case 'bottom':
+                        this.x -= this.speed;
+                        if (this.x <= 0) {
+                            this.x = 0;
+                            this.position = 'left';
+                        }
+                        break;
+                    case 'left':
+                        this.y -= this.speed;
+                        if (this.y <= 0) {
+                            this.y = 0;
+                            this.position = 'top';
+                        }
+                        break;
+                }
+            }
+            
+            moveCounterClockwise() {
+                switch(this.position) {
+                    case 'top':
+                        this.x -= this.speed;
+                        if (this.x <= 0) {
+                            this.x = 0;
+                            this.position = 'left';
+                        }
+                        break;
+                    case 'left':
+                        this.y += this.speed;
+                        if (this.y >= GRID_SIZE - this.size) {
+                            this.y = GRID_SIZE - this.size;
+                            this.position = 'bottom';
+                        }
+                        break;
+                    case 'bottom':
+                        this.x += this.speed;
+                        if (this.x >= GRID_SIZE - this.size) {
+                            this.x = GRID_SIZE - this.size;
+                            this.position = 'right';
+                        }
+                        break;
+                    case 'right':
+                        this.y -= this.speed;
+                        if (this.y <= 0) {
+                            this.y = 0;
+                            this.position = 'top';
+                        }
+                        break;
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x + this.size/2, this.y + this.size/2, this.size/2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Initialize the game
+        function initGame() {
+            // Initialize game area grid
+            initGameArea();
+            
+            // Create player
+            player = new Player();
+            
+            // Create Qix
+            qix = new Qix();
+            
+            // Create Sparx enemies
+            sparxes = [];
+            sparxes.push(new Sparx(0, 0)); // Top-left corner
+            if (level > 1) {
+                sparxes.push(new Sparx(GRID_SIZE - SPARX_SIZE, 0)); // Top-right corner
+            }
+            if (level > 2) {
+                sparxes.push(new Sparx(0, GRID_SIZE - SPARX_SIZE)); // Bottom-left corner
+            }
+            
+            // Initialize claimed area (visual representation)
+            claimedArea = [
+                {x: 0, y: 0, width: GRID_SIZE, height: 1}, // Top
+                {x: 0, y: GRID_SIZE-1, width: GRID_SIZE, height: 1}, // Bottom
+                {x: 0, y: 0, width: 1, height: GRID_SIZE}, // Left
+                {x: GRID_SIZE-1, y: 0, width: 1, height: GRID_SIZE}  // Right
+            ];
+            
+            currentPath = [];
+            isDrawing = false;
+            percentageFilled = 1; // Start with a small percentage for the border
+            
+            // Set player at starting position
+            resetPositions();
+            
+            console.log("Game initialized with player at", player.x, player.y);
+        }
+        
+        // Reset positions after player death
+        function resetPositions() {
+            player.x = 1;
+            player.y = 1;
+            player.isOnEdge = true;
+            isDrawing = false;
+            currentPath = [];
+        }
+        
+        // Calculate area claimed by player's path
+        function calculateClaimedArea() {
+            if (currentPath.length < 3) {
+                console.log("Path too short to claim area");
+                return; // Path too short to form an area
+            }
+            
+            // Find the smaller area to fill
+            // This is a simplified approach - in a full implementation you would:
+            // 1. Identify which of the two areas divided by the path contains the Qix
+            // 2. Fill the area that doesn't contain the Qix
+            
+            // For simplicity, we'll just flood fill from a point that's likely outside the path
+            const gridCopy = [];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                gridCopy[y] = [...gameArea[y]];
+            }
+            
+            // Mark the path on the grid
+            for (const point of currentPath) {
+                const x = Math.floor(point.x);
+                const y = Math.floor(point.y);
+                if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                    gridCopy[y][x] = 2; // Mark path
+                }
+            }
+            
+            // Create a visual representation of the filled area
+            const newClaimedArea = {
+                x: Math.floor(currentPath[0].x),
+                y: Math.floor(currentPath[0].y),
+                width: 0,
+                height: 0
+            };
+            
+            // Find the bounding box
+            let minX = GRID_SIZE, minY = GRID_SIZE, maxX = 0, maxY = 0;
+            for (const point of currentPath) {
+                minX = Math.min(minX, Math.floor(point.x));
+                minY = Math.min(minY, Math.floor(point.y));
+                maxX = Math.max(maxX, Math.floor(point.x));
+                maxY = Math.max(maxY, Math.floor(point.y));
+            }
+            
+            newClaimedArea.x = minX;
+            newClaimedArea.y = minY;
+            newClaimedArea.width = maxX - minX + 1;
+            newClaimedArea.height = maxY - minY + 1;
+            
+            // Add to claimed area array for visualization
+            claimedArea.push(newClaimedArea);
+            
+            // Mark cells within the bounding box as claimed in the game grid
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (y >= 0 && y < GRID_SIZE && x >= 0 && x < GRID_SIZE) {
+                        gameArea[y][x] = 1;
+                    }
+                }
+            }
+            
+            // Calculate the percentage filled
+            const totalArea = GRID_SIZE * GRID_SIZE;
+            let filledCells = 0;
+            
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (gameArea[y][x] === 1) {
+                        filledCells++;
+                    }
+                }
+            }
+            
+            percentageFilled = (filledCells / totalArea) * 100;
+            console.log(`Area filled: ${percentageFilled.toFixed(2)}%`);
+            
+            // Add to score based on claimed area
+            score += Math.floor(newClaimedArea.width * newClaimedArea.height / 10);
+            
+            // Check if level is complete
+            if (percentageFilled >= FILL_THRESHOLD) {
+                levelComplete();
+            }
+        }
+        
+        // Draw the game area
+        function drawGameArea() {
+            // Draw background
+            ctx.fillStyle = "#000033";
+            ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
+            
+            // Draw claimed areas
+            ctx.fillStyle = "#003366";
+            for (const area of claimedArea) {
+                ctx.fillRect(area.x, area.y, area.width, area.height);
+            }
+            
+            // Visualize the game grid for debugging
+            if (gameRunning) {
+                for (let y = 0; y < GRID_SIZE; y += 20) {
+                    for (let x = 0; x < GRID_SIZE; x += 20) {
+                        if (gameArea[y] && gameArea[y][x] === 1) {
+                            ctx.fillStyle = "rgba(0, 100, 255, 0.3)";
+                            ctx.fillRect(x, y, 20, 20);
+                        }
+                    }
+                }
+            }
+            
+            // Draw visual percentage indicator
+            ctx.fillStyle = "#4CAF50";
+            ctx.fillRect(GRID_SIZE - 20, 0, 20, GRID_SIZE * (percentageFilled / 100));
+            
+            // Draw borders
+            ctx.strokeStyle = "#00FF00";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, GRID_SIZE, GRID_SIZE);
+            
+            // Draw current path with improved visibility
+            if (isDrawing && currentPath.length > 1) {
+                // Draw line
+                ctx.strokeStyle = "#00FF00";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(currentPath[0].x + PLAYER_SIZE/2, currentPath[0].y + PLAYER_SIZE/2);
+                for (let i = 1; i < currentPath.length; i++) {
+                    ctx.lineTo(currentPath[i].x + PLAYER_SIZE/2, currentPath[i].y + PLAYER_SIZE/2);
+                }
+                ctx.stroke();
+                
+                // Draw start point
+                ctx.fillStyle = "#FF0000";
+                ctx.beginPath();
+                ctx.arc(currentPath[0].x + PLAYER_SIZE/2, currentPath[0].y + PLAYER_SIZE/2, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Draw the game UI
+        function drawUI() {
+            ctx.fillStyle = "white";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "left";
+            ctx.fillText(`Score: ${score}`, 10, 20);
+            ctx.fillText(`Lives: ${lives}`, 10, 40);
+            ctx.fillText(`Level: ${level}`, 10, 60);
+            ctx.fillText(`Area: ${Math.floor(percentageFilled)}%`, 10, 80);
+            ctx.fillText(`Target: ${FILL_THRESHOLD}%`, 10, 100);
+        }
+        
+        // Game over
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Level complete
+        function levelComplete() {
+            gameRunning = false;
+            level++;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Start new game with fixes
+        function startNewGame() {
+            console.log("Starting new game");
+            // Hide screens
+            startScreen.style.display = 'none';
+            gameOverScreen.style.visibility = 'hidden';
+            levelCompleteScreen.style.visibility = 'hidden';
+            
+            // Reset game variables
+            score = 0;
+            lives = 3;
+            level = 1;
+            
+            // Initialize game
+            initGame();
+            
+            // Start the game
+            gameRunning = true;
+            gameOver = false;
+        }
+        
+        // Start next level
+        function startNextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            initGame();
+            gameRunning = true;
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw game area
+            drawGameArea();
+            
+            if (gameRunning) {
+                // Update game objects
+                player.update();
+                qix.update();
+                sparxes.forEach(sparx => sparx.update());
+                
+                // Draw game objects
+                player.draw();
+                qix.draw();
+                sparxes.forEach(sparx => sparx.draw());
+            }
+            
+            // Draw UI
+            drawUI();
+            
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', function(e) {
+            console.log("Key pressed:", e.key);
+            keys[e.key] = true;
+            
+            // Store the last direction key pressed
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+                lastKeyPressed = e.key;
+            }
+            
+            // Fix: Support for spacebar on different browsers
+            if (e.code === "Space") {
+                keys[' '] = true;
+                keys['Space'] = true;
+            }
+            
+            // Prevent default for game control keys
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D", " ", "Space"].includes(e.key) || 
+                e.code === "Space") {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+            
+            // Fix: Support for spacebar on different browsers
+            if (e.code === "Space") {
+                keys[' '] = false;
+                keys['Space'] = false;
+            }
+        });
+        
+        // Debug helper: click to place player at position
+        canvas.addEventListener('click', function(e) {
+            if (gameRunning && !isDrawing) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                player.x = x - PLAYER_SIZE/2;
+                player.y = y - PLAYER_SIZE/2;
+                console.log("Player moved to", x, y);
+            }
+        });
+        
+        // Button event listeners
+        startButton.addEventListener('click', startNewGame);
+        restartButton.addEventListener('click', startNewGame);
+        nextLevelButton.addEventListener('click', startNextLevel);
+        
+        // Start the game loop
+        gameLoop();
+        
+        console.log("Qix game loaded with enhanced debugging");
+    </script>
+</body>
+</html>
