@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Pilot - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #time-period {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #mini-map {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid #444;
+            border-radius: 50%;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #FF4500;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #FF4500;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #333;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div id="score-display">Punteggio: 0</div>
+        <div id="lives-display">Vite: 3</div>
+        <div id="time-period">Era: 1940</div>
+        <div id="mini-map"></div>
+        <div id="game-over">GAME OVER</div>
+        
+        <div id="start-screen">
+            <h1>TIME PILOT</h1>
+            <div class="controls">
+                <p>Usa <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> o <span class="key">↑</span> <span class="key">←</span> <span class="key">↓</span> <span class="key">→</span> per muoverti</p>
+                <p>Premi <span class="key">Spazio</span> per sparare</p>
+            </div>
+            <button id="start-button">INIZIA</button>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const timePeriodDisplay = document.getElementById('time-period');
+        const gameOverDisplay = document.getElementById('game-over');
+        const miniMap = document.getElementById('mini-map');
+        
+        // Ridimensiona il canvas per adattarlo alla finestra
+        function resizeCanvas() {
+            const containerWidth = window.innerWidth * 0.8;
+            const containerHeight = window.innerHeight * 0.8;
+            const aspectRatio = 4/3;
+            
+            let newWidth, newHeight;
+            
+            if (containerWidth / containerHeight > aspectRatio) {
+                newHeight = containerHeight;
+                newWidth = containerHeight * aspectRatio;
+            } else {
+                newWidth = containerWidth;
+                newHeight = containerWidth / aspectRatio;
+            }
+            
+            canvas.style.width = `${newWidth}px`;
+            canvas.style.height = `${newHeight}px`;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Variabili di gioco
+        let gameRunning = false;
+        let score = 0;
+        let lives = 3;
+        let timePeriod = 1940;
+        let player;
+        let enemies = [];
+        let bullets = [];
+        let enemyBullets = [];
+        let clouds = [];
+        let bossFight = false;
+        let boss = null;
+        let gameLoop;
+        
+        // Classe per il giocatore
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.radius = 15;
+                this.speed = 5;
+                this.angle = 0;
+                this.color = '#00FFFF';
+                this.invulnerable = false;
+                this.invulnerableTimer = 0;
+            }
+            
+            draw() {
+                if (this.invulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
+                    return; // Lampeggia quando invulnerabile
+                }
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Disegna l'aereo del giocatore
+                ctx.beginPath();
+                ctx.moveTo(20, 0);
+                ctx.lineTo(-10, -10);
+                ctx.lineTo(-5, 0);
+                ctx.lineTo(-10, 10);
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            update() {
+                // Aggiorna la posizione in base ai controlli
+                if (keys.ArrowUp || keys.w) this.moveForward();
+                if (keys.ArrowLeft || keys.a) this.angle -= 0.1;
+                if (keys.ArrowRight || keys.d) this.angle += 0.1;
+                
+                // Gestione dell'invulnerabilità
+                if (this.invulnerable) {
+                    this.invulnerableTimer--;
+                    if (this.invulnerableTimer <= 0) {
+                        this.invulnerable = false;
+                    }
+                }
+            }
+            
+            moveForward() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                
+                // Limita il giocatore all'interno del canvas
+                this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+            }
+            
+            shoot() {
+                const bullet = {
+                    x: this.x + Math.cos(this.angle) * 20,
+                    y: this.y + Math.sin(this.angle) * 20,
+                    radius: 3,
+                    speed: 10,
+                    angle: this.angle,
+                    color: '#FFFF00'
+                };
+                bullets.push(bullet);
+            }
+        }
+        
+        // Inizializza il gioco
+        function initGame() {
+            player = new Player();
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            clouds = [];
+            score = 0;
+            lives = 3;
+            timePeriod = 1940;
+            bossFight = false;
+            boss = null;
+            
+            // Crea alcune nuvole iniziali
+            for (let i = 0; i < 10; i++) {
+                createCloud();
+            }
+            
+            // Aggiorna i display
+            updateDisplays();
+            
+            // Avvia il loop di gioco
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameUpdate, 1000 / 60);
+        }
+        
+        // Funzione principale di aggiornamento del gioco
+        function gameUpdate() {
+            // Pulisci il canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Aggiorna e disegna le nuvole
+            updateClouds();
+            
+            // Aggiorna e disegna il giocatore
+            player.update();
+            player.draw();
+            
+            // Aggiorna e disegna i proiettili
+            updateBullets();
+            
+            // Aggiorna e disegna i nemici
+            if (!bossFight) {
+                if (Math.random() < 0.02 && enemies.length < 10) {
+                    createEnemy();
+                }
+                updateEnemies();
+            } else {
+                // Gestione del boss
+                if (boss) {
+                    updateBoss();
+                } else if (enemies.length === 0) {
+                    // Crea un nuovo boss quando tutti i nemici sono stati eliminati
+                    createBoss();
+                }
+            }
+            
+            // Controlla le collisioni
+            checkCollisions();
+            
+            // Controlla se è il momento di passare al boss
+            if (!bossFight && score > 0 && score % 1000 === 0) {
+                bossFight = true;
+            }
+        }
+        
+        // Funzioni di supporto per il gioco
+        function createCloud() {
+            const edge = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+            let x, y;
+            
+            switch (edge) {
+                case 0: // top
+                    x = Math.random() * canvas.width;
+                    y = -50;
+                    break;
+                case 1: // right
+                    x = canvas.width + 50;
+                    y = Math.random() * canvas.height;
+                    break;
+                case 2: // bottom
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + 50;
+                    break;
+                case 3: // left
+                    x = -50;
+                    y = Math.random() * canvas.height;
+                    break;
+            }
+            
+            const cloud = {
+                x: x,
+                y: y,
+                radius: 20 + Math.random() * 30,
+                speed: 0.5 + Math.random() * 1,
+                angle: Math.random() * Math.PI * 2,
+                color: `rgba(255, 255, 255, ${0.1 + Math.random() * 0.2})`
+            };
+            
+            clouds.push(cloud);
+        }
+        
+        function updateClouds() {
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                const cloud = clouds[i];
+                
+                cloud.x += Math.cos(cloud.angle) * cloud.speed;
+                cloud.y += Math.sin(cloud.angle) * cloud.speed;
+                
+                // Disegna la nuvola
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2);
+                ctx.fillStyle = cloud.color;
+                ctx.fill();
+                
+                // Rimuovi le nuvole che escono dallo schermo
+                if (cloud.x < -100 || cloud.x > canvas.width + 100 ||
+                    cloud.y < -100 || cloud.y > canvas.height + 100) {
+                    clouds.splice(i, 1);
+                    createCloud(); // Crea una nuova nuvola
+                }
+            }
+        }
+        
+        function createEnemy() {
+            const edge = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+            let x, y;
+            
+            switch (edge) {
+                case 0: // top
+                    x = Math.random() * canvas.width;
+                    y = -30;
+                    break;
+                case 1: // right
+                    x = canvas.width + 30;
+                    y = Math.random() * canvas.height;
+                    break;
+                case 2: // bottom
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + 30;
+                    break;
+                case 3: // left
+                    x = -30;
+                    y = Math.random() * canvas.height;
+                    break;
+            }
+            
+            const enemy = {
+                x: x,
+                y: y,
+                radius: 15,
+                speed: 2 + Math.random() * 2,
+                angle: 0,
+                color: '#FF4500',
+                health: 1,
+                shootTimer: Math.floor(Math.random() * 100)
+            };
+            
+            enemies.push(enemy);
+        }
+        
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                // Calcola l'angolo verso il giocatore
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                enemy.angle = Math.atan2(dy, dx);
+                
+                // Muovi il nemico verso il giocatore
+                enemy.x += Math.cos(enemy.angle) * enemy.speed;
+                enemy.y += Math.sin(enemy.angle) * enemy.speed;
+                
+                // Spara occasionalmente
+                enemy.shootTimer--;
+                if (enemy.shootTimer <= 0) {
+                    enemyShoot(enemy);
+                    enemy.shootTimer = 100 + Math.floor(Math.random() * 50);
+                }
+                
+                // Disegna il nemico
+                ctx.save();
+                ctx.translate(enemy.x, enemy.y);
+                ctx.rotate(enemy.angle);
+                
+                ctx.beginPath();
+                ctx.moveTo(15, 0);
+                ctx.lineTo(-10, -8);
+                ctx.lineTo(-5, 0);
+                ctx.lineTo(-10, 8);
+                ctx.closePath();
+                ctx.fillStyle = enemy.color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+        }
+        
+        function enemyShoot(enemy) {
+            const bullet = {
+                x: enemy.x + Math.cos(enemy.angle) * 15,
+                y: enemy.y + Math.sin(enemy.angle) * 15,
+                radius: 3,
+                speed: 5,
+                angle: enemy.angle,
+                color: '#FF0000'
+            };
+            enemyBullets.push(bullet);
+        }
+        
+        function createBoss() {
+            boss = {
+                x: canvas.width / 2,
+                y: -50,
+                radius: 40,
+                speed: 2,
+                angle: 0,
+                color: '#FF0000',
+                health: 20,
+                shootTimer: 30,
+                state: 'entering', // entering, attacking, circling
+                stateTimer: 180,
+                circleAngle: 0
+            };
+        }
+        
+        function updateBoss() {
+            if (!boss) return;
+            
+            // Gestione degli stati del boss
+            switch (boss.state) {
+                case 'entering':
+                    boss.y += boss.speed;
+                    if (boss.y >= canvas.height / 4) {
+                        boss.state = 'attacking';
+                    }
+                    break;
+                    
+                case 'attacking':
+                    // Calcola l'angolo verso il giocatore
+                    const dx = player.x - boss.x;
+                    const dy = player.y - boss.y;
+                    boss.angle = Math.atan2(dy, dx);
+                    
+                    // Muovi lentamente verso il giocatore
+                    boss.x += Math.cos(boss.angle) * (boss.speed * 0.5);
+                    boss.y += Math.sin(boss.angle) * (boss.speed * 0.5);
+                    
+                    boss.stateTimer--;
+                    if (boss.stateTimer <= 0) {
+                        boss.state = 'circling';
+                        boss.stateTimer = 240;
+                    }
+                    break;
+                    
+                case 'circling':
+                    boss.circleAngle += 0.02;
+                    boss.x = canvas.width / 2 + Math.cos(boss.circleAngle) * (canvas.width / 4);
+                    boss.y = canvas.height / 3 + Math.sin(boss.circleAngle) * (canvas.height / 4);
+                    
+                    boss.stateTimer--;
+                    if (boss.stateTimer <= 0) {
+                        boss.state = 'attacking';
+                        boss.stateTimer = 180;
+                    }
+                    break;
+            }
+            
+            // Spara proiettili
+            boss.shootTimer--;
+            if (boss.shootTimer <= 0) {
+                // Spara in più direzioni
+                for (let i = 0; i < 5; i++) {
+                    const angle = boss.angle - Math.PI / 6 + (Math.PI / 6 * i);
+                    const bullet = {
+                        x: boss.x + Math.cos(angle) * boss.radius,
+                        y: boss.y + Math.sin(angle) * boss.radius,
+                        radius: 5,
+                        speed: 4,
+                        angle: angle,
+                        color: '#FF0000'
+                    };
+                    enemyBullets.push(bullet);
+                }
+                boss.shootTimer = 45;
+            }
+            
+            // Disegna il boss
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+            
+            // Corpo principale
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.radius, 0, Math.PI * 2);
+            ctx.fillStyle = boss.color;
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Dettagli
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.radius * 0.7, 0, Math.PI * 2);
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
+            
+            // Barra della vita
+            ctx.fillStyle = 'black';
+            ctx.fillRect(-boss.radius, -boss.radius - 15, boss.radius * 2, 10);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(-boss.radius, -boss.radius - 15, (boss.radius * 2) * (boss.health / 20), 10);
+            
+            ctx.restore();
+        }
+        
+        function updateBullets() {
+            // Aggiorna i proiettili del giocatore
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                
+                // Disegna il proiettile
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fillStyle = bullet.color;
+                ctx.fill();
+                
+                // Rimuovi i proiettili che escono dallo schermo
+                if (bullet.x < 0 || bullet.x > canvas.width ||
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna i proiettili nemici
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                
+                // Disegna il proiettile
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fillStyle = bullet.color;
+                ctx.fill();
+                
+                // Rimuovi i proiettili che escono dallo schermo
+                if (bullet.x < 0 || bullet.x > canvas.width ||
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    enemyBullets.splice(i, 1);
+                }
+            }
+        }
+        
+        function checkCollisions() {
+            // Collisioni tra proiettili del giocatore e nemici
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // Controlla collisioni con i nemici normali
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullet.radius + enemy.radius) {
+                        enemy.health--;
+                        if (enemy.health <= 0) {
+                            enemies.splice(j, 1);
+                            score += 100;
+                            updateDisplays();
+                        }
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+                
+                // Controlla collisioni con il boss
+                if (boss && bullet) {
+                    const dx = bullet.x - boss.x;
+                    const dy = bullet.y - boss.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullet.radius + boss.radius) {
+                        boss.health--;
+                        if (boss.health <= 0) {
+                            boss = null;
+                            bossFight = false;
+                            score += 1000;
+                            timePeriod += 20; // Avanza nel tempo
+                            updateDisplays();
+                        }
+                        bullets.splice(i, 1);
+                    }
+                }
+            }
+            
+            // Collisioni tra proiettili nemici e giocatore
+            if (!player.invulnerable) {
+                for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                    const bullet = enemyBullets[i];
+                    const dx = bullet.x - player.x;
+                    const dy = bullet.y - player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullet.radius + player.radius) {
+                        playerHit();
+                        enemyBullets.splice(i, 1);
+                        break;
+                    }
+                }
+                
+                // Collisioni tra nemici e giocatore
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+                    const dx = enemy.x - player.x;
+                    const dy = enemy.y - player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < enemy.radius + player.radius) {
+                        playerHit();
+                        enemies.splice(i, 1);
+                        break;
+                    }
+                }
+                
+                // Collisione tra boss e giocatore
+                if (boss) {
+                    const dx = boss.x - player.x;
+                    const dy = boss.y - player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < boss.radius + player.radius) {
+                        playerHit();
+                    }
+                }
+            }
+        }
+        
+        function playerHit() {
+            lives--;
+            updateDisplays();
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                player.invulnerable = true;
+                player.invulnerableTimer = 120; // 2 secondi a 60 FPS
+            }
+        }
+        
+        function gameOver() {
+            clearInterval(gameLoop);
+            gameRunning = false;
+            gameOverDisplay.style.display = 'block';
+            
+            // Mostra il punteggio finale
+            gameOverDisplay.textContent = `GAME OVER - Punteggio: ${score}`;
+            
+            // Riavvia il gioco dopo 3 secondi
+            setTimeout(() => {
+                gameOverDisplay.style.display = 'none';
+                startScreen.style.display = 'flex';
+            }, 3000);
+        }
+        
+        function updateDisplays() {
+            scoreDisplay.textContent = `Punteggio: ${score}`;
+            livesDisplay.textContent = `Vite: ${lives}`;
+            timePeriodDisplay.textContent = `Era: ${timePeriod}`;
+        }
+        
+        // Gestione degli input
+        const keys = {};
+        
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // Spara con la barra spaziatrice
+            if (e.key === ' ' && gameRunning) {
+                player.shoot();
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // Avvia il gioco quando si preme il pulsante di inizio
+        startButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            initGame();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centipede - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #00FF00;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00FF00;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .controls-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            max-width: 600px;
+        }
+        
+        .controls-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>CENTIPEDE</h1>
+            <button id="start-button">INIZIA GIOCO</button>
+            <div class="controls-info">
+                <p>Usa il mouse o le frecce direzionali per muovere il blaster</p>
+                <p>Premi SPAZIO o fai clic per sparare</p>
+                <p>Distruggi il millepiedi e gli altri insetti prima che ti raggiungano!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        
+        // Dimensioni del canvas
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        // Dimensione della griglia
+        const GRID_SIZE = 20;
+        const GRID_WIDTH = Math.floor(canvas.width / GRID_SIZE);
+        const GRID_HEIGHT = Math.floor(canvas.height / GRID_SIZE);
+        
+        // Area di gioco del giocatore (parte inferiore dello schermo)
+        const PLAYER_AREA_HEIGHT = Math.floor(GRID_HEIGHT / 5);
+        
+        // Variabili di gioco
+        let score = 0;
+        let lives = 3;
+        let gameActive = false;
+        let gameLoop;
+        
+        // Giocatore (blaster)
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - GRID_SIZE,
+            width: GRID_SIZE,
+            height: GRID_SIZE,
+            speed: 5,
+            color: '#00FFFF',
+            draw: function() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            update: function() {
+                // Limita il movimento all'area del giocatore
+                if (this.x < this.width / 2) {
+                    this.x = this.width / 2;
+                } else if (this.x > canvas.width - this.width / 2) {
+                    this.x = canvas.width - this.width / 2;
+                }
+                
+                if (this.y < canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE) {
+                    this.y = canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE;
+                } else if (this.y > canvas.height - this.height / 2) {
+                    this.y = canvas.height - this.height / 2;
+                }
+            }
+        };
+        
+        // Proiettili
+        const bullets = [];
+        const BULLET_SPEED = 10;
+        const BULLET_SIZE = 5;
+        const MAX_BULLETS = 5;
+        
+        // Funghi
+        const mushrooms = [];
+        const MUSHROOM_COUNT = 30;
+        
+        // Millepiedi
+        const centipede = [];
+        const CENTIPEDE_LENGTH = 12;
+        const CENTIPEDE_SPEED = 1;
+        
+        // Ragni
+        const spiders = [];
+        const SPIDER_SPAWN_RATE = 0.005; // Probabilità per frame
+        const SPIDER_SPEED = 2;
+        
+        // Pulci
+        const fleas = [];
+        const FLEA_SPAWN_RATE = 0.002; // Probabilità per frame
+        const FLEA_SPEED = 3;
+        
+        // Controlli
+        const keys = {};
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseControl = false;
+        
+        // Event listeners per i controlli
+        window.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+        });
+        
+        window.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            mouseControl = true;
+        });
+        
+        canvas.addEventListener('mousedown', function() {
+            if (gameActive && bullets.length < MAX_BULLETS) {
+                fireBullet();
+            }
+        });
+        
+        // Inizia il gioco
+        startButton.addEventListener('click', startGame);
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            updateScore();
+            updateLives();
+            
+            // Resetta gli array
+            bullets.length = 0;
+            mushrooms.length = 0;
+            centipede.length = 0;
+            spiders.length = 0;
+            fleas.length = 0;
+            
+            // Resetta il giocatore
+            player.x = canvas.width / 2;
+            player.y = canvas.height - GRID_SIZE;
+            
+            // Crea i funghi
+            createMushrooms();
+            
+            // Crea il millepiedi
+            createCentipede();
+            
+            // Avvia il loop di gioco
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 1000/60); // 60 FPS
+        }
+        
+        function createMushrooms() {
+            for (let i = 0; i < MUSHROOM_COUNT; i++) {
+                // Posiziona i funghi casualmente nell'area superiore
+                const x = Math.floor(Math.random() * GRID_WIDTH) * GRID_SIZE + GRID_SIZE / 2;
+                const y = Math.floor(Math.random() * (GRID_HEIGHT - PLAYER_AREA_HEIGHT)) * GRID_SIZE + GRID_SIZE / 2;
+                
+                mushrooms.push({
+                    x: x,
+                    y: y,
+                    health: 4,
+                    size: GRID_SIZE
+                });
+            }
+        }
+        
+        function createCentipede() {
+            for (let i = 0; i < CENTIPEDE_LENGTH; i++) {
+                centipede.push({
+                    x: i * GRID_SIZE + GRID_SIZE / 2,
+                    y: GRID_SIZE / 2,
+                    size: GRID_SIZE,
+                    direction: 1, // 1 = destra, -1 = sinistra
+                    moveDown: false,
+                    speed: CENTIPEDE_SPEED
+                });
+            }
+        }
+        
+        function fireBullet() {
+            bullets.push({
+                x: player.x,
+                y: player.y - player.height / 2,
+                size: BULLET_SIZE,
+                speed: BULLET_SPEED
+            });
+        }
+        
+        function update() {
+            if (!gameActive) return;
+            
+            // Pulisci il canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Controlli del giocatore
+            if (mouseControl) {
+                player.x = mouseX;
+                player.y = mouseY;
+            } else {
+                if (keys['ArrowLeft'] || keys['a']) {
+                    player.x -= player.speed;
+                }
+                if (keys['ArrowRight'] || keys['d']) {
+                    player.x += player.speed;
+                }
+                if (keys['ArrowUp'] || keys['w']) {
+                    player.y -= player.speed;
+                }
+                if (keys['ArrowDown'] || keys['s']) {
+                    player.y += player.speed;
+                }
+            }
+            
+            // Spara
+            if ((keys[' '] || keys['Enter']) && bullets.length < MAX_BULLETS) {
+                keys[' '] = false; // Previene il fuoco continuo
+                keys['Enter'] = false;
+                fireBullet();
+            }
+            
+            // Aggiorna e disegna il giocatore
+            player.update();
+            player.draw();
+            
+            // Aggiorna e disegna i proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                // Muovi il proiettile
+                bullets[i].y -= bullets[i].speed;
+                
+                // Rimuovi i proiettili fuori dallo schermo
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Disegna il proiettile
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(bullets[i].x, bullets[i].y, bullets[i].size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Collisione con i funghi
+                for (let j = mushrooms.length - 1; j >= 0; j--) {
+                    const dx = bullets[i].x - mushrooms[j].x;
+                    const dy = bullets[i].y - mushrooms[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullets[i].size + mushrooms[j].size / 2) {
+                        // Rimuovi il proiettile
+                        bullets.splice(i, 1);
+                        
+                        // Danneggia il fungo
+                        mushrooms[j].health--;
+                        
+                        if (mushrooms[j].health <= 0) {
+                            mushrooms.splice(j, 1);
+                            score += 10;
+                            updateScore();
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                // Se il proiettile è stato rimosso, salta il resto delle collisioni
+                if (i >= bullets.length) continue;
+                
+                // Collisione con il millepiedi
+                for (let j = centipede.length - 1; j >= 0; j--) {
+                    const dx = bullets[i].x - centipede[j].x;
+                    const dy = bullets[i].y - centipede[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullets[i].size + centipede[j].size / 2) {
+                        // Rimuovi il proiettile
+                        bullets.splice(i, 1);
+                        
+                        // Crea un fungo dove il segmento è stato colpito
+                        mushrooms.push({
+                            x: centipede[j].x,
+                            y: centipede[j].y,
+                            health: 4,
+                            size: GRID_SIZE
+                        });
+                        
+                        // Rimuovi il segmento del millepiedi
+                        centipede.splice(j, 1);
+                        
+                        // Aggiorna il punteggio
+                        score += 100;
+                        updateScore();
+                        
+                        // Se il millepiedi è stato completamente distrutto, creane uno nuovo
+                        if (centipede.length === 0) {
+                            createCentipede();
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                // Se il proiettile è stato rimosso, salta il resto delle collisioni
+                if (i >= bullets.length) continue;
+                
+                // Collisione con i ragni
+                for (let j = spiders.length - 1; j >= 0; j--) {
+                    const dx = bullets[i].x - spiders[j].x;
+                    const dy = bullets[i].y - spiders[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullets[i].size + spiders[j].size / 2) {
+                        // Rimuovi il proiettile
+                        bullets.splice(i, 1);
+                        
+                        // Rimuovi il ragno
+                        spiders.splice(j, 1);
+                        
+                        // Aggiorna il punteggio
+                        score += 300;
+                        updateScore();
+                        
+                        break;
+                    }
+                }
+                
+                // Se il proiettile è stato rimosso, salta il resto delle collisioni
+                if (i >= bullets.length) continue;
+                
+                // Collisione con le pulci
+                for (let j = fleas.length - 1; j >= 0; j--) {
+                    const dx = bullets[i].x - fleas[j].x;
+                    const dy = bullets[i].y - fleas[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < bullets[i].size + fleas[j].size / 2) {
+                        // Rimuovi il proiettile
+                        bullets.splice(i, 1);
+                        
+                        // Rimuovi la pulce
+                        fleas.splice(j, 1);
+                        
+                        // Aggiorna il punteggio
+                        score += 200;
+                        updateScore();
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // Disegna i funghi
+            for (let i = 0; i < mushrooms.length; i++) {
+                // Colore basato sulla salute
+                const healthPercent = mushrooms[i].health / 4;
+                const r = Math.floor(255 * (1 - healthPercent));
+                const g = Math.floor(255 * healthPercent);
+                ctx.fillStyle = `rgb(${r}, ${g}, 0)`;
+                
+                // Disegna il fungo
+                ctx.beginPath();
+                ctx.arc(mushrooms[i].x, mushrooms[i].y, mushrooms[i].size / 2 * healthPercent, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Aggiorna e disegna il millepiedi
+            for (let i = 0; i < centipede.length; i++) {
+                const segment = centipede[i];
+                
+                // Muovi il segmento
+                if (segment.moveDown) {
+                    segment.y += GRID_SIZE;
+                    segment.direction *= -1; // Cambia direzione
+                    segment.moveDown = false;
+                } else {
+                    segment.x += segment.direction * segment.speed;
+                    
+                    // Controlla se il segmento ha raggiunto il bordo
+                    if (segment.x < segment.size / 2 || segment.x > canvas.width - segment.size / 2) {
+                        segment.moveDown = true;
+                    }
+                    
+                    // Controlla se il segmento ha raggiunto l'area del giocatore
+                    if (segment.y >= canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE - segment.size / 2) {
+                        segment.moveDown = true;
+                        segment.y = 0; // Riporta in cima
+                    }
+                    
+                    // Controlla collisione con i funghi
+                    for (let j = 0; j < mushrooms.length; j++) {
+                        const dx = segment.x - mushrooms[j].x;
+                        const dy = segment.y - mushrooms[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < segment.size / 2 + mushrooms[j].size / 2) {
+                            segment.moveDown = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Disegna il segmento
+                ctx.fillStyle = i === 0 ? '#FF0000' : '#00FF00'; // Testa rossa, corpo verde
+                ctx.beginPath();
+                ctx.arc(segment.x, segment.y, segment.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Collisione con il giocatore
+                const dx = segment.x - player.x;
+                const dy = segment.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < segment.size / 2 + player.width / 2) {
+                    playerHit();
+                    break;
+                }
+            }
+            
+            // Genera ragni casualmente
+            if (Math.random() < SPIDER_SPAWN_RATE) {
+                spiders.push({
+                    x: Math.random() < 0.5 ? 0 : canvas.width,
+                    y: canvas.height - Math.random() * PLAYER_AREA_HEIGHT * GRID_SIZE,
+                    size: GRID_SIZE,
+                    speed: SPIDER_SPEED,
+                    directionX: Math.random() < 0.5 ? -1 : 1,
+                    directionY: Math.random() < 0.5 ? -1 : 1
+                });
+            }
+            
+            // Aggiorna e disegna i ragni
+            for (let i = spiders.length - 1; i >= 0; i--) {
+                const spider = spiders[i];
+                
+                // Muovi il ragno
+                spider.x += spider.directionX * spider.speed;
+                spider.y += spider.directionY * spider.speed;
+                
+                // Cambia direzione casualmente
+                if (Math.random() < 0.02) {
+                    spider.directionX = Math.random() < 0.5 ? -1 : 1;
+                }
+                if (Math.random() < 0.02) {
+                    spider.directionY = Math.random() < 0.5 ? -1 : 1;
+                }
+                
+                // Mantieni il ragno nell'area del giocatore
+                if (spider.x < spider.size / 2) {
+                    spider.x = spider.size / 2;
+                    spider.directionX = 1;
+                } else if (spider.x > canvas.width - spider.size / 2) {
+                    spider.x = canvas.width - spider.size / 2;
+                    spider.directionX = -1;
+                }
+                
+                if (spider.y < canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE) {
+                    spider.y = canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE;
+                    spider.directionY = 1;
+                } else if (spider.y > canvas.height - spider.size / 2) {
+                    spider.y = canvas.height - spider.size / 2;
+                    spider.directionY = -1;
+                }
+                
+                // Disegna il ragno
+                ctx.fillStyle = '#FF00FF';
+                ctx.beginPath();
+                ctx.arc(spider.x, spider.y, spider.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Rimuovi funghi casualmente
+                for (let j = mushrooms.length - 1; j >= 0; j--) {
+                    const dx = spider.x - mushrooms[j].x;
+                    const dy = spider.y - mushrooms[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < spider.size / 2 + mushrooms[j].size / 2 && Math.random() < 0.1) {
+                        mushrooms.splice(j, 1);
+                        break;
+                    }
+                }
+                
+                // Collisione con il giocatore
+                const dx = spider.x - player.x;
+                const dy = spider.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < spider.size / 2 + player.width / 2) {
+                    playerHit();
+                    spiders.splice(i, 1);
+                }
+                
+                // Rimuovi i ragni che escono dallo schermo
+                if (spider.x < -spider.size || spider.x > canvas.width + spider.size) {
+                    spiders.splice(i, 1);
+                }
+            }
+            
+            // Genera pulci casualmente se ci sono pochi funghi nell'area del giocatore
+            let mushroomsInPlayerArea = 0;
+            for (let i = 0; i < mushrooms.length; i++) {
+                if (mushrooms[i].y > canvas.height - PLAYER_AREA_HEIGHT * GRID_SIZE) {
+                    mushroomsInPlayerArea++;
+                }
+            }
+            
+            if (mushroomsInPlayerArea < 5 && Math.random() < FLEA_SPAWN_RATE) {
+                fleas.push({
+                    x: Math.random() * canvas.width,
+                    y: 0,
+                    size: GRID_SIZE,
+                    speed: FLEA_SPEED
+                });
+            }
+            
+            // Aggiorna e disegna le pulci
+            for (let i = fleas.length - 1; i >= 0; i--) {
+                const flea = fleas[i];
+                
+                // Muovi la pulce
+                flea.y += flea.speed;
+                
+                // Disegna la pulce
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.arc(flea.x, flea.y, flea.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Crea funghi casualmente
+                if (Math.random() < 0.05 && flea.y < canvas.height - GRID_SIZE) {
+                    const mushroomX = Math.floor(flea.x / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2;
+                    const mushroomY = Math.floor(flea.y / GRID_SIZE) * GRID_SIZE + GRID_SIZE / 2;
+                    
+                    // Verifica che non ci sia già un fungo in questa posizione
+                    let canCreateMushroom = true;
+                    for (let j = 0; j < mushrooms.length; j++) {
+                        if (mushrooms[j].x === mushroomX && mushrooms[j].y === mushroomY) {
+                            canCreateMushroom = false;
+                            break;
+                        }
+                    }
+                    
+                    if (canCreateMushroom) {
+                        mushrooms.push({
+                            x: mushroomX,
+                            y: mushroomY,
+                            health: 4,
+                            size: GRID_SIZE
+                        });
+                    }
+                }
+                
+                // Collisione con il giocatore
+                const dx = flea.x - player.x;
+                const dy = flea.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < flea.size / 2 + player.width / 2) {
+                    playerHit();
+                    fleas.splice(i, 1);
+                }
+                
+                // Rimuovi le pulci che escono dallo schermo
+                if (flea.y > canvas.height + flea.size) {
+                    fleas.splice(i, 1);
+                }
+            }
+        }
+        
+        function playerHit() {
+            lives--;
+            updateLives();
+            
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+        
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+        
+        function updateLives() {
+            livesDisplay.textContent = `Lives: ${lives}`;
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameLoop);
+            gameOverScreen.style.display = 'block';
+            
+            // Riavvia dopo 3 secondi
+            setTimeout(() => {
+                startScreen.style.display = 'flex';
+            }, 3000);
+        }
+        
+        // Ridimensiona il canvas quando la finestra cambia dimensione
+        window.addEventListener('resize', function() {
+            // Mantieni le proporzioni
+            const container = document.getElementById('game-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const scale = Math.min(
+                containerWidth / canvas.width,
+                containerHeight / canvas.height
+            );
+            
+            canvas.style.width = `${canvas.width * scale}px`;
+            canvas.style.height = `${canvas.height * scale}px`;
+        });
+        
+        // Inizializza il ridimensionamento
+        window.dispatchEvent(new Event('resize'));
+    </script>
+</body>
+</html>

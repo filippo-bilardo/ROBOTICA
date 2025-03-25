@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enduro - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #87CEEB;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .controls p {
+            margin: 10px 0;
+        }
+        
+        .controls span {
+            padding: 2px 8px;
+            background-color: #444;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>ENDURO</h1>
+            <p>Guida la tua auto da corsa e supera gli avversari!</p>
+            <p>Raggiungi l'obiettivo giornaliero per avanzare</p>
+            <button id="startButton">Inizia Gioco</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Punteggio: <span id="finalScore">0</span></p>
+            <button id="restartButton">Gioca Ancora</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Giorno Completato!</h1>
+            <p>Punteggio: <span id="levelScore">0</span></p>
+            <button id="nextLevelButton">Prossimo Giorno</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <p>Controlli: <span>←</span> <span>→</span> per sterzare, <span>↑</span> per accelerare, <span>↓</span> per frenare</p>
+    </div>
+
+    <script>
+        // Ottieni riferimenti agli elementi DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        const levelScoreElement = document.getElementById('levelScore');
+        
+        // Costanti di gioco
+        const ROAD_WIDTH = 400;
+        const ROAD_EDGE = (canvas.width - ROAD_WIDTH) / 2;
+        const PLAYER_WIDTH = 50;
+        const PLAYER_HEIGHT = 80;
+        const PLAYER_Y = canvas.height - PLAYER_HEIGHT - 50;
+        const CAR_WIDTH = 50;
+        const CAR_HEIGHT = 80;
+        const MAX_SPEED = 10;
+        const ACCELERATION = 0.1;
+        const DECELERATION = 0.05;
+        const STEERING_SPEED = 5;
+        const HORIZON_Y = canvas.height / 3;
+        
+        // Colori
+        const COLORS = {
+            sky: '#87CEEB',
+            road: '#333333',
+            roadLine: '#FFFFFF',
+            grass: '#7CFC00',
+            mountains: '#8B4513',
+            playerCar: '#FF0000',
+            enemyCars: ['#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF']
+        };
+        
+        // Variabili di stato del gioco
+        let gameRunning = false;
+        let day = 1;
+        let score = 0;
+        let lives = 3;
+        let speed = 0;
+        let roadPosition = 0;
+        let playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
+        let carsToPass = 10; // Auto da superare per completare il giorno
+        let carsPassed = 0;
+        let timeOfDay = 0; // 0 = alba, 1 = giorno, 2 = tramonto, 3 = notte
+        let timeCounter = 0;
+        
+        // Oggetti di gioco
+        let player = {
+            x: playerX,
+            y: PLAYER_Y,
+            width: PLAYER_WIDTH,
+            height: PLAYER_HEIGHT,
+            isMovingLeft: false,
+            isMovingRight: false,
+            isAccelerating: false,
+            isBraking: false
+        };
+        
+        let enemyCars = [];
+        let mountains = [];
+        let trees = [];
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+        nextLevelButton.addEventListener('click', nextDay);
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') player.isMovingLeft = true;
+            if (e.key === 'ArrowRight') player.isMovingRight = true;
+            if (e.key === 'ArrowUp') player.isAccelerating = true;
+            if (e.key === 'ArrowDown') player.isBraking = true;
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowLeft') player.isMovingLeft = false;
+            if (e.key === 'ArrowRight') player.isMovingRight = false;
+            if (e.key === 'ArrowUp') player.isAccelerating = false;
+            if (e.key === 'ArrowDown') player.isBraking = false;
+        });
+        
+        // Funzione per iniziare il gioco
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            initGame();
+            gameLoop();
+        }
+        
+        // Funzione per riavviare il gioco
+        function restartGame() {
+            gameOverScreen.style.visibility = 'hidden';
+            day = 1;
+            score = 0;
+            lives = 3;
+            initGame();
+            gameRunning = true;
+        }
+        
+        // Funzione per passare al giorno successivo
+        function nextDay() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            day++;
+            initGame();
+            gameRunning = true;
+        }
+        
+        // Funzione per inizializzare il gioco
+        function initGame() {
+            speed = 0;
+            roadPosition = 0;
+            playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
+            player.x = playerX;
+            enemyCars = [];
+            carsPassed = 0;
+            carsToPass = 10 + (day * 5); // Aumenta le auto da superare con i giorni
+            timeOfDay = 0;
+            timeCounter = 0;
+            
+            // Inizializza le montagne
+            mountains = [];
+            for (let i = 0; i < 10; i++) {
+                mountains.push({
+                    x: Math.random() * canvas.width,
+                    height: 50 + Math.random() * 100,
+                    width: 100 + Math.random() * 200
+                });
+            }
+            
+            // Inizializza gli alberi
+            trees = [];
+            for (let i = 0; i < 20; i++) {
+                const side = Math.random() > 0.5 ? 'left' : 'right';
+                trees.push({
+                    x: side === 'left' ? Math.random() * ROAD_EDGE : ROAD_EDGE + ROAD_WIDTH + Math.random() * ROAD_EDGE,
+                    y: HORIZON_Y + Math.random() * (canvas.height - HORIZON_Y),
+                    size: 20 + Math.random() * 30,
+                    side: side
+                });
+            }
+            
+            // Inizializza le auto nemiche
+            spawnEnemyCar();
+        }
+        
+        // Funzione per generare un'auto nemica
+        function spawnEnemyCar() {
+            const laneWidth = ROAD_WIDTH / 3;
+            const lane = Math.floor(Math.random() * 3); // 3 corsie
+            const laneX = ROAD_EDGE + (lane * laneWidth) + (laneWidth / 2) - (CAR_WIDTH / 2);
+            
+            enemyCars.push({
+                x: laneX,
+                y: -CAR_HEIGHT,
+                width: CAR_WIDTH,
+                height: CAR_HEIGHT,
+                speed: 2 + Math.random() * 3,
+                color: COLORS.enemyCars[Math.floor(Math.random() * COLORS.enemyCars.length)],
+                passed: false
+            });
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            for (let i = 0; i < enemyCars.length; i++) {
+                const car = enemyCars[i];
+                
+                if (
+                    player.x < car.x + car.width &&
+                    player.x + player.width > car.x &&
+                    player.y < car.y + car.height &&
+                    player.y + player.height > car.y
+                ) {
+                    // Collisione con un'auto nemica
+                    loseLife();
+                    return;
+                }
+                
+                // Controlla se l'auto è stata superata
+                if (!car.passed && car.y > player.y + player.height) {
+                    car.passed = true;
+                    carsPassed++;
+                    score += 100;
+                }
+            }
+            
+            // Controlla se il giocatore è uscito dalla strada
+            if (player.x < ROAD_EDGE || player.x + player.width > ROAD_EDGE + ROAD_WIDTH) {
+                // Rallenta drasticamente se fuori strada
+                speed = Math.max(speed - DECELERATION * 5, 0);
+            }
+            
+            // Controlla se sono state superate abbastanza auto
+            if (carsPassed >= carsToPass) {
+                dayComplete();
+            }
+        }
+        
+        // Funzione per perdere una vita
+        function loseLife() {
+            lives--;
+            speed = 0;
+            
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Funzione per terminare il gioco
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per completare il giorno
+        function dayComplete() {
+            gameRunning = false;
+            levelScoreElement.textContent = score;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per aggiornare il gioco
+        function update() {
+            if (!gameRunning) return;
+            
+            // Aggiorna la velocità
+            if (player.isAccelerating) {
+                speed = Math.min(speed + ACCELERATION, MAX_SPEED);
+            } else if (player.isBraking) {
+                speed = Math.max(speed - DECELERATION * 2, 0);
+            } else {
+                speed = Math.max(speed - DECELERATION, 0);
+            }
+            
+            // Aggiorna la posizione del giocatore
+            if (player.isMovingLeft) {
+                player.x = Math.max(player.x - STEERING_SPEED, 0);
+            }
+            if (player.isMovingRight) {
+                player.x = Math.min(player.x + STEERING_SPEED, canvas.width - player.width);
+            }
+            
+            // Aggiorna la posizione della strada
+            roadPosition += speed;
+            if (roadPosition >= 50) { // Distanza tra le linee della strada
+                roadPosition = 0;
+            }
+            
+            // Aggiorna la posizione degli alberi
+            for (let i = 0; i < trees.length; i++) {
+                const tree = trees[i];
+                tree.y += speed;
+                
+                // Se l'albero esce dallo schermo, riposizionalo in alto
+                if (tree.y > canvas.height) {
+                    tree.y = HORIZON_Y;
+                    tree.x = tree.side === 'left' ? 
+                        Math.random() * ROAD_EDGE : 
+                        ROAD_EDGE + ROAD_WIDTH + Math.random() * ROAD_EDGE;
+                    tree.size = 20 + Math.random() * 30;
+                }
+            }
+            
+            // Aggiorna la posizione delle auto nemiche
+            for (let i = enemyCars.length - 1; i >= 0; i--) {
+                const car = enemyCars[i];
+                car.y += car.speed + speed / 2;
+                
+                // Rimuovi le auto che escono dallo schermo
+                if (car.y > canvas.height) {
+                    enemyCars.splice(i, 1);
+                }
+            }
+            
+            // Genera nuove auto nemiche
+            if (enemyCars.length < 5 && Math.random() < 0.02) {
+                spawnEnemyCar();
+            }
+            
+            // Aggiorna il tempo del giorno
+            timeCounter += 0.001;
+            if (timeCounter >= 1) {
+                timeCounter = 0;
+                timeOfDay = (timeOfDay + 1) % 4;
+            }
+            
+            // Controlla collisioni
+            checkCollisions();
+        }
+        
+        // Funzione per disegnare il cielo in base all'ora del giorno
+        function drawSky() {
+            let skyColor;
+            
+            switch (timeOfDay) {
+                case 0: // Alba
+                    skyColor = '#FF7F50';
+                    break;
+                case 1: // Giorno
+                    skyColor = '#87CEEB';
+                    break;
+                case 2: // Tramonto
+                    skyColor = '#FF4500';
+                    break;
+                case 3: // Notte
+                    skyColor = '#000033';
+                    break;
+            }
+            
+            ctx.fillStyle = skyColor;
+            ctx.fillRect(0, 0, canvas.width, HORIZON_Y);
+            
+            // Disegna il sole o la luna
+            if (timeOfDay === 1) { // Giorno - sole
+                ctx.fillStyle = '#FFFF00';
+                ctx.beginPath();
+                ctx.arc(canvas.width * 0.8, HORIZON_Y * 0.3, 30, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (timeOfDay === 3) { // Notte - luna
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(canvas.width * 0.2, HORIZON_Y * 0.3, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Stelle
+                for (let i = 0; i < 50; i++) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(
+                        Math.random() * canvas.width,
+                        Math.random() * HORIZON_Y,
+                        1,
+                        1
+                    );
+                }
+            }
+        }
+        
+        // Funzione per disegnare il gioco
+        function draw() {
+            // Pulisci canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna il cielo
+            drawSky();
+            
+            // Disegna le montagne
+            ctx.fillStyle = COLORS.mountains;
+            for (const mountain of mountains) {
+                ctx.beginPath();
+                ctx.moveTo(mountain.x, HORIZON_Y);
+                ctx.lineTo(mountain.x + mountain.width / 2, HORIZON_Y - mountain.height);
+                ctx.lineTo(mountain.x + mountain.width, HORIZON_Y);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Disegna l'erba
+            ctx.fillStyle = COLORS.grass;
+            ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y);
+            
+            // Disegna la strada
+            ctx.fillStyle = COLORS.road;
+            
+            // Strada in prospettiva
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - 50, HORIZON_Y);
+            ctx.lineTo(canvas.width / 2 + 50, HORIZON_Y);
+            ctx.lineTo(ROAD_EDGE + ROAD_WIDTH, canvas.height);
+            ctx.lineTo(ROAD_EDGE, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Disegna le linee della strada
+            ctx.strokeStyle = COLORS.roadLine;
+            ctx.lineWidth = 5;
+            
+            // Linea centrale
+            for (let y = HORIZON_Y; y < canvas.height; y += 50) {
+                const perspectiveWidth = (y - HORIZON_Y) / (canvas.height - HORIZON_Y);
+                const lineWidth = 5 + perspectiveWidth * 10;
+                const startX = canvas.width / 2 - (perspectiveWidth * ROAD_WIDTH / 2) + (ROAD_WIDTH * perspectiveWidth / 6);
+                const endX = canvas.width / 2 - (perspectiveWidth * ROAD_WIDTH / 2) + (ROAD_WIDTH * perspectiveWidth / 3);
+                
+                ctx.fillStyle = COLORS.roadLine;
+                ctx.fillRect(startX, y + roadPosition * perspectiveWidth, endX - startX, lineWidth);
+            }
+            
+            // Disegna gli alberi
+            for (const tree of trees) {
+                ctx.fillStyle = '#006400'; // Verde scuro
+                
+                // Tronco
+                ctx.fillRect(tree.x - tree.size / 10, tree.y - tree.size, tree.size / 5, tree.size);
+                
+                // Chioma
+                ctx.beginPath();
+                ctx.moveTo(tree.x - tree.size / 2, tree.y - tree.size);
+                ctx.lineTo(tree.x + tree.size / 2, tree.y - tree.size);
+                ctx.lineTo(tree.x, tree.y - tree.size * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Disegna le auto nemiche
+            for (const car of enemyCars) {
+                ctx.fillStyle = car.color;
+                
+                // Corpo dell'auto
+                ctx.fillRect(car.x, car.y, car.width, car.height);
+                
+                // Finestrini
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(car.x + 5, car.y + 5, car.width - 10, car.height / 3);
+                
+                // Luci posteriori
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(car.x + 5, car.y + car.height - 8, 10, 5);
+                ctx.fillRect(car.x + car.width - 15, car.y + car.height - 8, 10, 5);
+            }
+            
+            // Disegna l'auto del giocatore
+            ctx.fillStyle = COLORS.playerCar;
+            
+            // Corpo dell'auto
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Finestrini
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(player.x + 5, player.y + 5, player.width - 10, player.height / 3);
+            
+            // Luci anteriori
+            ctx.fillStyle = '#FFFF00';
+            ctx.fillRect(player.x + 5, player.y, 10, 5);
+            ctx.fillRect(player.x + player.width - 15, player.y, 10, 5);
+            
+            // Disegna HUD (Heads-Up Display)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Giorno: ${day}`, 20, 30);
+            ctx.fillText(`Punteggio: ${score}`, 20, 60);
+            ctx.fillText(`Vite: ${lives}`, 20, 90);
+            ctx.fillText(`Auto superate: ${carsPassed}/${carsToPass}`, 20, 120);
+            ctx.fillText(`Velocità: ${Math.floor(speed * 20)} km/h`, 20, 150);
+            
+            // Barra di progresso
+            const progressWidth = 200;
+            const progress = carsPassed / carsToPass;
+            
+            ctx.fillStyle = '#444444';
+            ctx.fillRect(canvas.width - progressWidth - 20, 20, progressWidth, 20);
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(canvas.width - progressWidth - 20, 20, progressWidth * progress, 20);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeRect(canvas.width - progressWidth - 20, 20, progressWidth, 20);
+        }
+        
+        // Game loop principale
+        function gameLoop() {
+            update();
+            draw();
+            
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

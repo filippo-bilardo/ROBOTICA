@@ -9,56 +9,56 @@
             margin: 0;
             padding: 0;
             background-color: #000;
-            color: white;
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
         }
         
-        h1 {
-            margin-bottom: 10px;
-            font-size: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .game-container {
+        #game-container {
             position: relative;
-            width: 800px;
-            height: 600px;
-            margin: 0 auto;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
-        canvas {
+        #game-canvas {
             background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
             border: 2px solid #444;
-            border-radius: 5px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         }
         
-        .controls {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            text-align: center;
-            line-height: 1.5;
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
         }
         
-        .controls p {
-            margin: 10px 0;
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
         }
         
-        .controls span {
-            padding: 2px 8px;
-            background-color: #444;
-            border-radius: 3px;
-            margin: 0 3px;
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
         }
         
-        .game-over {
+        #start-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -67,592 +67,473 @@
             background-color: rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            visibility: hidden;
+            align-items: center;
+            z-index: 10;
         }
         
-        .start-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        h1 {
+            color: #FFFFFF;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #FFFFFF;
         }
         
         button {
-            margin-top: 15px;
-            padding: 10px 20px;
-            font-size: 1rem;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            padding: 15px 30px;
+            font-size: 20px;
             cursor: pointer;
+            border-radius: 5px;
             transition: background-color 0.3s;
         }
         
         button:hover {
-            background-color: #3e8e41;
+            background-color: #45a049;
+        }
+        
+        .controls-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            max-width: 600px;
+        }
+        
+        .controls-info p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Asteroids Classic</h1>
-    
-    <div class="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        
-        <div id="startScreen" class="start-screen">
-            <h2>ASTEROIDS</h2>
-            <p>Distruggi gli asteroidi e sopravvivi!</p>
-            <button id="startButton">Inizia Gioco</button>
-        </div>
-        
-        <div id="gameOver" class="game-over">
-            <h2>GAME OVER</h2>
-            <p id="finalScore">Punteggio: 0</p>
-            <button id="restartButton">Nuova Partita</button>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>ASTEROIDS</h1>
+            <button id="start-button">INIZIA GIOCO</button>
+            <div class="controls-info">
+                <p>Usa le frecce direzionali per muovere la navicella</p>
+                <p>Freccia SU per accelerare</p>
+                <p>Frecce SINISTRA/DESTRA per ruotare</p>
+                <p>Premi SPAZIO per sparare</p>
+                <p>Distruggi tutti gli asteroidi ed evita le collisioni!</p>
+            </div>
         </div>
     </div>
-    
-    <div class="controls">
-        <p>Comandi: <span>↑</span> per accelerare, <span>←</span> e <span>→</span> per ruotare, <span>Spazio</span> per sparare</p>
-    </div>
-    
+
     <script>
-        // Riferimenti al DOM
-        const canvas = document.getElementById('gameCanvas');
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOver');
-        const finalScoreElement = document.getElementById('finalScore');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        
+        // Dimensioni del canvas
+        canvas.width = 800;
+        canvas.height = 600;
         
         // Variabili di gioco
-        let ship;
-        let asteroids = [];
-        let bullets = [];
         let score = 0;
-        let level = 1;
-        let gameRunning = false;
-        let gameOver = false;
-        let keys = {};
+        let lives = 3;
+        let gameActive = false;
+        let gameLoop;
         
-        // Classe per la navicella
-        class Ship {
-            constructor(canvas) {
-                // Posizione iniziale al centro del canvas
-                this.x = canvas.width / 2;
-                this.y = canvas.height / 2;
-                
-                // Velocità e rotazione
-                this.angle = -Math.PI / 2; // Orientata verso l'alto
-                this.rotation = 0;
-                this.thrusting = false;
-                this.thrust = {
-                    x: 0,
-                    y: 0
-                };
-                
-                // Proprietà fisiche
-                this.radius = 15; // Per il rilevamento delle collisioni
-                this.inertia = 0.99; // Rallentamento graduale
-                this.rotationSpeed = 0.1;
-                this.thrustSpeed = 0.1;
-                
-                // Visualizzazione
-                this.vertices = [
-                    { x: 0, y: -this.radius },
-                    { x: this.radius * 0.7, y: this.radius * 0.7 },
-                    { x: 0, y: this.radius * 0.5 },
-                    { x: -this.radius * 0.7, y: this.radius * 0.7 }
-                ];
-                
-                // Stato
-                this.exploding = false;
-                this.lives = 3;
-                this.shootCooldown = 0;
-                this.invincible = false;
-                this.invincibleTimer = 0;
-            }
-            
-            rotate(direction) {
-                this.rotation = direction * this.rotationSpeed;
-            }
-            
-            accelerate(on) {
-                this.thrusting = on;
-            }
-            
-            update(canvas) {
-                if (this.exploding) return;
-                
-                // Aggiorna l'angolo in base alla rotazione
-                this.angle += this.rotation;
-                
-                // Applica la propulsione se attiva
-                if (this.thrusting) {
-                    this.thrust.x += this.thrustSpeed * Math.cos(this.angle);
-                    this.thrust.y += this.thrustSpeed * Math.sin(this.angle);
-                } else {
-                    // Applica attrito quando non si accelera
-                    this.thrust.x *= this.inertia;
-                    this.thrust.y *= this.inertia;
-                }
-                
-                // Aggiorna la posizione
-                this.x += this.thrust.x;
-                this.y += this.thrust.y;
-                
-                // Gestisci il movimento ai bordi dello schermo
-                if (this.x < 0) this.x = canvas.width;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.y < 0) this.y = canvas.height;
-                if (this.y > canvas.height) this.y = 0;
-                
-                // Aggiorna cooldown dello sparo
-                if (this.shootCooldown > 0) {
-                    this.shootCooldown--;
-                }
-                
-                // Gestisci invincibilità temporanea
-                if (this.invincible) {
-                    this.invincibleTimer--;
-                    if (this.invincibleTimer <= 0) {
-                        this.invincible = false;
-                    }
-                }
-            }
-            
-            draw(ctx) {
-                if (this.exploding) {
-                    // Animazione esplosione
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    for (let i = 0; i < 20; i++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const length = Math.random() * this.radius * 2;
-                        ctx.moveTo(this.x, this.y);
-                        ctx.lineTo(
-                            this.x + length * Math.cos(angle),
-                            this.y + length * Math.sin(angle)
-                        );
-                    }
-                    ctx.stroke();
-                    return;
-                }
-                
-                // Se invincibile, lampeggia
-                if (this.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
-                    return;
-                }
-                
+        // Giocatore (navicella)
+        const ship = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            angle: 0,
+            rotation: 0,
+            thrusting: false,
+            thrust: {
+                x: 0,
+                y: 0
+            },
+            velocity: {
+                x: 0,
+                y: 0
+            },
+            draw: function() {
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                // Punta della navicella
+                const noseX = this.x + this.radius * Math.cos(this.angle);
+                const noseY = this.y - this.radius * Math.sin(this.angle);
+                
+                // Lati della navicella
+                const leftX = this.x - this.radius * (Math.cos(this.angle) + Math.sin(this.angle));
+                const leftY = this.y + this.radius * (Math.sin(this.angle) - Math.cos(this.angle));
+                
+                const rightX = this.x - this.radius * (Math.cos(this.angle) - Math.sin(this.angle));
+                const rightY = this.y + this.radius * (Math.sin(this.angle) + Math.cos(this.angle));
                 
                 // Disegna la navicella
-                ctx.beginPath();
-                
-                // Calcola e disegna i vertici ruotati della navicella
-                this.vertices.forEach((vertex, i) => {
-                    const x = this.x + vertex.x * Math.cos(this.angle) - vertex.y * Math.sin(this.angle);
-                    const y = this.y + vertex.x * Math.sin(this.angle) + vertex.y * Math.cos(this.angle);
-                    
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                });
-                
+                ctx.moveTo(noseX, noseY);
+                ctx.lineTo(leftX, leftY);
+                ctx.lineTo(rightX, rightY);
                 ctx.closePath();
                 ctx.stroke();
                 
-                // Se la propulsione è attiva, disegna la fiamma
+                // Disegna il fuoco del propulsore se la navicella sta accelerando
                 if (this.thrusting) {
+                    ctx.strokeStyle = 'orange';
                     ctx.beginPath();
-                    const flameX = this.x - this.radius * Math.cos(this.angle);
-                    const flameY = this.y - this.radius * Math.sin(this.angle);
-                    
                     ctx.moveTo(
-                        this.x - this.radius * 0.7 * Math.cos(this.angle) + 0.5 * this.radius * Math.sin(this.angle),
-                        this.y - this.radius * 0.7 * Math.sin(this.angle) - 0.5 * this.radius * Math.cos(this.angle)
+                        leftX + (rightX - leftX) / 2,
+                        leftY + (rightY - leftY) / 2
                     );
-                    
                     ctx.lineTo(
-                        flameX - Math.random() * 2 * this.radius * Math.cos(this.angle),
-                        flameY - Math.random() * 2 * this.radius * Math.sin(this.angle)
+                        leftX + (rightX - leftX) / 2 - this.radius * Math.cos(this.angle) * 0.7,
+                        leftY + (rightY - leftY) / 2 + this.radius * Math.sin(this.angle) * 0.7
                     );
-                    
-                    ctx.lineTo(
-                        this.x - this.radius * 0.7 * Math.cos(this.angle) - 0.5 * this.radius * Math.sin(this.angle),
-                        this.y - this.radius * 0.7 * Math.sin(this.angle) + 0.5 * this.radius * Math.cos(this.angle)
-                    );
-                    
-                    ctx.closePath();
                     ctx.stroke();
                 }
-            }
-            
-            shoot() {
-                if (this.exploding || this.shootCooldown > 0) return;
-                
-                bullets.push({
-                    x: this.x + 4/3 * this.radius * Math.cos(this.angle),
-                    y: this.y + 4/3 * this.radius * Math.sin(this.angle),
-                    xv: 7 * Math.cos(this.angle) + this.thrust.x,
-                    yv: 7 * Math.sin(this.angle) + this.thrust.y,
-                    r: 3,
-                    lifetime: 60 // Durata in frame
-                });
-                
-                this.shootCooldown = 15; // Cooldown tra spari
-            }
-        }
-        
-        // Classe per gli asteroidi
-        class Asteroid {
-            constructor(x, y, radius, level, speed = 1) {
-                this.x = x;
-                this.y = y;
-                this.radius = radius;
-                this.level = level;
-                this.speed = speed;
-                
-                // Direzione casuale
-                this.angle = Math.random() * Math.PI * 2;
-                this.xv = this.speed * Math.cos(this.angle);
-                this.yv = this.speed * Math.sin(this.angle);
-                
-                // Generazione forma casuale per l'asteroide
-                this.vertices = [];
-                const vertCount = Math.floor(Math.random() * 4) + 7; // 7-10 vertici
-                
-                for (let i = 0; i < vertCount; i++) {
-                    const angle = i * Math.PI * 2 / vertCount;
-                    const length = this.radius * (0.8 + Math.random() * 0.4); // Raggio variabile
-                    
-                    this.vertices.push({
-                        x: length * Math.cos(angle),
-                        y: length * Math.sin(angle)
-                    });
-                }
-                
+            },
+            update: function() {
                 // Rotazione
-                this.rotation = Math.random() * 0.03 - 0.015; // Velocità di rotazione casuale
-                this.angleRot = Math.random() * Math.PI * 2; // Angolo iniziale
-            }
-            
-            update(canvas) {
-                // Aggiorna la posizione
-                this.x += this.xv;
-                this.y += this.yv;
+                this.angle += this.rotation;
                 
-                // Aggiorna la rotazione
-                this.angleRot += this.rotation;
-                
-                // Gestisci il movimento ai bordi dello schermo
-                if (this.x < 0 - this.radius) this.x = canvas.width + this.radius;
-                if (this.x > canvas.width + this.radius) this.x = 0 - this.radius;
-                if (this.y < 0 - this.radius) this.y = canvas.height + this.radius;
-                if (this.y > canvas.height + this.radius) this.y = 0 - this.radius;
-            }
-            
-            draw(ctx) {
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                
-                // Disegna i vertici ruotati
-                this.vertices.forEach((vertex, i) => {
-                    const x = this.x + vertex.x * Math.cos(this.angleRot) - vertex.y * Math.sin(this.angleRot);
-                    const y = this.y + vertex.x * Math.sin(this.angleRot) + vertex.y * Math.cos(this.angleRot);
-                    
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                });
-                
-                ctx.closePath();
-                ctx.stroke();
-            }
-            
-            // Divide l'asteroide in pezzi più piccoli quando colpito
-            breakup() {
-                // Se l'asteroide è abbastanza grande, dividerlo in pezzi più piccoli
-                if (this.level < 3) {
-                    // Calcola nuovo raggio
-                    const newRadius = this.radius / 2;
-                    
-                    // Crea due nuovi asteroidi
-                    return [
-                        new Asteroid(this.x, this.y, newRadius, this.level + 1, this.speed + 0.5),
-                        new Asteroid(this.x, this.y, newRadius, this.level + 1, this.speed + 0.5)
-                    ];
+                // Movimento
+                if (this.thrusting) {
+                    this.thrust.x = 0.1 * Math.cos(this.angle);
+                    this.thrust.y = -0.1 * Math.sin(this.angle);
+                } else {
+                    this.thrust.x = 0;
+                    this.thrust.y = 0;
                 }
                 
-                // Se è già il più piccolo, non generare altri asteroidi
-                return [];
-            }
-        }
-        
-        // Funzione per creare asteroidi
-        function createAsteroids(count) {
-            for (let i = 0; i < count; i++) {
-                // Crea asteroidi lontani dalla navicella
-                let x, y;
-                do {
-                    x = Math.random() * canvas.width;
-                    y = Math.random() * canvas.height;
-                } while (
-                    Math.sqrt(
-                        Math.pow(x - ship.x, 2) + 
-                        Math.pow(y - ship.y, 2)
-                    ) < 150
-                );
+                // Aggiorna velocità
+                this.velocity.x += this.thrust.x;
+                this.velocity.y += this.thrust.y;
                 
-                // Aggiungi l'asteroide all'array
-                asteroids.push(new Asteroid(x, y, 50, 1));
-            }
-        }
-        
-        // Funzione per rilevare collisioni
-        function checkCollision(obj1, obj2) {
-            // Calcola la distanza tra i due oggetti
-            const dx = obj1.x - obj2.x;
-            const dy = obj1.y - obj2.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Se la distanza è minore della somma dei raggi, c'è una collisione
-            return distance < obj1.radius + obj2.radius;
-        }
-        
-        // Funzione per disegnare vite rimaste
-        function drawLives() {
-            const shipHeight = 15;
-            const shipWidth = 10;
-            
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 1;
-            
-            for (let i = 0; i < ship.lives; i++) {
-                ctx.beginPath();
-                // Posiziona le navicelle nell'angolo in basso a destra
-                const x = canvas.width - 30 - i * 25;
-                const y = canvas.height - 20;
+                // Attrito spaziale
+                this.velocity.x *= 0.99;
+                this.velocity.y *= 0.99;
                 
-                ctx.moveTo(x, y - shipHeight / 2);
-                ctx.lineTo(x + shipWidth / 2, y + shipHeight / 2);
-                ctx.lineTo(x - shipWidth / 2, y + shipHeight / 2);
-                ctx.closePath();
-                ctx.stroke();
+                // Aggiorna posizione
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                
+                // Avvolgimento ai bordi dello schermo
+                if (this.x < 0 - this.radius) {
+                    this.x = canvas.width + this.radius;
+                } else if (this.x > canvas.width + this.radius) {
+                    this.x = 0 - this.radius;
+                }
+                
+                if (this.y < 0 - this.radius) {
+                    this.y = canvas.height + this.radius;
+                } else if (this.y > canvas.height + this.radius) {
+                    this.y = 0 - this.radius;
+                }
             }
-        }
+        };
         
-        // Funzione per creare il livello
-        function createLevel() {
-            // Numero di asteroidi basato sul livello attuale
-            const asteroidCount = 3 + level;
-            createAsteroids(asteroidCount);
-        }
+        // Asteroidi
+        const asteroids = [];
+        const ASTEROID_SPEED = 1;
+        const ASTEROID_VERT = 10; // Vertici per asteroide
+        const ASTEROID_JAG = 0.4; // Irregolarità
         
-        // Resetta la navicella dopo l'esplosione
-        function resetShip() {
-            ship.exploding = false;
-            ship.x = canvas.width / 2;
-            ship.y = canvas.height / 2;
-            ship.thrust.x = 0;
-            ship.thrust.y = 0;
-            ship.angle = -Math.PI / 2;
-            ship.rotation = 0;
-            ship.invincible = true;
-            ship.invincibleTimer = 180; // 3 secondi di invincibilità
-            
-            // Se non ha più vite, fine gioco
-            if (ship.lives <= 0) {
-                endGame();
-            }
-        }
+        // Proiettili
+        const bullets = [];
+        const BULLET_SPEED = 5;
+        const BULLET_MAX = 10; // Numero massimo di proiettili contemporanei
+        const BULLET_LIFE = 60; // Durata in frame
         
-        // Funzione per termina il gioco
-        function endGame() {
-            gameRunning = false;
-            gameOver = true;
-            finalScoreElement.textContent = `Punteggio: ${score}`;
-            gameOverScreen.style.visibility = 'visible';
-        }
+        // Controlli
+        const keys = {};
         
-        // Funzione per iniziare una nuova partita
-        function startNewGame() {
-            // Nascondi schermate
-            startScreen.style.display = 'none';
-            gameOverScreen.style.visibility = 'hidden';
-            
-            // Resetta variabili di gioco
-            level = 1;
-            score = 0;
-            asteroids = [];
-            bullets = [];
-            
-            // Crea la navicella
-            ship = new Ship(canvas);
-            
-            // Crea il primo livello
-            createLevel();
-            
-            // Avvia il gioco
-            gameRunning = true;
-            gameOver = false;
-        }
-        
-        // Gestione input da tastiera
-        document.addEventListener('keydown', function(e) {
+        // Event listeners per i controlli
+        window.addEventListener('keydown', function(e) {
             keys[e.key] = true;
-            
-            // Sparo con la barra spaziatrice
-            if (e.key === ' ' && gameRunning) {
-                ship.shoot();
-            }
         });
         
-        document.addEventListener('keyup', function(e) {
+        window.addEventListener('keyup', function(e) {
             keys[e.key] = false;
         });
         
-        // Gestione input per avvio gioco
-        startButton.addEventListener('click', startNewGame);
-        restartButton.addEventListener('click', startNewGame);
+        // Inizia il gioco
+        startButton.addEventListener('click', startGame);
         
-        // Loop principale del gioco
-        function gameLoop() {
-            // Pulisci il canvas
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            updateScore();
+            updateLives();
             
-            // Se il gioco è attivo
-            if (gameRunning) {
-                // Controlli della navicella
-                if (keys['ArrowLeft']) {
-                    ship.rotate(-1);
-                }
-                if (keys['ArrowRight']) {
-                    ship.rotate(1);
-                }
-                if (keys['ArrowUp']) {
-                    ship.accelerate(true);
-                } else {
-                    ship.accelerate(false);
-                }
-                
-                // Aggiorna e disegna la navicella
-                ship.update(canvas);
-                ship.draw(ctx);
-                
-                // Controlla collisioni con gli asteroidi
-                if (!ship.exploding && !ship.invincible) {
-                    for (let i = 0; i < asteroids.length; i++) {
-                        if (checkCollision(ship, asteroids[i])) {
-                            ship.exploding = true;
-                            ship.lives--;
-                            
-                            setTimeout(resetShip, 1000);
-                            break;
-                        }
-                    }
-                }
-                
-                // Aggiorna e disegna i proiettili
-                for (let i = bullets.length - 1; i >= 0; i--) {
-                    // Aggiorna posizione
-                    bullets[i].x += bullets[i].xv;
-                    bullets[i].y += bullets[i].yv;
-                    
-                    // Gestisci bordi dello schermo
-                    if (bullets[i].x < 0) bullets[i].x = canvas.width;
-                    if (bullets[i].x > canvas.width) bullets[i].x = 0;
-                    if (bullets[i].y < 0) bullets[i].y = canvas.height;
-                    if (bullets[i].y > canvas.height) bullets[i].y = 0;
-                    
-                    // Disegna il proiettile
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(bullets[i].x, bullets[i].y, bullets[i].r, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Riduzione durata del proiettile
-                    bullets[i].lifetime--;
-                    if (bullets[i].lifetime <= 0) {
-                        bullets.splice(i, 1);
-                        continue;
-                    }
-                    
-                    // Controlla collisioni con gli asteroidi
-                    let bulletHit = false;
-                    for (let j = asteroids.length - 1; j >= 0; j--) {
-                        if (checkCollision(bullets[i], asteroids[j])) {
-                            // Crea nuovi asteroidi più piccoli
-                            const newAsteroids = asteroids[j].breakup();
-                            
-                            // Punteggio in base alla dimensione dell'asteroide
-                            const pointValue = (4 - asteroids[j].level) * 100;
-                            score += pointValue;
-                            
-                            // Sostituisci l'asteroide colpito con pezzi più piccoli
-                            asteroids.splice(j, 1);
-                            asteroids.push(...newAsteroids);
-                            
-                            // Rimuovi il proiettile
-                            bullets.splice(i, 1);
-                            bulletHit = true;
-                            break;
-                        }
-                    }
-                    
-                    if (bulletHit) continue;
-                }
-                
-                // Aggiorna e disegna gli asteroidi
-                asteroids.forEach(asteroid => {
-                    asteroid.update(canvas);
-                    asteroid.draw(ctx);
-                });
-                
-                // Disegna punteggio
-                ctx.font = 'bold 24px Arial';
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'left';
-                ctx.fillText(`SCORE: ${score}`, 20, 35);
-                
-                // Disegna livello
-                ctx.textAlign = 'center';
-                ctx.fillText(`LEVEL: ${level}`, canvas.width / 2, 35);
-                
-                // Disegna vite rimanenti
-                drawLives();
-                
-                // Controlla se tutti gli asteroidi sono stati distrutti
-                if (asteroids.length === 0) {
-                    level++;
-                    createLevel();
-                }
-            }
+            // Resetta gli array
+            bullets.length = 0;
+            asteroids.length = 0;
             
-            // Continua il game loop
-            requestAnimationFrame(gameLoop);
+            // Resetta la navicella
+            ship.x = canvas.width / 2;
+            ship.y = canvas.height / 2;
+            ship.angle = Math.PI * 1.5; // Punta verso l'alto
+            ship.rotation = 0;
+            ship.thrusting = false;
+            ship.velocity = { x: 0, y: 0 };
+            
+            // Crea asteroidi iniziali
+            createAsteroids(10);
+            
+            // Avvia il loop di gioco
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 1000/60); // 60 FPS
         }
         
-        // Avvia il game loop
-        gameLoop();
+        function createAsteroids(num, x, y, size) {
+            for (let i = 0; i < num; i++) {
+                let asteroid = {
+                    x: x || Math.random() * canvas.width,
+                    y: y || Math.random() * canvas.height,
+                    xv: (Math.random() * ASTEROID_SPEED * 2) - ASTEROID_SPEED,
+                    yv: (Math.random() * ASTEROID_SPEED * 2) - ASTEROID_SPEED,
+                    radius: size || 50,
+                    angle: Math.random() * Math.PI * 2,
+                    vert: Math.floor(Math.random() * (ASTEROID_VERT + 1) + ASTEROID_VERT / 2),
+                    offs: []
+                };
+                
+                // Assicurati che gli asteroidi non appaiano troppo vicino alla navicella
+                if (!x && !y) {
+                    const distX = asteroid.x - ship.x;
+                    const distY = asteroid.y - ship.y;
+                    if (Math.sqrt(distX * distX + distY * distY) < 100) {
+                        asteroid.x = Math.random() < 0.5 ? 0 : canvas.width;
+                        asteroid.y = Math.random() * canvas.height;
+                    }
+                }
+                
+                // Crea vertici irregolari
+                for (let j = 0; j < asteroid.vert; j++) {
+                    asteroid.offs.push(Math.random() * ASTEROID_JAG * 2 + 1 - ASTEROID_JAG);
+                }
+                
+                asteroids.push(asteroid);
+            }
+        }
+        
+        function update() {
+            if (!gameActive) return;
+            
+            // Pulisci il canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Controlli della navicella
+            ship.rotation = 0;
+            if (keys['ArrowLeft'] || keys['a']) {
+                ship.rotation = 0.05;
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                ship.rotation = -0.05;
+            }
+            ship.thrusting = keys['ArrowUp'] || keys['w'];
+            
+            // Spara
+            if (keys[' '] && bullets.length < BULLET_MAX) {
+                keys[' '] = false; // Previene il fuoco continuo
+                bullets.push({
+                    x: ship.x + ship.radius * Math.cos(ship.angle),
+                    y: ship.y - ship.radius * Math.sin(ship.angle),
+                    xv: BULLET_SPEED * Math.cos(ship.angle) + ship.velocity.x,
+                    yv: -BULLET_SPEED * Math.sin(ship.angle) + ship.velocity.y,
+                    life: BULLET_LIFE
+                });
+            }
+            
+            // Aggiorna e disegna la navicella
+            ship.update();
+            ship.draw();
+            
+            // Aggiorna e disegna i proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                // Muovi il proiettile
+                bullets[i].x += bullets[i].xv;
+                bullets[i].y += bullets[i].yv;
+                
+                // Gestisci l'avvolgimento ai bordi
+                if (bullets[i].x < 0) {
+                    bullets[i].x = canvas.width;
+                } else if (bullets[i].x > canvas.width) {
+                    bullets[i].x = 0;
+                }
+                
+                if (bullets[i].y < 0) {
+                    bullets[i].y = canvas.height;
+                } else if (bullets[i].y > canvas.height) {
+                    bullets[i].y = 0;
+                }
+                
+                // Riduci la durata del proiettile
+                bullets[i].life--;
+                
+                // Rimuovi i proiettili scaduti
+                if (bullets[i].life <= 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Disegna il proiettile
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(bullets[i].x, bullets[i].y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Aggiorna e disegna gli asteroidi
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                // Muovi l'asteroide
+                asteroids[i].x += asteroids[i].xv;
+                asteroids[i].y += asteroids[i].yv;
+                
+                // Gestisci l'avvolgimento ai bordi
+                if (asteroids[i].x < 0 - asteroids[i].radius) {
+                    asteroids[i].x = canvas.width + asteroids[i].radius;
+                } else if (asteroids[i].x > canvas.width + asteroids[i].radius) {
+                    asteroids[i].x = 0 - asteroids[i].radius;
+                }
+                
+                if (asteroids[i].y < 0 - asteroids[i].radius) {
+                    asteroids[i].y = canvas.height + asteroids[i].radius;
+                } else if (asteroids[i].y > canvas.height + asteroids[i].radius) {
+                    asteroids[i].y = 0 - asteroids[i].radius;
+                }
+                
+                // Disegna l'asteroide
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                // Disegna i vertici dell'asteroide
+                for (let j = 0; j < asteroids[i].vert; j++) {
+                    const angle = j * Math.PI * 2 / asteroids[i].vert + asteroids[i].angle;
+                    const radius = asteroids[i].radius * asteroids[i].offs[j];
+                    const x = asteroids[i].x + radius * Math.cos(angle);
+                    const y = asteroids[i].y + radius * Math.sin(angle);
+                    
+                    if (j === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                
+                ctx.closePath();
+                ctx.stroke();
+                
+                // Collisione con i proiettili
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const dx = bullets[j].x - asteroids[i].x;
+                    const dy = bullets[j].y - asteroids[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < asteroids[i].radius) {
+                        // Rimuovi il proiettile
+                        bullets.splice(j, 1);
+                        
+                        // Dividi l'asteroide se è abbastanza grande
+                        if (asteroids[i].radius > 20) {
+                            const newSize = asteroids[i].radius / 2;
+                            createAsteroids(2, asteroids[i].x, asteroids[i].y, newSize);
+                        }
+                        
+                        // Rimuovi l'asteroide colpito
+                        asteroids.splice(i, 1);
+                        
+                        // Aggiorna il punteggio
+                        score += 100;
+                        updateScore();
+                        
+                        // Crea nuovi asteroidi se non ce ne sono più
+                        if (asteroids.length === 0) {
+                            createAsteroids(10);
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                // Collisione con la navicella
+                if (gameActive) {
+                    const dx = ship.x - asteroids[i].x;
+                    const dy = ship.y - asteroids[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < ship.radius + asteroids[i].radius) {
+                        // Rimuovi l'asteroide
+                        asteroids.splice(i, 1);
+                        
+                        // Riduci le vite
+                        lives--;
+                        updateLives();
+                        
+                        if (lives <= 0) {
+                            gameOver();
+                        } else {
+                            // Resetta la posizione della navicella
+                            ship.x = canvas.width / 2;
+                            ship.y = canvas.height / 2;
+                            ship.velocity = { x: 0, y: 0 };
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+        }
+        
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+        
+        function updateLives() {
+            livesDisplay.textContent = `Lives: ${lives}`;
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameLoop);
+            gameOverScreen.style.display = 'block';
+            
+            // Riavvia dopo 3 secondi
+            setTimeout(() => {
+                startScreen.style.display = 'flex';
+            }, 3000);
+        }
+        
+        // Ridimensiona il canvas quando la finestra cambia dimensione
+        window.addEventListener('resize', function() {
+            // Mantieni le proporzioni
+            const container = document.getElementById('game-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const scale = Math.min(
+                containerWidth / canvas.width,
+                containerHeight / canvas.height
+            );
+            
+            canvas.style.width = `${canvas.width * scale}px`;
+            canvas.style.height = `${canvas.height * scale}px`;
+        });
+        
+        // Inizializza il ridimensionamento
+        window.dispatchEvent(new Event('resize'));
     </script>
 </body>
 </html>

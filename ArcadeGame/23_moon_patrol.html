@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Patrol - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #111;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .controls p {
+            margin: 10px 0;
+        }
+        
+        .controls span {
+            padding: 2px 8px;
+            background-color: #444;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>MOON PATROL</h1>
+            <p>Guida il rover lunare, salta gli ostacoli e spara ai nemici!</p>
+            <p>Raggiungi il checkpoint per completare il livello</p>
+            <button id="startButton">Inizia Gioco</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Punteggio: <span id="finalScore">0</span></p>
+            <button id="restartButton">Gioca Ancora</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <p>Controlli: <span>←</span> <span>→</span> per muoversi, <span>Spazio</span> per saltare, <span>Z</span> per sparare in alto, <span>X</span> per sparare avanti</p>
+    </div>
+
+    <script>
+        // Ottieni riferimenti agli elementi DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // Costanti di gioco
+        const GROUND_HEIGHT = 40;
+        const ROVER_WIDTH = 60;
+        const ROVER_HEIGHT = 30;
+        const JUMP_POWER = 15;
+        const GRAVITY = 0.8;
+        const OBSTACLE_TYPES = ['crater', 'rock'];
+        const ENEMY_TYPES = ['ufo', 'aircraft'];
+        const BULLET_SPEED = 10;
+        const SCROLL_SPEED = 3;
+        
+        // Variabili di stato del gioco
+        let gameRunning = false;
+        let score = 0;
+        let distance = 0;
+        let checkpointDistance = 5000;
+        let lastObstacleTime = 0;
+        let lastEnemyTime = 0;
+        let backgroundX = 0;
+        let mountainsX = 0;
+        
+        // Oggetti di gioco
+        let rover = {
+            x: 150,
+            y: canvas.height - GROUND_HEIGHT - ROVER_HEIGHT,
+            width: ROVER_WIDTH,
+            height: ROVER_HEIGHT,
+            speed: 5,
+            jumpVelocity: 0,
+            isJumping: false,
+            isMovingLeft: false,
+            isMovingRight: false,
+            isShooting: false,
+            isShootingUp: false
+        };
+        
+        let obstacles = [];
+        let enemies = [];
+        let bullets = [];
+        let explosions = [];
+        
+        // Colori
+        const COLORS = {
+            sky: '#000033',
+            ground: '#8B4513',
+            mountains: '#4B2D0F',
+            rover: '#C0C0C0',
+            crater: '#333333',
+            rock: '#A0A0A0',
+            ufo: '#00FF00',
+            aircraft: '#FF0000',
+            bullet: '#FFFF00',
+            explosion: '#FFA500',
+            stars: '#FFFFFF'
+        };
+        
+        // Stelle per lo sfondo
+        let stars = [];
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * (canvas.height - GROUND_HEIGHT),
+                size: Math.random() * 2 + 1
+            });
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') rover.isMovingLeft = true;
+            if (e.key === 'ArrowRight') rover.isMovingRight = true;
+            if (e.key === ' ' && !rover.isJumping) jump();
+            if (e.key === 'z') rover.isShootingUp = true;
+            if (e.key === 'x') rover.isShooting = true;
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowLeft') rover.isMovingLeft = false;
+            if (e.key === 'ArrowRight') rover.isMovingRight = false;
+            if (e.key === 'z') rover.isShootingUp = false;
+            if (e.key === 'x') rover.isShooting = false;
+        });
+        
+        // Funzione per iniziare il gioco
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            resetGame();
+            gameLoop();
+        }
+        
+        // Funzione per riavviare il gioco
+        function restartGame() {
+            gameOverScreen.style.visibility = 'hidden';
+            resetGame();
+            gameRunning = true;
+        }
+        
+        // Funzione per resettare il gioco
+        function resetGame() {
+            score = 0;
+            distance = 0;
+            obstacles = [];
+            enemies = [];
+            bullets = [];
+            explosions = [];
+            backgroundX = 0;
+            mountainsX = 0;
+            rover.x = 150;
+            rover.y = canvas.height - GROUND_HEIGHT - ROVER_HEIGHT;
+            rover.jumpVelocity = 0;
+            rover.isJumping = false;
+        }
+        
+        // Funzione per far saltare il rover
+        function jump() {
+            if (!rover.isJumping) {
+                rover.isJumping = true;
+                rover.jumpVelocity = -JUMP_POWER;
+            }
+        }
+        
+        // Funzione per sparare
+        function shoot(direction) {
+            const bulletX = direction === 'up' ? rover.x + rover.width / 2 : rover.x + rover.width;
+            const bulletY = direction === 'up' ? rover.y : rover.y + rover.height / 3;
+            
+            bullets.push({
+                x: bulletX,
+                y: bulletY,
+                width: 4,
+                height: 4,
+                direction: direction,
+                speed: BULLET_SPEED
+            });
+        }
+        
+        // Funzione per generare ostacoli
+        function generateObstacle() {
+            const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+            let width, height;
+            
+            if (type === 'crater') {
+                width = 40 + Math.random() * 60;
+                height = 10;
+            } else { // rock
+                width = 20 + Math.random() * 30;
+                height = 20 + Math.random() * 20;
+            }
+            
+            obstacles.push({
+                x: canvas.width,
+                y: canvas.height - GROUND_HEIGHT - height,
+                width: width,
+                height: height,
+                type: type
+            });
+        }
+        
+        // Funzione per generare nemici
+        function generateEnemy() {
+            const type = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
+            let y;
+            
+            if (type === 'ufo') {
+                y = 100 + Math.random() * 200;
+            } else { // aircraft
+                y = 200 + Math.random() * 150;
+            }
+            
+            enemies.push({
+                x: canvas.width,
+                y: y,
+                width: 40,
+                height: 20,
+                type: type,
+                speed: 2 + Math.random() * 3
+            });
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            // Collisione con ostacoli
+            for (let i = 0; i < obstacles.length; i++) {
+                const obs = obstacles[i];
+                
+                if (
+                    rover.x < obs.x + obs.width &&
+                    rover.x + rover.width > obs.x &&
+                    rover.y < obs.y + obs.height &&
+                    rover.y + rover.height > obs.y
+                ) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            // Collisione con nemici
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                
+                if (
+                    rover.x < enemy.x + enemy.width &&
+                    rover.x + rover.width > enemy.x &&
+                    rover.y < enemy.y + enemy.height &&
+                    rover.y + rover.height > enemy.y
+                ) {
+                    gameOver();
+                    return;
+                }
+                
+                // Collisione proiettili con nemici
+                for (let j = 0; j < bullets.length; j++) {
+                    const bullet = bullets[j];
+                    
+                    if (
+                        bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y
+                    ) {
+                        // Crea esplosione
+                        explosions.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            size: 30,
+                            life: 20
+                        });
+                        
+                        // Rimuovi nemico e proiettile
+                        enemies.splice(i, 1);
+                        bullets.splice(j, 1);
+                        
+                        // Aumenta punteggio
+                        score += 100;
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // Funzione per terminare il gioco
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per aggiornare il gioco
+        function update() {
+            if (!gameRunning) return;
+            
+            // Aggiorna posizione rover
+            if (rover.isMovingLeft && rover.x > 50) {
+                rover.x -= rover.speed;
+            }
+            if (rover.isMovingRight && rover.x < canvas.width - rover.width - 50) {
+                rover.x += rover.speed;
+            }
+            
+            // Gestisci salto
+            if (rover.isJumping) {
+                rover.y += rover.jumpVelocity;
+                rover.jumpVelocity += GRAVITY;
+                
+                // Controlla se il rover è atterrato
+                if (rover.y >= canvas.height - GROUND_HEIGHT - ROVER_HEIGHT) {
+                    rover.y = canvas.height - GROUND_HEIGHT - ROVER_HEIGHT;
+                    rover.isJumping = false;
+                    rover.jumpVelocity = 0;
+                }
+            }
+            
+            // Gestisci sparo
+            if (rover.isShooting) {
+                rover.isShooting = false; // Spara solo una volta per pressione
+                shoot('forward');
+            }
+            
+            if (rover.isShootingUp) {
+                rover.isShootingUp = false; // Spara solo una volta per pressione
+                shoot('up');
+            }
+            
+            // Aggiorna posizione proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                if (bullet.direction === 'up') {
+                    bullet.y -= bullet.speed;
+                } else { // forward
+                    bullet.x += bullet.speed;
+                }
+                
+                // Rimuovi proiettili fuori dallo schermo
+                if (bullet.x > canvas.width || bullet.y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna posizione ostacoli
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= SCROLL_SPEED;
+                
+                // Rimuovi ostacoli fuori dallo schermo
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna posizione nemici
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].x -= enemies[i].speed;
+                
+                // Rimuovi nemici fuori dallo schermo
+                if (enemies[i].x + enemies[i].width < 0) {
+                    enemies.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna esplosioni
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].life--;
+                
+                if (explosions[i].life <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+            
+            // Genera nuovi ostacoli
+            const currentTime = Date.now();
+            if (currentTime - lastObstacleTime > 2000) { // Ogni 2 secondi
+                generateObstacle();
+                lastObstacleTime = currentTime;
+            }
+            
+            // Genera nuovi nemici
+            if (currentTime - lastEnemyTime > 3000) { // Ogni 3 secondi
+                generateEnemy();
+                lastEnemyTime = currentTime;
+            }
+            
+            // Aggiorna sfondo
+            backgroundX -= SCROLL_SPEED / 2;
+            mountainsX -= SCROLL_SPEED / 4;
+            
+            if (backgroundX <= -canvas.width) backgroundX = 0;
+            if (mountainsX <= -canvas.width) mountainsX = 0;
+            
+            // Aggiorna distanza e punteggio
+            distance += SCROLL_SPEED;
+            score = Math.floor(distance / 10);
+            
+            // Controlla se il giocatore ha raggiunto il checkpoint
+            if (distance >= checkpointDistance) {
+                // Aumenta il punteggio per aver completato il livello
+                score += 1000;
+                checkpointDistance += 5000; // Imposta il prossimo checkpoint
+            }
+            
+            // Controlla collisioni
+            checkCollisions();
+        }
+        
+        // Funzione per disegnare il gioco
+        function draw() {
+            // Pulisci canvas
+            ctx.fillStyle = COLORS.sky;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna stelle
+            ctx.fillStyle = COLORS.stars;
+            for (const star of stars) {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Disegna montagne (sfondo lontano)
+            ctx.fillStyle = COLORS.mountains;
+            
+            // Prima serie di montagne
+            for (let i = 0; i < 5; i++) {
+                const mountainWidth = 200;
+                const mountainHeight = 100 + Math.random() * 50;
+                const x = mountainsX + i * mountainWidth;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - GROUND_HEIGHT);
+                ctx.lineTo(x + mountainWidth / 2, canvas.height - GROUND_HEIGHT - mountainHeight);
+                ctx.lineTo(x + mountainWidth, canvas.height - GROUND_HEIGHT);
+                ctx.fill();
+            }
+            
+            // Seconda serie di montagne (per continuità)
+            for (let i = 0; i < 5; i++) {
+                const mountainWidth = 200;
+                const mountainHeight = 100 + Math.random() * 50;
+                const x = mountainsX + canvas.width + i * mountainWidth;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - GROUND_HEIGHT);
+                ctx.lineTo(x + mountainWidth / 2, canvas.height - GROUND_HEIGHT - mountainHeight);
+                ctx.lineTo(x + mountainWidth, canvas.height - GROUND_HEIGHT);
+                ctx.fill();
+            }
+            
+            // Disegna terreno
+            ctx.fillStyle = COLORS.ground;
+            ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+            
+            // Disegna linee sul terreno per dare profondità
+            ctx.strokeStyle = '#6B3E0B';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < canvas.width; i += 100) {
+                const x = (i + backgroundX) % canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - GROUND_HEIGHT);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Disegna ostacoli
+            for (const obstacle of obstacles) {
+                if (obstacle.type === 'crater') {
+                    ctx.fillStyle = COLORS.crater;
+                    ctx.fillRect(obstacle.x, obstacle.y + obstacle.height / 2, obstacle.width, obstacle.height / 2);
+                    
+                    // Bordo del cratere
+                    ctx.strokeStyle = '#555555';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(obstacle.x, obstacle.y + obstacle.height / 2);
+                    ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height / 2);
+                    ctx.stroke();
+                } else { // rock
+                    ctx.fillStyle = COLORS.rock;
+                    
+                    // Disegna una forma più naturale per la roccia
+                    ctx.beginPath();
+                    ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+                    ctx.lineTo(obstacle.x, obstacle.y + obstacle.height / 2);
+                    ctx.lineTo(obstacle.x + obstacle.width / 3, obstacle.y);
+                    ctx.lineTo(obstacle.x + obstacle.width * 2/3, obstacle.y);
+                    ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height / 2);
+                    ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                    ctx.fill();
+                }
+            }
+            
+            // Disegna nemici
+            for (const enemy of enemies) {
+                if (enemy.type === 'ufo') {
+                    ctx.fillStyle = COLORS.ufo;
+                    
+                    // Corpo UFO
+                    ctx.beginPath();
+                    ctx.ellipse(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 
+                               enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Cupola UFO
+                    ctx.fillStyle = '#AAFFAA';
+                    ctx.beginPath();
+                    ctx.ellipse(enemy.x + enemy.width / 2, enemy.y + enemy.height / 3, 
+                               enemy.width / 3, enemy.height / 4, 0, 0, Math.PI);
+                    ctx.fill();
+                } else { // aircraft
+                    ctx.fillStyle = COLORS.aircraft;
+                    
+                    // Corpo aereo
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x, enemy.y + enemy.height / 2);
+                    ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height / 2);
+                    ctx.lineTo(enemy.x + enemy.width * 3/4, enemy.y);
+                    ctx.lineTo(enemy.x + enemy.width / 4, enemy.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Ali
+                    ctx.fillRect(enemy.x + enemy.width / 4, enemy.y + enemy.height / 2, 
+                                enemy.width / 2, enemy.height / 2);
+                }
+            }
+            
+            // Disegna rover
+            ctx.fillStyle = COLORS.rover;
+            
+            // Corpo del rover
+            ctx.fillRect(rover.x, rover.y, rover.width, rover.height / 2);
+            
+            // Cabina
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(rover.x + rover.width * 2/3, rover.y - rover.height / 4, 
+                        rover.width / 4, rover.height / 4);
+            
+            // Cannone
+            ctx.fillStyle = '#A9A9A9';
+            ctx.fillRect(rover.x + rover.width * 3/4, rover.y, rover.width / 8, -rover.height / 3);
+            
+            // Ruote
+            ctx.fillStyle = '#333333';
+            const wheelRadius = rover.height / 3;
+            ctx.beginPath();
+            ctx.arc(rover.x + wheelRadius, rover.y + rover.height / 2 + wheelRadius / 2, 
+                   wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(rover.x + rover.width - wheelRadius, rover.y + rover.height / 2 + wheelRadius / 2, 
+                   wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(rover.x + rover.width / 2, rover.y + rover.height / 2 + wheelRadius / 2, 
+                   wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Disegna proiettili
+            ctx.fillStyle = COLORS.bullet;
+            for (const bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+            
+            // Disegna esplosioni
+            for (const explosion of explosions) {
+                const gradient = ctx.createRadialGradient(
+                    explosion.x + explosion.size / 2, 
+                    explosion.y + explosion.size / 2, 
+                    0, 
+                    explosion.x + explosion.size / 2, 
+                    explosion.y + explosion.size / 2, 
+                    explosion.size / 2
+                );
+                
+                gradient.addColorStop(0, '#FFFFFF');
+                gradient.addColorStop(0.5, COLORS.explosion);
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(explosion.x + explosion.size / 2, explosion.y + explosion.size / 2, 
+                       explosion.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Disegna HUD (Heads-Up Display)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Punteggio: ${score}`, 20, 30);
+            ctx.fillText(`Distanza: ${Math.floor(distance / 100)} m`, 20, 60);
+            
+            // Disegna indicatore di checkpoint
+            const checkpointProgress = distance / checkpointDistance;
+            ctx.fillStyle = '#444444';
+            ctx.fillRect(canvas.width - 210, 20, 200, 20);
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(canvas.width - 210, 20, 200 * checkpointProgress, 20);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeRect(canvas.width - 210, 20, 200, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Checkpoint', canvas.width - 210, 55);
+        }
+        
+        // Game loop principale
+        function gameLoop() {
+            update();
+            draw();
+            
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

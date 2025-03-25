@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #111;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+        
+        #level-display {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+        
+        #lines-display {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+        
+        #next-piece {
+            position: absolute;
+            top: 120px;
+            left: 20px;
+            font-size: 18px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+        
+        #next-canvas {
+            background-color: #111;
+            display: block;
+            border: 2px solid #444;
+            margin-top: 10px;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        #difficulty-selector {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .difficulty-btn {
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .difficulty-btn.active {
+            background-color: #4CAF50;
+        }
+        
+        #mute-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #FFD700;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .controls-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            max-width: 600px;
+        }
+        
+        .controls-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="300" height="600"></canvas>
+        <div id="score-display">Punteggio: 0</div>
+        <div id="level-display">Livello: 1</div>
+        <div id="lines-display">Linee: 0</div>
+        <div id="next-piece">
+            Prossimo pezzo:
+            <canvas id="next-canvas" width="100" height="100"></canvas>
+        </div>
+        <div id="game-over">GAME OVER</div>
+        <button id="mute-button">🔊</button>
+        <div id="start-screen">
+            <h1>TETRIS</h1>
+            <div id="difficulty-selector">
+                <button class="difficulty-btn active" data-difficulty="easy">Facile</button>
+                <button class="difficulty-btn" data-difficulty="medium">Medio</button>
+                <button class="difficulty-btn" data-difficulty="hard">Difficile</button>
+            </div>
+            <button id="start-button">INIZIA GIOCO</button>
+            <div class="controls-info">
+                <p>Usa le frecce ← → per muovere i pezzi</p>
+                <p>Freccia ↑ per ruotare, freccia ↓ per accelerare la caduta</p>
+                <p>Spazio per far cadere immediatamente il pezzo</p>
+                <p>Completa le linee per guadagnare punti!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('next-canvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const linesDisplay = document.getElementById('lines-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        const muteButton = document.getElementById('mute-button');
+        
+        // Dimensioni della griglia di gioco
+        const ROWS = 20;
+        const COLS = 10;
+        const BLOCK_SIZE = 30;
+        
+        // Variabili di gioco
+        let score = 0;
+        let level = 1;
+        let lines = 0;
+        let gameActive = false;
+        let gameLoop;
+        let difficulty = 'easy';
+        let muted = false;
+        let grid = [];
+        let currentPiece = null;
+        let nextPiece = null;
+        let dropCounter = 0;
+        let dropInterval = 1000; // Millisecondi tra le cadute automatiche
+        let lastTime = 0;
+        
+        // Effetti sonori (da aggiungere nella cartella sounds)
+        const sounds = {
+            rotate: new Audio('sounds/flap.mp3'),  // Riutilizzo suoni esistenti
+            clear: new Audio('sounds/score.mp3'),
+            drop: new Audio('sounds/hit.mp3'),
+            gameOver: new Audio('sounds/die.mp3')
+        };
+        
+        // Configurazioni di difficoltà
+        const difficultySettings = {
+            easy: {
+                initialInterval: 1000,
+                levelSpeedFactor: 0.8
+            },
+            medium: {
+                initialInterval: 800,
+                levelSpeedFactor: 0.75
+            },
+            hard: {
+                initialInterval: 500,
+                levelSpeedFactor: 0.7
+            }
+        };
+        
+        // Funzione per riprodurre suoni
+        function playSound(sound) {
+            if (!muted) {
+                sounds[sound].currentTime = 0;
+                sounds[sound].play().catch(e => console.log("Audio play error:", e));
+            }
+        }
+        
+        // Definizione dei tetramini (pezzi)
+        const PIECES = [
+            // I
+            {
+                shape: [
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0]
+                ],
+                color: '#00FFFF' // Ciano
+            },
+            // J
+            {
+                shape: [
+                    [1, 0, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                color: '#0000FF' // Blu
+            },
+            // L
+            {
+                shape: [
+                    [0, 0, 1],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                color: '#FF7F00' // Arancione
+            },
+            // O
+            {
+                shape: [
+                    [1, 1],
+                    [1, 1]
+                ],
+                color: '#FFFF00' // Giallo
+            },
+            // S
+            {
+                shape: [
+                    [0, 1, 1],
+                    [1, 1, 0],
+                    [0, 0, 0]
+                ],
+                color: '#00FF00' // Verde
+            },
+            // T
+            {
+                shape: [
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                color: '#800080' // Viola
+            },
+            // Z
+            {
+                shape: [
+                    [1, 1, 0],
+                    [0, 1, 1],
+                    [0, 0, 0]
+                ],
+                color: '#FF0000' // Rosso
+            }
+        ];
+        
+        // Inizializza la griglia di gioco
+        function createGrid() {
+            grid = [];
+            for (let row = 0; row < ROWS; row++) {
+                grid[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    grid[row][col] = null;
+                }
+            }
+        }
+        
+        // Genera un nuovo pezzo casuale
+        function getRandomPiece() {
+            const pieceIndex = Math.floor(Math.random() * PIECES.length);
+            const piece = PIECES[pieceIndex];
+            return {
+                shape: piece.shape,
+                color: piece.color,
+                row: 0,
+                col: Math.floor(COLS / 2) - Math.floor(piece.shape[0].length / 2)
+            };
+        }
+        
+        // Disegna un singolo blocco
+        function drawBlock(ctx, row, col, color) {
+            const x = col * BLOCK_SIZE;
+            const y = row * BLOCK_SIZE;
+            
+            // Blocco principale
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+            
+            // Effetto 3D
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fillRect(x, y, BLOCK_SIZE, 2);
+            ctx.fillRect(x, y, 2, BLOCK_SIZE);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(x + BLOCK_SIZE - 2, y, 2, BLOCK_SIZE);
+            ctx.fillRect(x, y + BLOCK_SIZE - 2, BLOCK_SIZE, 2);
+            
+            // Bordo
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+        }
+        
+        // Disegna la griglia di gioco
+        function drawGrid() {
+            // Sfondo della griglia
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Linee della griglia
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 0.5;
+            
+            // Linee verticali
+            for (let col = 0; col <= COLS; col++) {
+                ctx.beginPath();
+                ctx.moveTo(col * BLOCK_SIZE, 0);
+                ctx.lineTo(col * BLOCK_SIZE, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Linee orizzontali
+            for (let row = 0; row <= ROWS; row++) {
+                ctx.beginPath();
+                ctx.moveTo(0, row * BLOCK_SIZE);
+                ctx.lineTo(canvas.width, row * BLOCK_SIZE);
+                ctx.stroke();
+            }
+            
+            // Blocchi piazzati
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (grid[row][col]) {
+                        drawBlock(ctx, row, col, grid[row][col]);
+                    }
+                }
+            }
+        }
+        
+        // Disegna il pezzo corrente
+        function drawPiece(ctx, piece, offsetRow = 0, offsetCol = 0) {
+            for (let row = 0; row < piece.shape.length; row++) {
+                for (let col = 0; col < piece.shape[row].length; col++) {
+                    if (piece.shape[row][col]) {
+                        const drawRow = piece.row + row + offsetRow;
+                        const drawCol = piece.col + col + offsetCol;
+                        drawBlock(ctx, drawRow, drawCol, piece.color);
+                    }
+                }
+            }
+        }
+        
+        // Disegna il prossimo pezzo nel riquadro laterale
+        function drawNextPiece() {
+            // Pulisci il canvas
+            nextCtx.fillStyle = '#111';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            
+            // Calcola l'offset per centrare il pezzo
+            const offsetCol = (nextCanvas.width / BLOCK_SIZE - nextPiece.shape[0].length) / 2;
+            const offsetRow = (nextCanvas.height / BLOCK_SIZE - nextPiece.shape.length) / 2;
+            
+            // Disegna il pezzo
+            for (let row = 0; row < nextPiece.shape.length; row++) {
+                for (let col = 0; col < nextPiece.shape[row].length; col++) {
+                    if (nextPiece.shape[row][col]) {
+                        const x = (col + offsetCol) * BLOCK_SIZE;
+                        const y = (row + offsetRow) * BLOCK_SIZE;
+                        
+                        // Blocco principale
+                        nextCtx.fillStyle = nextPiece.color;
+                        nextCtx.fillRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Effetto 3D
+                        nextCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                        nextCtx.fillRect(x, y, BLOCK_SIZE, 2);
+                        nextCtx.fillRect(x, y, 2, BLOCK_SIZE);
+                        
+                        nextCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                        nextCtx.fillRect(x + BLOCK_SIZE - 2, y, 2, BLOCK_SIZE);
+                        nextCtx.fillRect(x, y + BLOCK_SIZE - 2, BLOCK_SIZE, 2);
+                        
+                        // Bordo
+                        nextCtx.strokeStyle = '#000';
+                        nextCtx.strokeRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+        
+        // Verifica se il pezzo può muoversi nella posizione specificata
+        function isValidMove(piece, offsetRow = 0, offsetCol = 0) {
+            for (let row = 0; row < piece.shape.length; row++) {
+                for (let col = 0; col < piece.shape[row].length; col++) {
+                    if (piece.shape[row][col]) {
+                        const newRow = piece.row + row + offsetRow;
+                        const newCol = piece.col + col + offsetCol;
+                        
+                        // Controlla i bordi
+                        if (newCol < 0 || newCol >= COLS || newRow >= ROWS) {
+                            return false;
+                        }
+                        
+                        // Controlla se c'è già un blocco nella griglia
+                        if (newRow >= 0 && grid[newRow][newCol]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Ruota il pezzo in senso orario
+        function rotatePiece() {
+            // Crea una copia del pezzo corrente
+            const originalShape = currentPiece.shape;
+            const rows = originalShape.length;
+            const cols = originalShape[0].length;
+            
+            // Crea una nuova matrice ruotata
+            const rotatedShape = [];
+            for (let col = 0; col < cols; col++) {
+                rotatedShape[col] = [];
+                for (let row = rows - 1; row >= 0; row--) {
+                    rotatedShape[col][rows - 1 - row] = originalShape[row][col];
+                }
+            }
+            
+            // Salva la forma originale
+            const originalPiece = {...currentPiece};
+            
+            // Applica la rotazione
+            currentPiece.shape = rotatedShape;
+            
+            // Se la rotazione non è valida, prova a spostarsi lateralmente (wall kick)
+            if (!isValidMove(currentPiece)) {
+                // Prova a spostarsi a sinistra
+                if (isValidMove(currentPiece, 0, -1)) {
+                    currentPiece.col -= 1;
+                }
+                // Prova a spostarsi a destra
+                else if (isValidMove(currentPiece, 0, 1)) {
+                    currentPiece.col += 1;
+                }
+                // Prova a spostarsi in su (per il pezzo I)
+                else if (isValidMove(currentPiece, -1, 0)) {
+                    currentPiece.row -= 1;
+                }
+                // Se nessuna di queste funziona, annulla la rotazione
+                else {
+                    currentPiece.shape = originalShape;
+                }
+            }
+            
+            // Se la rotazione è riuscita, riproduci il suono
+            if (currentPiece.shape !== originalShape) {
+                playSound('rotate');
+            }
+        }
+        
+        // Blocca il pezzo corrente nella griglia
+        function lockPiece() {
+            for (let row = 0; row < currentPiece.shape.length; row++) {
+                for (let col = 0; col < currentPiece.shape[row].length; col++) {
+                    if (currentPiece.shape[row][col]) {
+                        const gridRow = currentPiece.row + row;
+                        const gridCol = currentPiece.col + col;
+                        
+                        // Se il pezzo è fuori dalla griglia superiore, game over
+                        if (gridRow < 0) {
+                            gameOver();
+                            return;
+                        }
+                        
+                        grid[gridRow][gridCol] = currentPiece.color;
+                    }
+                }
+            }
+            
+            // Controlla le linee completate
+            checkLines();
+            
+            // Passa al prossimo pezzo
+            currentPiece = nextPiece;
+            nextPiece = getRandomPiece();
+            drawNextPiece();
+            
+            // Riproduci suono
+            playSound('drop');
+        }
+        
+        // Controlla e rimuovi le linee completate
+        function checkLines() {
+            let linesCleared = 0;
+            
+            for (let row = ROWS - 1; row >= 0; row--) {
+                let isLineComplete = true;
+                
+                for (let col = 0; col < COLS; col++) {
+                    if (!grid[row][col]) {
+                        isLineComplete = false;
+                        break;
+                    }
+                }
+                
+                if (isLineComplete) {
+                    // Rimuovi la linea e sposta tutto verso il basso
+                    for (let r = row; r > 0; r--) {
+                        for (let col = 0; col < COLS; col++) {
+                            grid[r][col] = grid[r-1][col];
+                        }
+                    }
+                    
+                    // Pulisci la prima riga
+                    for (let col = 0; col < COLS; col++) {
+                        grid[0][col] = null;
+                    }
+                    
+                    // Incrementa il contatore e controlla di nuovo la stessa riga
+                    linesCleared++;
+                    row++; // Controlla di nuovo la stessa riga dopo lo spostamento
+                }
+            }
+            
+            if (linesCleared > 0) {
+                // Aggiorna punteggio e livello
+                updateScore(linesCleared);
+                playSound('clear');
+            }
+        }
+        
+        // Aggiorna il punteggio e il livello
+        function updateScore(linesCleared) {
+            // Punteggio basato sul numero di linee completate contemporaneamente
+            const points = [0, 40, 100, 300, 1200]; // 0, 1, 2, 3, 4 linee
+            score += points[linesCleared] * level;
+            
+            // Aggiorna il contatore delle linee
+            lines += linesCleared;
+            
+            // Aggiorna il livello ogni 10 linee
+            const newLevel = Math.floor(lines / 10) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                // Aumenta la velocità di caduta
+                dropInterval = difficultySettings[difficulty].initialInterval * 
+                               Math.pow(difficultySettings[difficulty].levelSpeedFactor, level - 1);
+            }
+            
+            // Aggiorna i display
+            scoreDisplay.textContent = `Punteggio: ${score}`;
+            levelDisplay.textContent = `Livello: ${level}`;
+            linesDisplay.textContent = `Linee: ${lines}`;
+        }
+        
+        // Muovi il pezzo verso il basso
+        function moveDown() {
+            if (isValidMove(currentPiece, 1, 0)) {
+                currentPiece.row++;
+                return true;
+            } else {
+                lockPiece();
+                return false;
+            }
+        }
+        
+        // Hard drop - fai cadere il pezzo immediatamente
+        function hardDrop() {
+            while (moveDown()) {
+                // Continua a muovere verso il basso finché possibile
+            }
+        }
+        
+        // Controlli da tastiera
+        document.addEventListener('keydown', function(e) {
+            if (!gameActive) return;
+            
+            switch(e.code) {
+                case 'ArrowLeft':
+                    if (isValidMove(currentPiece, 0, -1)) {
+                        currentPiece.col--;
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (isValidMove(currentPiece, 0, 1)) {
+                        currentPiece.col++;
+                    }
+                    break;
+                case 'ArrowDown':
+                    moveDown();
+                    break;
+                case 'ArrowUp':
+                    rotatePiece();
+                    break;
+                case 'Space':
+                    hardDrop();
+                    break;
+            }
+        });
+        
+        // Gestione difficoltà
+        difficultyBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                difficultyBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                difficulty = this.dataset.difficulty;
+                dropInterval = difficultySettings[difficulty].initialInterval;
+            });
+        });
+        
+        // Gestione audio
+        muteButton.addEventListener('click', function() {
+            muted = !muted;
+            muteButton.textContent = muted ? '🔇' : '🔊';
+        });
+        
+        // Inizia il gioco
+        startButton.addEventListener('click', startGame);
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            level = 1;
+            lines = 0;
+            lastTime = 0;
+            dropCounter = 0;
+            dropInterval = difficultySettings[difficulty].initialInterval;
+            
+            // Aggiorna i display
+            scoreDisplay.textContent = `Punteggio: ${score}`;
+            levelDisplay.textContent = `Livello: ${level}`;
+            linesDisplay.textContent = `Linee: ${lines}`;
+            
+            // Inizializza la griglia
+            createGrid();
+            
+            // Crea i primi pezzi
+            currentPiece = getRandomPiece();
+            nextPiece = getRandomPiece();
+            drawNextPiece();
+            
+            // Avvia il loop di gioco
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            update(0);
+        }
+        
+        function update(time) {
+            if (!gameActive) return;
+            
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                moveDown();
+                dropCounter = 0;
+            }
+            
+            // Pulisci il canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna la griglia e il pezzo corrente
+            drawGrid();
+            drawPiece(ctx, currentPiece);
+            
+            // Continua il loop
+            gameLoop = requestAnimationFrame(update);
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            cancelAnimationFrame(gameLoop);
+            gameOverScreen.style.display = 'block';
+            
+            // Riproduci suono di game over
+            playSound('gameOver');
+            
+            // Riavvia dopo 2 secondi
+            setTimeout(() => {
+                startScreen.style.display = 'flex';
+            }, 2000);
+        }
+        
+        // Ridimensiona il canvas quando la finestra cambia dimensione
+        window.addEventListener('resize', function() {
+            // Mantieni le proporzioni
+            const container = document.getElementById('game-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const scale = Math.min(
+                containerWidth / canvas.width,
+                containerHeight / canvas.height
+            );
+            
+            canvas.style.width = `${canvas.width * scale}px`;
+            canvas.style.height = `${canvas.height * scale}px`;
+            
+            // Ridimensiona anche il canvas del prossimo pezzo
+            const nextScale = scale * 0.8; // Leggermente più piccolo
+            nextCanvas.style.width = `${nextCanvas.width * nextScale}px`;
+            nextCanvas.style.height = `${nextCanvas.height * nextScale}px`;
+        });
+        
+        // Inizializza il ridimensionamento
+        window.dispatchEvent(new Event('resize'));
+        
+        // Carica il miglior punteggio dal localStorage se disponibile
+        if (localStorage.getItem('tetrisHighScore')) {
+            const highScore = parseInt(localStorage.getItem('tetrisHighScore'));
+            // Potremmo aggiungere un display per il

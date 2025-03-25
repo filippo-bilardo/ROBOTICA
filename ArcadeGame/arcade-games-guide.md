@@ -27,6 +27,18 @@ I giochi arcade sono stati una pietra miliare della cultura videoludica dalla fi
 - **Descrizione**: Uno sparatutto spaziale dove distruggi formazioni nemiche.
 - **Consiglio**: Permetti alla tua nave di essere catturata per creare una configurazione a doppia nave per una maggiore potenza di fuoco.
 
+Galaga: Simile a Space Invaders ma con pattern di movimento più complessi per i nemici.
+Frogger: Guida una rana attraverso un traffico intenso e un fiume pericoloso.
+Breakout/Arkanoid: Distruggi muri di mattoni con una pallina, controllando una piattaforma mobile.
+Bubble Bobble: Intrappola i nemici in bolle e poi falle scoppiare.
+Defender: Un altro classico sparatutto a scorrimento orizzontale.
+Dig Dug: Scava tunnel sotterranei e sconfiggi i nemici.
+Q*bert: Un gioco di puzzle con salti su piramidi di cubi.
+Missile Command: Difendi le tue città da missili in arrivo.
+Tempest: Sparatutto su un campo 3D a forma di tubo.
+BurgerTime: Costruisci hamburger evitando nemici.
+Joust: Combatti su uccelli volanti in un'arena.
+Paperboy: Consegna giornali evitando ostacoli su una bicicletta.
 ---
 
 

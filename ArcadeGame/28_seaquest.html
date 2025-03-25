@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seaquest - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #0077BE;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .controls p {
+            margin: 10px 0;
+        }
+        
+        .controls span {
+            padding: 2px 8px;
+            background-color: #444;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>SEAQUEST</h1>
+            <p>Pilota il tuo sottomarino, salva i subacquei e difenditi dai nemici marini!</p>
+            <p>Torna in superficie quando l'ossigeno sta per finire</p>
+            <button id="startButton">Inizia Gioco</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Punteggio: <span id="finalScore">0</span></p>
+            <button id="restartButton">Gioca Ancora</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Livello Completato!</h1>
+            <p>Punteggio: <span id="levelScore">0</span></p>
+            <button id="nextLevelButton">Prossimo Livello</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <p>Controlli: <span>←</span> <span>→</span> <span>↑</span> <span>↓</span> per muoversi, <span>Spazio</span> per sparare</p>
+    </div>
+
+    <script>
+        // Ottieni riferimenti agli elementi DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        const levelScoreElement = document.getElementById('levelScore');
+        
+        // Costanti di gioco
+        const SUBMARINE_WIDTH = 60;
+        const SUBMARINE_HEIGHT = 30;
+        const SUBMARINE_SPEED = 5;
+        const BULLET_SPEED = 8;
+        const ENEMY_SPEED = 3;
+        const DIVER_SPEED = 1;
+        const OXYGEN_DECREASE_RATE = 0.2;
+        const OXYGEN_MAX = 100;
+        const SURFACE_LEVEL = 100;
+        
+        // Colori
+        const COLORS = {
+            water: '#0077BE',
+            surface: '#87CEEB',
+            submarine: '#FFFF00',
+            bullet: '#FFFFFF',
+            enemy: ['#FF0000', '#FF6600', '#FF00FF'],
+            diver: '#00FF00',
+            oxygen: '#00FFFF',
+            explosion: '#FFA500',
+            bubbles: 'rgba(255, 255, 255, 0.7)'
+        };
+        
+        // Variabili di stato del gioco
+        let gameRunning = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let oxygen = OXYGEN_MAX;
+        let diversRescued = 0;
+        let diversNeeded = 6; // Subacquei da salvare per completare il livello
+        let submarineCapacity = 0; // Subacquei attualmente a bordo
+        let maxSubmarineCapacity = 6; // Capacità massima del sottomarino
+        
+        // Oggetti di gioco
+        let submarine = {
+            x: canvas.width / 2 - SUBMARINE_WIDTH / 2,
+            y: canvas.height / 2,
+            width: SUBMARINE_WIDTH,
+            height: SUBMARINE_HEIGHT,
+            speed: SUBMARINE_SPEED,
+            direction: 'right',
+            isMovingUp: false,
+            isMovingDown: false,
+            isMovingLeft: false,
+            isMovingRight: false,
+            isShooting: false,
+            lastShootTime: 0
+        };
+        
+        let bullets = [];
+        let enemies = [];
+        let divers = [];
+        let bubbles = [];
+        let explosions = [];
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+        nextLevelButton.addEventListener('click', nextLevel);
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') submarine.isMovingUp = true;
+            if (e.key === 'ArrowDown') submarine.isMovingDown = true;
+            if (e.key === 'ArrowLeft') {
+                submarine.isMovingLeft = true;
+                submarine.direction = 'left';
+            }
+            if (e.key === 'ArrowRight') {
+                submarine.isMovingRight = true;
+                submarine.direction = 'right';
+            }
+            if (e.key === ' ') submarine.isShooting = true;
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowUp') submarine.isMovingUp = false;
+            if (e.key === 'ArrowDown') submarine.isMovingDown = false;
+            if (e.key === 'ArrowLeft') submarine.isMovingLeft = false;
+            if (e.key === 'ArrowRight') submarine.isMovingRight = false;
+            if (e.key === ' ') submarine.isShooting = false;
+        });
+        
+        // Funzione per iniziare il gioco
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            initLevel();
+            gameLoop();
+        }
+        
+        // Funzione per riavviare il gioco
+        function restartGame() {
+            gameOverScreen.style.visibility = 'hidden';
+            level = 1;
+            score = 0;
+            lives = 3;
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Funzione per passare al livello successivo
+        function nextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            level++;
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Funzione per inizializzare il livello
+        function initLevel() {
+            oxygen = OXYGEN_MAX;
+            diversRescued = 0;
+            submarineCapacity = 0;
+            diversNeeded = 6 + (level * 2); // Aumenta i subacquei necessari con il livello
+            
+            // Resetta la posizione del sottomarino
+            submarine.x = canvas.width / 2 - SUBMARINE_WIDTH / 2;
+            submarine.y = canvas.height / 2;
+            
+            // Resetta gli oggetti di gioco
+            bullets = [];
+            enemies = [];
+            divers = [];
+            bubbles = [];
+            explosions = [];
+            
+            // Genera subacquei iniziali
+            for (let i = 0; i < 5; i++) {
+                spawnDiver();
+            }
+            
+            // Genera nemici iniziali
+            for (let i = 0; i < 5 + level; i++) {
+                spawnEnemy();
+            }
+        }
+        
+        // Funzione per generare un subacqueo
+        function spawnDiver() {
+            const side = Math.random() > 0.5 ? 'left' : 'right';
+            const x = side === 'left' ? -20 : canvas.width + 20;
+            const y = SURFACE_LEVEL + 50 + Math.random() * (canvas.height - SURFACE_LEVEL - 100);
+            
+            divers.push({
+                x: x,
+                y: y,
+                width: 20,
+                height: 30,
+                speed: DIVER_SPEED,
+                direction: side === 'left' ? 'right' : 'left',
+                rescued: false
+            });
+        }
+        
+        // Funzione per generare un nemico
+        function spawnEnemy() {
+            const side = Math.random() > 0.5 ? 'left' : 'right';
+            const x = side === 'left' ? -30 : canvas.width + 30;
+            const y = SURFACE_LEVEL + 20 + Math.random() * (canvas.height - SURFACE_LEVEL - 40);
+            const type = Math.floor(Math.random() * 3); // 3 tipi di nemici
+            
+            enemies.push({
+                x: x,
+                y: y,
+                width: 40,
+                height: 20,
+                speed: ENEMY_SPEED * (1 + level * 0.1), // Aumenta la velocità con il livello
+                direction: side === 'left' ? 'right' : 'left',
+                type: type
+            });
+        }
+        
+        // Funzione per sparare
+        function shoot() {
+            const currentTime = Date.now();
+            if (currentTime - submarine.lastShootTime < 300) return; // Limita la frequenza di sparo
+            
+            submarine.lastShootTime = currentTime;
+            
+            const bulletX = submarine.direction === 'right' ? 
+                submarine.x + submarine.width : 
+                submarine.x;
+            
+            bullets.push({
+                x: bulletX,
+                y: submarine.y + submarine.height / 2,
+                width: 10,
+                height: 4,
+                speed: BULLET_SPEED,
+                direction: submarine.direction
+            });
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            // Collisione proiettili con nemici
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    
+                    if (
+                        bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y
+                    ) {
+                        // Crea esplosione
+                        explosions.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            size: 30,
+                            life: 20
+                        });
+                        
+                        // Rimuovi nemico e proiettile
+                        enemies.splice(j, 1);
+                        bullets.splice(i, 1);
+                        
+                        // Aumenta punteggio
+                        score += 100 * level;
+                        
+                        // Genera un nuovo nemico
+                        setTimeout(spawnEnemy, 2000);
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // Collisione sottomarino con nemici
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                if (
+                    submarine.x < enemy.x + enemy.width &&
+                    submarine.x + submarine.width > enemy.x &&
+                    submarine.y < enemy.y + enemy.height &&
+                    submarine.y + submarine.height > enemy.y
+                ) {
+                    // Crea esplosione
+                    explosions.push({
+                        x: submarine.x,
+                        y: submarine.y,
+                        size: 40,
+                        life: 30
+                    });
+                    
+                    // Perde una vita
+                    loseLife();
+                    break;
+                }
+            }
+            
+            // Collisione sottomarino con subacquei
+            for (let i = divers.length - 1; i >= 0; i--) {
+                const diver = divers[i];
+                
+                if (
+                    !diver.rescued &&
+                    submarine.x < diver.x + diver.width &&
+                    submarine.x + submarine.width > diver.x &&
+                    submarine.y < diver.y + diver.height &&
+                    submarine.y + submarine.height > diver.y
+                ) {
+                    // Salva il subacqueo
+                    diver.rescued = true;
+                    submarineCapacity++;
+                    
+                    // Rimuovi il subacqueo dall'array
+                    divers.splice(i, 1);
+                    
+                    // Genera un nuovo subacqueo
+                    setTimeout(spawnDiver, 3000);
+                }
+            }
+            
+            // Controlla se il sottomarino è in superficie
+            if (submarine.y < SURFACE_LEVEL) {
+                // Ricarica ossigeno
+                oxygen = OXYGEN_MAX;
+                
+                // Scarica i subacquei salvati
+                if (submarineCapacity > 0) {
+                    diversRescued += submarineCapacity;
+                    score += submarineCapacity * 500;
+                    submarineCapacity = 0;
+                    
+                    // Controlla se sono stati salvati abbastanza subacquei
+                    if (diversRescued >= diversNeeded) {
+                        levelComplete();
+                    }
+                }
+            }
+        }
+        
+        // Funzione per perdere una vita
+        function loseLife() {
+            lives--;
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                // Resetta la posizione del sottomarino
+                submarine.x = canvas.width / 2 - SUBMARINE_WIDTH / 2;
+                submarine.y = canvas.height / 2;
+                oxygen = OXYGEN_MAX;
+            }
+        }
+        
+        // Funzione per terminare il gioco
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per completare il livello
+        function levelComplete() {
+            gameRunning = false;
+            levelScoreElement.textContent = score;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per aggiornare il gioco
+        function update() {
+            if (!gameRunning) return;
+            
+            // Aggiorna la posizione del sottomarino
+            if (submarine.isMovingUp && submarine.y > 0) {
+                submarine.y -= submarine.speed;
+            }
+            if (submarine.isMovingDown && submarine.y < canvas.height - submarine.height) {
+                submarine.y += submarine.speed;
+            }
+            if (submarine.isMovingLeft && submarine.x > 0) {
+                submarine.x -= submarine.speed;
+                submarine.direction = 'left';
+            }
+            if (submarine.isMovingRight && submarine.x < canvas.width - submarine.width) {
+                submarine.x += submarine.speed;
+                submarine.direction = 'right';
+            }
+            
+            // Gestisci sparo
+            if (submarine.isShooting) {
+                shoot();
+            }
+            
+            // Aggiorna posizione proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                if (bullet.direction === 'right') {
+                    bullet.x += bullet.speed;
+                } else {
+                    bullet.x -= bullet.speed;
+                }
+                
+                // Rimuovi proiettili fuori dallo schermo
+                if (bullet.x < 0 || bullet.x > canvas.width) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna posizione nemici
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                if (enemy.direction === 'right') {
+                    enemy.x += enemy.speed;
+                } else {
+                    enemy.x -= enemy.speed;
+                }
+                
+                // Rimuovi nemici fuori dallo schermo e generane di nuovi
+                if (enemy.x < -50 || enemy.x > canvas.width + 50) {
+                    enemies.splice(i, 1);
+                    setTimeout(spawnEnemy, 1000);
+                }
+            }
+            
+            // Aggiorna posizione subacquei
+            for (let i = divers.length - 1; i >= 0; i--) {
+                const diver = divers[i];
+                
+                if (diver.direction === 'right') {
+                    diver.x += diver.speed;
+                } else {
+                    diver.x -= diver.speed;
+                }
+                
+                // Rimuovi subacquei fuori dallo schermo e generane di nuovi
+                if (diver.x < -50 || diver.x > canvas.width + 50) {
+                    divers.splice(i, 1);
+                    setTimeout(spawnDiver, 2000);
+                }
+            }
+            
+            // Aggiorna esplosioni
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].life--;
+                
+                if (explosions[i].life <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+            
+            // Genera bolle casuali
+            if (Math.random() < 0.1) {
+                bubbles.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height,
+                    size: 2 + Math.random() * 5,
+                    speed: 1 + Math.random() * 2
+                });
+            }
+            
+            // Aggiorna bolle
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                bubbles[i].y -= bubbles[i].speed;
+                
+                // Rimuovi bolle fuori dallo schermo
+                if (bubbles[i].y < SURFACE_LEVEL) {
+                    bubbles.splice(i, 1);
+                }
+            }
+            
+            // Diminuisci ossigeno quando sott'acqua
+            if (submarine.y >= SURFACE_LEVEL) {
+                oxygen -= OXYGEN_DECREASE_RATE * (1 + submarineCapacity * 0.1); // Più subacquei = più consumo
+                
+                // Se l'ossigeno finisce, perde una vita
+                if (oxygen <= 0) {
+                    loseLife();
+                }
+            }
+            
+            // Controlla collisioni
+            checkCollisions();
+        }
+        
+        // Funzione per disegnare il gioco
+        function draw() {
+            // Pulisci canvas
+            ctx.fillStyle = COLORS.water;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna la superficie
+            ctx.fillStyle = COLORS.surface;
+            ctx.fillRect(0, 0, canvas.width, SURFACE_LEVEL);
+            
+            // Disegna onde sulla superficie
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x += 20) {
+                ctx.moveTo(x, SURFACE_LEVEL);
+                ctx.lineTo(x + 10, SURFACE_LEVEL - 5);
+                ctx.lineTo(x + 20, SURFACE_LEVEL);
+            }
+            ctx.stroke();
+            
+            // Disegna bolle
+            ctx.fillStyle = COLORS.bubbles;
+            for (const bubble of bubbles) {
+                ctx.beginPath();
+                ctx.arc(bubble.x, bubble.y, bubble.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Disegna subacquei
+            ctx.fillStyle = COLORS.diver;
+            for (const diver of divers) {
+                // Corpo
+                ctx.fillRect(diver.x, diver.y, diver.width, diver.height);
+                
+                // Bombola
+                ctx.fillRect(diver.x - 5, diver.y + 5, 5, 15);
+                
+                // Maschera
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(diver.x + 5, diver.y + 5, 10, 5);
+                ctx.fillStyle = COLORS.diver;
+            }
+            
+            // Disegna nemici
+            for (const enemy of enemies) {
+                ctx.fillStyle = COLORS.enemy[enemy.type];
+                
+                if (enemy.type === 0) { // Squalo
+                    // Corpo
+                    ctx.beginPath();
+                    if (enemy.direction === 'right') {
+                        ctx.moveTo(enemy.x, enemy.y + enemy.height / 2);
+                        ctx.lineTo(enemy.x + enemy.width, enemy.y);
+                        ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+                    } else {
+                        ctx.moveTo(enemy.x + enemy.width, enemy.y + enemy.height / 2);
+                        ctx.lineTo(enemy.x, enemy.y);
+                        ctx.lineTo(enemy.x, enemy.y + enemy.height);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Occhio
+                    ctx.fillStyle = '#FFFFFF';
+                    if (enemy.direction === 'right') {
+                        ctx.fillRect(enemy.x + enemy.width - 10, enemy.y + 5, 5, 5);
+                    } else {
+                        ctx.fillRect(enemy.x + 5, enemy.y + 5, 5, 5);
+                    }
+                } else if (enemy.type === 1) { // Medusa
+                    // Corpo
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, 0, Math.PI);
+                    ctx.fill();
+                    
+                    // Tentacoli
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + 5 + i * 8, enemy.y + enemy.height / 2);
+                        ctx.lineTo(enemy.x + 5 + i * 8, enemy.y + enemy.height);
+                        ctx.stroke();
+                    }
+                } else { // Pesce
+                    // Corpo
+                    ctx.beginPath();
+                    if (enemy.direction === 'right') {
+                        ctx.ellipse(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 
+                                   enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Coda
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x, enemy.y + enemy.height / 2);
+                        ctx.lineTo(enemy.x - 10, enemy.y);
+                        ctx.lineTo(enemy.x - 10, enemy.y + enemy.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else {
+                        ctx.ellipse(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 
+                                   enemy.width / 2, enemy.height / 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Coda
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + enemy.width, enemy.y + enemy.height / 2);
+                        ctx.lineTo(enemy.x + enemy.width + 10, enemy.y);
+                        ctx.lineTo(enemy.x + enemy.width + 10, enemy.y + enemy.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // Disegna proiettili
+            ctx.fillStyle = COLORS.bullet;
+            for (const bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+            
+            // Disegna sottomarino
+            ctx.fillStyle = COLORS.submarine;
+            
+            // Corpo principale
+            ctx.fillRect(submarine.x, submarine.y, submarine.width, submarine.height);
+            
+            // Torretta
+            ctx.fillRect(submarine.x + submarine.width / 3, submarine.y - 10, submarine.width / 3, 10);
+            
+            // Elica
+            if (submarine.direction === 'right') {
+                ctx.beginPath();
+                ctx.moveTo(submarine.x, submarine.y + submarine.height / 2);
+                ctx.lineTo(submarine.x - 10, submarine.y + submarine.height / 4);
+                ctx.lineTo(submarine.x - 10, submarine.y + submarine.height * 3/4);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(submarine.x + submarine.width, submarine.y + submarine.height / 2);
+                ctx.lineTo(submarine.x + submarine.width + 10, submarine.y + submarine.height / 4);
+                ctx.lineTo(submarine.x + submarine.width + 10, submarine.y + submarine.height * 3/4);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Oblò
+            ctx.fillStyle = '#87CEEB';
+            ctx.beginPath();
+            ctx.arc(submarine.x + submarine.width / 2, submarine.y + submarine.height / 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Disegna esplosioni
+            for (const explosion of explosions) {
+                const gradient = ctx.createRadialGradient(
+                    explosion.x + explosion.size / 2, 
+                    explosion.y + explosion.size / 2, 
+                    0, 
+                    explosion.x + explosion.size / 2, 
+                    explosion.y + explosion.size / 2, 
+                    explosion.size / 2
+                );
+                
+                gradient.addColorStop(0, '#FFFFFF');
+                gradient.addColorStop(0.5, COLORS.explosion);
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(explosion.x + explosion.size / 2, explosion.y + explosion.size / 2, 
+                       explosion.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Disegna HUD (Heads-Up Display)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Livello: ${level}`, 20, 30);
+            ctx.fillText(`Punteggio: ${score}`, 20, 60);
+            ctx.fillText(`Vite: ${lives}`, 20, 90);
+            ctx.fillText(`Subacquei salvati: ${diversRescued}/${diversNeeded}`, 20, 120);
+            ctx.fillText(`Subacquei a bordo: ${submarineCapacity}/${maxSubmarineCapacity}`, 20, 150);
+            
+            // Disegna barra dell'ossigeno
+            ctx.fillStyle = '#444444';
+            ctx.fillRect(canvas.width - 220, 20, 200, 20);
+            ctx.fillStyle = COLORS.oxygen;
+            ctx.fillRect(canvas.width - 220, 20, 200 * (oxygen / OXYGEN_MAX), 20);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeRect(canvas.width - 220, 20, 200, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Ossigeno', canvas.width - 220, 55);
+        }
+        
+        // Game loop principale
+        function gameLoop() {
+            update();
+            draw();
+            
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

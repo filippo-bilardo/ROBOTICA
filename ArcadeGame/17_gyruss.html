@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyruss - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            background-color: #000;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            border: 2px solid #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #lives-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            text-shadow: 2px 2px 4px #000;
+            display: none;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: #FFD700;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #FFD700;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .controls-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            max-width: 600px;
+        }
+        
+        .controls-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div id="score-display">Score: 0</div>
+        <div id="lives-display">Lives: 3</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>GYRUSS</h1>
+            <button id="start-button">INIZIA GIOCO</button>
+            <div class="controls-info">
+                <p>Usa le frecce direzionali per muoverti lungo il perimetro circolare</p>
+                <p>Premi SPAZIO per sparare</p>
+                <p>Distruggi tutti i nemici ed evita i loro colpi!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        
+        // Dimensioni del canvas
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        // Variabili di gioco
+        let score = 0;
+        let lives = 3;
+        let gameActive = false;
+        let gameLoop;
+        
+        // Posizione del centro dello schermo
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Raggio dell'orbita del giocatore
+        const orbitRadius = 200;
+        
+        // Giocatore
+        const player = {
+            angle: 0, // Angolo in radianti
+            size: 20,
+            speed: 0.05,
+            x: centerX,
+            y: centerY + orbitRadius,
+            color: '#00FFFF',
+            update: function() {
+                // Calcola la posizione basata sull'angolo
+                this.x = centerX + Math.sin(this.angle) * orbitRadius;
+                this.y = centerY + Math.cos(this.angle) * orbitRadius;
+            },
+            draw: function() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(-this.angle);
+                
+                // Disegna la navicella
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size/2);
+                ctx.lineTo(-this.size/2, this.size/2);
+                ctx.lineTo(this.size/2, this.size/2);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        };
+        
+        // Proiettili
+        const bullets = [];
+        const bulletSpeed = 5;
+        const bulletSize = 5;
+        
+        // Nemici
+        const enemies = [];
+        const enemySize = 15;
+        const enemySpeed = 1;
+        const maxEnemies = 10;
+        
+        // Controlli
+        const keys = {};
+        
+        // Event listeners per i controlli
+        window.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+        });
+        
+        window.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+        
+        // Inizia il gioco
+        startButton.addEventListener('click', startGame);
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            updateScore();
+            updateLives();
+            
+            // Resetta gli array
+            bullets.length = 0;
+            enemies.length = 0;
+            
+            // Resetta il giocatore
+            player.angle = 0;
+            player.update();
+            
+            // Avvia il loop di gioco
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 1000/60); // 60 FPS
+            
+            // Genera nemici periodicamente
+            spawnEnemies();
+        }
+        
+        function spawnEnemies() {
+            if (!gameActive) return;
+            
+            if (enemies.length < maxEnemies) {
+                // Crea un nuovo nemico dal centro
+                const enemy = {
+                    x: centerX,
+                    y: centerY,
+                    targetX: centerX + (Math.random() - 0.5) * orbitRadius * 1.5,
+                    targetY: centerY + (Math.random() - 0.5) * orbitRadius * 1.5,
+                    size: enemySize,
+                    speed: enemySpeed * (0.5 + Math.random() * 0.5),
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                    health: 1
+                };
+                enemies.push(enemy);
+            }
+            
+            // Programma la prossima generazione
+            setTimeout(spawnEnemies, 1000 + Math.random() * 2000);
+        }
+        
+        function update() {
+            if (!gameActive) return;
+            
+            // Pulisci il canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna l'orbita
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Disegna il centro
+            ctx.fillStyle = '#222';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Aggiorna il giocatore
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.angle += player.speed;
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                player.angle -= player.speed;
+            }
+            player.update();
+            player.draw();
+            
+            // Spara
+            if (keys[' '] && bullets.length < 5) {
+                keys[' '] = false; // Previene il fuoco continuo
+                const bullet = {
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    size: bulletSize,
+                    speed: bulletSpeed,
+                    color: '#FFFF00'
+                };
+                bullets.push(bullet);
+            }
+            
+            // Aggiorna e disegna i proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // Muovi il proiettile verso il centro
+                const dx = centerX - bullet.x;
+                const dy = centerY - bullet.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                bullet.x += (dx / distance) * bullet.speed;
+                bullet.y += (dy / distance) * bullet.speed;
+                
+                // Disegna il proiettile
+                ctx.fillStyle = bullet.color;
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Rimuovi i proiettili che raggiungono il centro
+                if (distance < 50) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna e disegna i nemici
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                // Muovi il nemico verso la sua destinazione
+                const dx = enemy.targetX - enemy.x;
+                const dy = enemy.targetY - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 1) {
+                    enemy.x += (dx / distance) * enemy.speed;
+                    enemy.y += (dy / distance) * enemy.speed;
+                } else {
+                    // Nuova destinazione
+                    enemy.targetX = centerX + (Math.random() - 0.5) * orbitRadius * 1.5;
+                    enemy.targetY = centerY + (Math.random() - 0.5) * orbitRadius * 1.5;
+                }
+                
+                // Disegna il nemico
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Collisione con i proiettili
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const bullet = bullets[j];
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < enemy.size + bullet.size) {
+                        // Colpito!
+                        enemy.health--;
+                        bullets.splice(j, 1);
+                        
+                        if (enemy.health <= 0) {
+                            enemies.splice(i, 1);
+                            score += 100;
+                            updateScore();
+                        }
+                        break;
+                    }
+                }
+                
+                // Collisione con il giocatore
+                const dxPlayer = player.x - enemy.x;
+                const dyPlayer = player.y - enemy.y;
+                const distancePlayer = Math.sqrt(dxPlayer * dxPlayer + dyPlayer * dyPlayer);
+                
+                if (distancePlayer < enemy.size + player.size/2) {
+                    // Colpito dal nemico!
+                    enemies.splice(i, 1);
+                    lives--;
+                    updateLives();
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+        
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+        
+        function updateLives() {
+            livesDisplay.textContent = `Lives: ${lives}`;
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameLoop);
+            gameOverScreen.style.display = 'block';
+            
+            // Riavvia dopo 3 secondi
+            setTimeout(() => {
+                startScreen.style.display = 'flex';
+            }, 3000);
+        }
+        
+        // Ridimensiona il canvas quando la finestra cambia dimensione
+        window.addEventListener('resize', function() {
+            // Mantieni le proporzioni
+            const container = document.getElementById('game-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const scale = Math.min(
+                containerWidth / canvas.width,
+                containerHeight / canvas.height
+            );
+            
+            canvas.style.width = `${canvas.width * scale}px`;
+            canvas.style.height = `${canvas.height * scale}px`;
+        });
+        
+        // Inizializza il ridimensionamento
+        window.dispatchEvent(new Event('resize'));
+    </script>
+</body>
+</html>

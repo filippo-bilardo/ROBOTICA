@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digger - Gioco Arcade Classico</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        canvas {
+            background-color: #111;
+            display: block;
+            border: 2px solid #333;
+        }
+        
+        #startScreen, #gameOverScreen, #levelCompleteScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 10;
+        }
+        
+        #gameOverScreen, #levelCompleteScreen {
+            visibility: hidden;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .controls p {
+            margin: 10px 0;
+        }
+        
+        .controls span {
+            padding: 2px 8px;
+            background-color: #444;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="startScreen">
+            <h1>DIGGER</h1>
+            <p>Scava tunnel, raccogli gemme ed evita i nemici!</p>
+            <p>Raccogli tutte le gemme per completare il livello</p>
+            <button id="startButton">Inizia Gioco</button>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p>Punteggio: <span id="finalScore">0</span></p>
+            <button id="restartButton">Gioca Ancora</button>
+        </div>
+        
+        <div id="levelCompleteScreen">
+            <h1>Livello Completato!</h1>
+            <p>Punteggio: <span id="levelScore">0</span></p>
+            <button id="nextLevelButton">Prossimo Livello</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <p>Controlli: <span>←</span> <span>→</span> <span>↑</span> <span>↓</span> per muoversi, <span>Spazio</span> per sparare</p>
+    </div>
+
+    <script>
+        // Ottieni riferimenti agli elementi DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const finalScoreElement = document.getElementById('finalScore');
+        const levelScoreElement = document.getElementById('levelScore');
+        
+        // Costanti di gioco
+        const TILE_SIZE = 40;
+        const GRID_WIDTH = Math.floor(canvas.width / TILE_SIZE);
+        const GRID_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+        const PLAYER_SPEED = 4;
+        const ENEMY_SPEED = 2;
+        const BULLET_SPEED = 8;
+        
+        // Tipi di tile
+        const TILE_TYPES = {
+            EMPTY: 0,
+            DIRT: 1,
+            WALL: 2,
+            GEM: 3
+        };
+        
+        // Colori
+        const COLORS = {
+            player: '#FFD700',
+            dirt: '#8B4513',
+            wall: '#555555',
+            gem: '#00FFFF',
+            enemy: '#FF0000',
+            bullet: '#FFFFFF',
+            tunnel: '#000000',
+            background: '#111111'
+        };
+        
+        // Variabili di stato del gioco
+        let gameRunning = false;
+        let level = 1;
+        let score = 0;
+        let lives = 3;
+        let grid = [];
+        let tunnels = [];
+        let gems = [];
+        let enemies = [];
+        let bullets = [];
+        let player = {
+            x: 0,
+            y: 0,
+            width: TILE_SIZE - 10,
+            height: TILE_SIZE - 10,
+            speed: PLAYER_SPEED,
+            direction: 'right',
+            isMovingUp: false,
+            isMovingDown: false,
+            isMovingLeft: false,
+            isMovingRight: false,
+            isShooting: false,
+            lastShootTime: 0
+        };
+        
+        // Event listeners
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+        nextLevelButton.addEventListener('click', nextLevel);
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') player.isMovingUp = true;
+            if (e.key === 'ArrowDown') player.isMovingDown = true;
+            if (e.key === 'ArrowLeft') {
+                player.isMovingLeft = true;
+                player.direction = 'left';
+            }
+            if (e.key === 'ArrowRight') {
+                player.isMovingRight = true;
+                player.direction = 'right';
+            }
+            if (e.key === ' ') player.isShooting = true;
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowUp') player.isMovingUp = false;
+            if (e.key === 'ArrowDown') player.isMovingDown = false;
+            if (e.key === 'ArrowLeft') player.isMovingLeft = false;
+            if (e.key === 'ArrowRight') player.isMovingRight = false;
+            if (e.key === ' ') player.isShooting = false;
+        });
+        
+        // Funzione per iniziare il gioco
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            initLevel();
+            gameLoop();
+        }
+        
+        // Funzione per riavviare il gioco
+        function restartGame() {
+            gameOverScreen.style.visibility = 'hidden';
+            level = 1;
+            score = 0;
+            lives = 3;
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Funzione per passare al livello successivo
+        function nextLevel() {
+            levelCompleteScreen.style.visibility = 'hidden';
+            level++;
+            initLevel();
+            gameRunning = true;
+        }
+        
+        // Funzione per inizializzare il livello
+        function initLevel() {
+            // Inizializza la griglia
+            grid = [];
+            tunnels = [];
+            gems = [];
+            enemies = [];
+            bullets = [];
+            
+            // Crea la griglia di gioco
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                grid[y] = [];
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    // Bordi sono muri
+                    if (x === 0 || y === 0 || x === GRID_WIDTH - 1 || y === GRID_HEIGHT - 1) {
+                        grid[y][x] = TILE_TYPES.WALL;
+                    } 
+                    // Aggiungi alcuni muri interni in base al livello
+                    else if (level > 1 && Math.random() < 0.1 + (level * 0.02)) {
+                        grid[y][x] = TILE_TYPES.WALL;
+                    }
+                    // Il resto è terra
+                    else {
+                        grid[y][x] = TILE_TYPES.DIRT;
+                    }
+                }
+            }
+            
+            // Posiziona il giocatore
+            player.x = TILE_SIZE + 5;
+            player.y = TILE_SIZE + 5;
+            
+            // Crea un tunnel iniziale intorno al giocatore
+            createTunnel(Math.floor(player.x / TILE_SIZE), Math.floor(player.y / TILE_SIZE));
+            
+            // Aggiungi gemme
+            const gemCount = 5 + level * 2;
+            for (let i = 0; i < gemCount; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+                    y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+                } while (grid[y][x] !== TILE_TYPES.DIRT);
+                
+                grid[y][x] = TILE_TYPES.GEM;
+                gems.push({x: x * TILE_SIZE + TILE_SIZE / 2, y: y * TILE_SIZE + TILE_SIZE / 2});
+            }
+            
+            // Aggiungi nemici
+            const enemyCount = level;
+            for (let i = 0; i < enemyCount; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+                    y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+                } while (grid[y][x] !== TILE_TYPES.DIRT || 
+                         (Math.abs(x * TILE_SIZE - player.x) < TILE_SIZE * 3 && 
+                          Math.abs(y * TILE_SIZE - player.y) < TILE_SIZE * 3));
+                
+                enemies.push({
+                    x: x * TILE_SIZE + TILE_SIZE / 2,
+                    y: y * TILE_SIZE + TILE_SIZE / 2,
+                    width: TILE_SIZE - 10,
+                    height: TILE_SIZE - 10,
+                    speed: ENEMY_SPEED,
+                    direction: Math.random() < 0.5 ? 'horizontal' : 'vertical',
+                    moveDir: Math.random() < 0.5 ? 1 : -1
+                });
+                
+                // Crea un tunnel per il nemico
+                createTunnel(x, y);
+            }
+        }
+        
+        // Funzione per creare un tunnel
+        function createTunnel(gridX, gridY) {
+            if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT) {
+                if (grid[gridY][gridX] === TILE_TYPES.DIRT) {
+                    grid[gridY][gridX] = TILE_TYPES.EMPTY;
+                    tunnels.push({x: gridX * TILE_SIZE, y: gridY * TILE_SIZE});
+                }
+            }
+        }
+        
+        // Funzione per sparare
+        function shoot() {
+            const currentTime = Date.now();
+            if (currentTime - player.lastShootTime < 500) return; // Limita la frequenza di sparo
+            
+            player.lastShootTime = currentTime;
+            
+            let bulletX = player.x + player.width / 2;
+            let bulletY = player.y + player.height / 2;
+            let bulletDx = 0;
+            let bulletDy = 0;
+            
+            if (player.direction === 'right') bulletDx = BULLET_SPEED;
+            else if (player.direction === 'left') bulletDx = -BULLET_SPEED;
+            else if (player.direction === 'up') bulletDy = -BULLET_SPEED;
+            else if (player.direction === 'down') bulletDy = BULLET_SPEED;
+            
+            bullets.push({
+                x: bulletX,
+                y: bulletY,
+                width: 6,
+                height: 6,
+                dx: bulletDx,
+                dy: bulletDy
+            });
+        }
+        
+        // Funzione per controllare le collisioni con la griglia
+        function checkGridCollision(x, y, width, height) {
+            const gridX1 = Math.floor(x / TILE_SIZE);
+            const gridY1 = Math.floor(y / TILE_SIZE);
+            const gridX2 = Math.floor((x + width) / TILE_SIZE);
+            const gridY2 = Math.floor((y + height) / TILE_SIZE);
+            
+            // Controlla se qualsiasi angolo dell'oggetto è in una cella solida
+            for (let gridY = gridY1; gridY <= gridY2; gridY++) {
+                for (let gridX = gridX1; gridX <= gridX2; gridX++) {
+                    if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT) {
+                        if (grid[gridY][gridX] === TILE_TYPES.WALL) {
+                            return true; // Collisione con un muro
+                        }
+                        if (grid[gridY][gridX] === TILE_TYPES.DIRT) {
+                            // Scava un tunnel
+                            createTunnel(gridX, gridY);
+                        }
+                        if (grid[gridY][gridX] === TILE_TYPES.GEM) {
+                            // Raccogli la gemma
+                            grid[gridY][gridX] = TILE_TYPES.EMPTY;
+                            
+                            // Rimuovi la gemma dall'array
+                            for (let i = 0; i < gems.length; i++) {
+                                const gem = gems[i];
+                                const gemGridX = Math.floor(gem.x / TILE_SIZE);
+                                const gemGridY = Math.floor(gem.y / TILE_SIZE);
+                                
+                                if (gemGridX === gridX && gemGridY === gridY) {
+                                    gems.splice(i, 1);
+                                    score += 100;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return false; // Nessuna collisione
+        }
+        
+        // Funzione per controllare le collisioni tra oggetti
+        function checkObjectCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        // Funzione per aggiornare il gioco
+        function update() {
+            if (!gameRunning) return;
+            
+            // Movimento del giocatore
+            let newX = player.x;
+            let newY = player.y;
+            
+            if (player.isMovingUp) {
+                newY -= player.speed;
+                player.direction = 'up';
+            }
+            if (player.isMovingDown) {
+                newY += player.speed;
+                player.direction = 'down';
+            }
+            if (player.isMovingLeft) {
+                newX -= player.speed;
+                player.direction = 'left';
+            }
+            if (player.isMovingRight) {
+                newX += player.speed;
+                player.direction = 'right';
+            }
+            
+            // Controlla collisioni con la griglia per il movimento orizzontale
+            if (!checkGridCollision(newX, player.y, player.width, player.height)) {
+                player.x = newX;
+            }
+            
+            // Controlla collisioni con la griglia per il movimento verticale
+            if (!checkGridCollision(player.x, newY, player.width, player.height)) {
+                player.y = newY;
+            }
+            
+            // Gestisci sparo
+            if (player.isShooting) {
+                shoot();
+                player.isShooting = false; // Spara solo una volta per pressione
+            }
+            
+            // Aggiorna posizione proiettili
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += bullet.dx;
+                bullet.y += bullet.dy;
+                
+                // Controlla collisioni con la griglia
+                if (checkGridCollision(bullet.x, bullet.y, bullet.width, bullet.height)) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Controlla collisioni con i nemici
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (checkObjectCollision(bullet, enemy)) {
+                        bullets.splice(i, 1);
+                        enemies.splice(j, 1);
+                        score += 200;
+                        break;
+                    }
+                }
+                
+                // Rimuovi proiettili fuori dallo schermo
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Aggiorna nemici
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                let newEnemyX = enemy.x;
+                let newEnemyY = enemy.y;
+                
+                // Movimento nemico
+                if (enemy.direction === 'horizontal') {
+                    newEnemyX += enemy.speed * enemy.moveDir;
+                } else {
+                    newEnemyY += enemy.speed * enemy.moveDir;
+                }
+                
+                // Controlla collisioni con la griglia
+                if (checkGridCollision(newEnemyX - enemy.width / 2, newEnemyY - enemy.height / 2, enemy.width, enemy.height)) {
+                    // Cambia direzione se colpisce un muro
+                    enemy.moveDir *= -1;
+                } else {
+                    enemy.x = newEnemyX;
+                    enemy.y = newEnemyY;
+                }
+                
+                // Cambia direzione casualmente
+                if (Math.random() < 0.01) {
+                    enemy.direction = enemy.direction === 'horizontal' ? 'vertical' : 'horizontal';
+                    enemy.moveDir = Math.random() < 0.5 ? 1 : -1;
+                }
+                
+                // Controlla collisione con il giocatore
+                if (checkObjectCollision(player, enemy)) {
+                    loseLife();
+                    break;
+                }
+            }
+            
+            // Controlla se tutte le gemme sono state raccolte
+            if (gems.length === 0) {
+                levelComplete();
+            }
+        }
+        
+        // Funzione per perdere una vita
+        function loseLife() {
+            lives--;
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                // Resetta la posizione del giocatore
+                player.x = TILE_SIZE + 5;
+                player.y = TILE_SIZE + 5;
+            }
+        }
+        
+        // Funzione per terminare il gioco
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per completare il livello
+        function levelComplete() {
+            gameRunning = false;
+            levelScoreElement.textContent = score;
+            levelCompleteScreen.style.visibility = 'visible';
+        }
+        
+        // Funzione per disegnare il gioco
+        function draw() {
+            // Pulisci canvas
+            ctx.fillStyle = COLORS.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna la griglia
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const tileX = x * TILE_SIZE;
+                    const tileY = y * TILE_SIZE;
+                    
+                    if (grid[y][x] === TILE_TYPES.DIRT) {
+                        ctx.fillStyle = COLORS.dirt;
+                        ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    } else if (grid[y][x] === TILE_TYPES.WALL) {
+                        ctx.fillStyle = COLORS.wall;
+                        ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    } else if (grid[y][x] === TILE_TYPES.GEM) {
+                        // Disegna lo sfondo del tunnel
+                        ctx.fillStyle = COLORS.tunnel;
+                        ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                        
+                        // Disegna la gemma
+                        ctx.fillStyle = COLORS.gem;
+                        ctx.beginPath();
+                        ctx.moveTo(tileX + TILE_SIZE / 2, tileY + 5);
+                        ctx.lineTo(tileX + TILE_SIZE - 5, tileY + TILE_SIZE / 2);
+                        ctx.lineTo(tileX + TILE_SIZE / 2, tileY + TILE_SIZE - 5);
+                        ctx.lineTo(tileX + 5, tileY + TILE_SIZE / 2);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (grid[y][x] === TILE_TYPES.EMPTY) {
+                        ctx.fillStyle = COLORS.tunnel;
+                        ctx.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+            
+            // Disegna i proiettili
+            ctx.fillStyle = COLORS.bullet;
+            for (const bullet of bullets) {
+                ctx.fillRect(bullet.x - bullet.width / 2, bullet.y - bullet.height / 2, bullet.width, bullet.height);
+            }
+            
+            // Disegna i nemici
+            ctx.fillStyle = COLORS.enemy;
+            for (const enemy of enemies) {
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Disegna il giocatore
+            ctx.fillStyle = COLORS.player;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Disegna HUD (Heads-Up Display)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Livello: ${level}`, 20, 30);
+            ctx.fillText(`Punteggio: ${score}`, 20, 60);
+            ctx.fillText(`Vite: ${lives}`, 20, 90);
+            ctx.fillText(`Gemme rimaste: ${gems.length}`, 20, 120);
+        }
+        
+        // Game loop principale
+        function gameLoop() {
+            update();
+            draw();
+            
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>
