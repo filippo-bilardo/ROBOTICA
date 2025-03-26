@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frogger - Gioco Arcade Classico</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="600" height="600"></canvas>
+        
+        <div id="score-display">Punteggio: 0</div>
+        <div id="lives-display">Vite: 3</div>
+        <div id="level-display">Livello: 1</div>
+        
+        <div id="game-over">GAME OVER</div>
+        
+        <div id="start-screen">
+            <h1>FROGGER</h1>
+            <button id="start-button">INIZIA GIOCO</button>
+            <div class="controls-info">
+                <p>Usa le frecce direzionali per muovere la rana</p>
+                <p>Raggiungi le tane in cima evitando ostacoli e acqua</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione del gioco
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const levelDisplay = document.getElementById('level-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        
+        // Dimensioni del canvas
+        const GRID_SIZE = 40;
+        const GRID_WIDTH = Math.floor(canvas.width / GRID_SIZE);
+        const GRID_HEIGHT = Math.floor(canvas.height / GRID_SIZE);
+        
+        // Variabili di gioco
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameActive = false;
+        let gameLoop;
+        
+        // Rana (giocatore)
+        const frog = {
+            x: canvas.width / 2 - GRID_SIZE / 2,
+            y: canvas.height - GRID_SIZE,
+            width: GRID_SIZE - 10,
+            height: GRID_SIZE - 10,
+            speed: GRID_SIZE,
+            color: '#0F0',
+            draw: function() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            },
+            reset: function() {
+                this.x = canvas.width / 2 - GRID_SIZE / 2;
+                this.y = canvas.height - GRID_SIZE;
+            }
+        };
+        
+        // Veicoli
+        const vehicles = [];
+        
+        // Tronchi e tartarughe
+        const logs = [];
+        
+        // Tane (destinazioni)
+        const homes = [];
+        
+        // Inizializza il gioco
+        function initGame() {
+            // Resetta variabili
+            score = 0;
+            lives = 3;
+            level = 1;
+            
+            // Aggiorna display
+            scoreDisplay.textContent = `Punteggio: ${score}`;
+            livesDisplay.textContent = `Vite: ${lives}`;
+            levelDisplay.textContent = `Livello: ${level}`;
+            
+            // Resetta posizione rana
+            frog.reset();
+            
+            // Inizializza veicoli
+            vehicles.length = 0;
+            for (let i = 0; i < 3; i++) {
+                const row = 8 + i;
+                const direction = i % 2 === 0 ? 1 : -1;
+                const speed = (1 + i * 0.5) * direction * (0.5 + level * 0.1);
+                
+                for (let j = 0; j < 3; j++) {
+                    vehicles.push({
+                        x: j * 200 * direction,
+                        y: row * GRID_SIZE,
+                        width: GRID_SIZE * 2,
+                        height: GRID_SIZE - 10,
+                        speed: speed,
+                        color: '#F00'
+                    });
+                }
+            }
+            
+            // Inizializza tronchi e tartarughe
+            logs.length = 0;
+            for (let i = 0; i < 3; i++) {
+                const row = 3 + i;
+                const direction = i % 2 === 0 ? 1 : -1;
+                const speed = (0.5 + i * 0.2) * direction * (0.4 + level * 0.05);
+                const width = (i % 3 + 2) * GRID_SIZE;
+                
+                for (let j = 0; j < 2; j++) {
+                    logs.push({
+                        x: j * 300 * direction,
+                        y: row * GRID_SIZE,
+                        width: width,
+                        height: GRID_SIZE - 10,
+                        speed: speed,
+                        color: '#A52A2A'
+                    });
+                }
+            }
+            
+            // Inizializza tane
+            homes.length = 0;
+            for (let i = 0; i < 5; i++) {
+                homes.push({
+                    x: i * (GRID_SIZE * 3) + GRID_SIZE,
+                    y: GRID_SIZE,
+                    width: GRID_SIZE,
+                    height: GRID_SIZE,
+                    filled: false
+                });
+            }
+        }
+        
+        // Aggiorna gli elementi di gioco
+        function update() {
+            // Aggiorna posizione veicoli
+            vehicles.forEach(vehicle => {
+                vehicle.x += vehicle.speed;
+                
+                // Riposiziona veicoli quando escono dallo schermo
+                if (vehicle.speed > 0 && vehicle.x > canvas.width) {
+                    vehicle.x = -vehicle.width;
+                } else if (vehicle.speed < 0 && vehicle.x + vehicle.width < 0) {
+                    vehicle.x = canvas.width;
+                }
+                
+                // Controlla collisioni con la rana
+                if (checkCollision(frog, vehicle)) {
+                    loseLife();
+                }
+            });
+            
+            // Aggiorna posizione tronchi e tartarughe
+            logs.forEach(log => {
+                log.x += log.speed;
+                
+                // Riposiziona tronchi quando escono dallo schermo
+                if (log.speed > 0 && log.x > canvas.width) {
+                    log.x = -log.width;
+                } else if (log.speed < 0 && log.x + log.width < 0) {
+                    log.x = canvas.width;
+                }
+            });
+            
+            // Controlla se la rana è nell'acqua
+            if (frog.y > GRID_SIZE && frog.y < GRID_SIZE * 6) {
+                let onLog = false;
+                
+                logs.forEach(log => {
+                    if (checkCollision(frog, log)) {
+                        onLog = true;
+                        frog.x += log.speed; // La rana si muove con il tronco
+                    }
+                });
+                
+                if (!onLog) {
+                    loseLife(); // La rana annega
+                }
+            }
+            
+            // Controlla se la rana è arrivata a una tana
+            homes.forEach(home => {
+                if (!home.filled && checkCollision(frog, home)) {
+                    home.filled = true;
+                    score += 100;
+                    scoreDisplay.textContent = `Punteggio: ${score}`;
+                    frog.reset();
+                    
+                    // Controlla se tutte le tane sono piene
+                    if (homes.every(h => h.filled)) {
+                        nextLevel();
+                    }
+                }
+            });
+            
+            // Controlla se la rana è uscita dallo schermo
+            if (frog.x < 0 || frog.x + frog.width > canvas.width) {
+                loseLife();
+            }
+        }
+        
+        // Disegna tutti gli elementi
+        function draw() {
+            // Pulisci canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna sfondo
+            drawBackground();
+            
+            // Disegna veicoli
+            vehicles.forEach(vehicle => {
+                ctx.fillStyle = vehicle.color;
+                ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+            });
+            
+            // Disegna tronchi e tartarughe
+            logs.forEach(log => {
+                ctx.fillStyle = log.color;
+                ctx.fillRect(log.x, log.y, log.width, log.height);
+            });
+            
+            // Disegna tane
+            homes.forEach(home => {
+                ctx.fillStyle = home.filled ? '#0F0' : '#000';
+                ctx.fillRect(home.x, home.y, home.width, home.height);
+                ctx.strokeStyle = '#FFF';
+                ctx.strokeRect(home.x, home.y, home.width, home.height);
+            });
+            
+            // Disegna rana
+            frog.draw();
+        }
+        
+        // Disegna lo sfondo del gioco
+        function drawBackground() {
+            // Area sicura in basso
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, canvas.height - GRID_SIZE, canvas.width, GRID_SIZE);
+            
+            // Strada
+            ctx.fillStyle = '#555';
+            ctx.fillRect(0, GRID_SIZE * 6, canvas.width, GRID_SIZE * 5);
+            
+            // Acqua
+            ctx.fillStyle = '#4444FF';
+            ctx.fillRect(0, GRID_SIZE, canvas.width, GRID_SIZE * 5);
+            
+            // Area sicura in alto
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, GRID_SIZE);
+        }
+        
+        // Controlla collisioni tra due oggetti
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        // Gestisce la perdita di una vita
+        function loseLife() {
+            lives--;
+            livesDisplay.textContent = `Vite: ${lives}`;
+            frog.reset();
+            
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Passa al livello successivo
+        function nextLevel() {
+            level++;
+            levelDisplay.textContent = `Livello: ${level}`;
+            score += 1000;
+            scoreDisplay.textContent = `Punteggio: ${score}`;
+            
+            // Resetta tane
+            homes.forEach(home => {
+                home.filled = false;
+            });
+            
+            // Aumenta difficoltà
+            vehicles.forEach(vehicle => {
+                vehicle.speed *= 1.2;
+            });
+            
+            logs.forEach(log => {
+                log.speed *= 1.2;
+            });
+            
+            frog.reset();
+        }
+        
+        // Game over
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameLoop);
+            gameOverScreen.style.display = 'block';
+        }
+        
+        // Inizia il gioco
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            
+            initGame();
+            
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(function() {
+                update();
+                draw();
+            }, 1000 / 60); // 60 FPS
+        }
+        
+        // Gestione input da tastiera
+        document.addEventListener('keydown', function(e) {
+            if (!gameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    frog.y -= frog.speed;
+                    if (frog.y < 0) frog.y = 0;
+                    break;
+                case 'ArrowDown':
+                    frog.y += frog.speed;
+                    if (frog.y > canvas.height - frog.height) frog.y = canvas.height - frog.height;
+                    break;
+                case 'ArrowLeft':
+                    frog.x -= frog.speed;
+                    if (frog.x < 0) frog.x = 0;
+                    break;
+                case 'ArrowRight':
+                    frog.x += frog.speed;
+                    if (frog.x > canvas.width - frog.width) frog.x = canvas.width - frog.width;
+                    break;
+            }
+        });
+        
+        // Avvia il gioco quando si preme il pulsante
+        startButton.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
