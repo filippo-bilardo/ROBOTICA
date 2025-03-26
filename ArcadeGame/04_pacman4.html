@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Pac-Man Semplificato</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #000;
+    }
+    #gameCanvas {
+      border: 2px solid #fff;
+      background-color: #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let pacMan = {
+      x: 200,
+      y: 200,
+      radius: 20,
+      angle: 0.2,
+      direction: 'right'
+    };
+
+    function drawPacMan() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      let startAngle, endAngle;
+      if (pacMan.direction === 'right') {
+        startAngle = pacMan.angle * Math.PI;
+        endAngle = (2 - pacMan.angle) * Math.PI;
+      } else if (pacMan.direction === 'left') {
+        startAngle = (1 + pacMan.angle) * Math.PI;
+        endAngle = (3 - pacMan.angle) * Math.PI;
+      } else if (pacMan.direction === 'up') {
+        startAngle = (1.5 + pacMan.angle) * Math.PI;
+        endAngle = (3.5 - pacMan.angle) * Math.PI;
+      } else if (pacMan.direction === 'down') {
+        startAngle = (0.5 + pacMan.angle) * Math.PI;
+        endAngle = (2.5 - pacMan.angle) * Math.PI;
+      }
+      ctx.arc(pacMan.x, pacMan.y, pacMan.radius, startAngle, endAngle);
+      ctx.lineTo(pacMan.x, pacMan.y);
+      ctx.fillStyle = 'yellow';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function movePacMan() {
+      const speed = 5;
+      if (pacMan.direction === 'right' && pacMan.x + pacMan.radius < canvas.width) {
+        pacMan.x += speed;
+      } else if (pacMan.direction === 'left' && pacMan.x - pacMan.radius > 0) {
+        pacMan.x -= speed;
+      } else if (pacMan.direction === 'up' && pacMan.y - pacMan.radius > 0) {
+        pacMan.y -= speed;
+      } else if (pacMan.direction === 'down' && pacMan.y + pacMan.radius < canvas.height) {
+        pacMan.y += speed;
+      }
+    }
+
+    document.addEventListener('keydown', function(event) {
+      const key = event.key;
+      if (key === 'ArrowRight') {
+        pacMan.direction = 'right';
+      } else if (key === 'ArrowLeft') {
+        pacMan.direction = 'left';
+      } else if (key === 'ArrowUp') {
+        pacMan.direction = 'up';
+      } else if (key === 'ArrowDown') {
+        pacMan.direction = 'down';
+      }
+    });
+
+    function gameLoop() {
+      movePacMan();
+      drawPacMan();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>

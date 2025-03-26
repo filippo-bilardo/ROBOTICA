@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Pacman</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #000;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const tileSize = 40; // ogni cella misura 40px (griglia 10x10 per canvas 400x400)
+        
+        // 0 = vuoto, 1 = muro, 2 = pellet
+        const level = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,1,1,2,1],
+            [1,2,1,2,2,2,2,1,2,1],
+            [1,2,1,2,1,1,2,1,2,1],
+            [1,2,1,2,2,2,2,1,2,1],
+            [1,2,1,1,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,2,2,1],
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
+        
+        const pacman = {
+            row: 1,
+            col: 1,
+            direction: {x: 0, y: 0}
+        };
+        
+        document.addEventListener("keydown", e => {
+            switch(e.key) {
+                case "ArrowUp":
+                    pacman.direction = {x: 0, y: -1};
+                    break;
+                case "ArrowDown":
+                    pacman.direction = {x: 0, y: 1};
+                    break;
+                case "ArrowLeft":
+                    pacman.direction = {x: -1, y: 0};
+                    break;
+                case "ArrowRight":
+                    pacman.direction = {x: 1, y: 0};
+                    break;
+            }
+        });
+        
+        function update() {
+            const nextRow = pacman.row + pacman.direction.y;
+            const nextCol = pacman.col + pacman.direction.x;
+            if (nextRow >= 0 && nextRow < level.length &&
+                nextCol >= 0 && nextCol < level[0].length &&
+                level[nextRow][nextCol] !== 1) {
+                pacman.row = nextRow;
+                pacman.col = nextCol;
+                if (level[nextRow][nextCol] === 2) {
+                    level[nextRow][nextCol] = 0; // raccoglie il pellet
+                }
+            }
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let row = 0; row < level.length; row++) {
+                for (let col = 0; col < level[row].length; col++) {
+                    const cell = level[row][col];
+                    const x = col * tileSize;
+                    const y = row * tileSize;
+                    if (cell === 1) {
+                        ctx.fillStyle = "#0000FF"; // muro blu
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                    } else if (cell === 2) {
+                        ctx.fillStyle = "#FFF";
+                        ctx.beginPath();
+                        ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            const pacX = pacman.col * tileSize + tileSize/2;
+            const pacY = pacman.row * tileSize + tileSize/2;
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            const mouthAngle = Math.PI / 6;
+            let angle = 0;
+            if (pacman.direction.x === 1) angle = 0;
+            else if (pacman.direction.x === -1) angle = Math.PI;
+            else if (pacman.direction.y === 1) angle = Math.PI/2;
+            else if (pacman.direction.y === -1) angle = -Math.PI/2;
+            ctx.moveTo(pacX, pacY);
+            ctx.arc(pacX, pacY, tileSize/2.5, angle + mouthAngle, angle - mouthAngle, true);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+        }
+        
+        setInterval(gameLoop, 200);
+    </script>
+</body>
+</html>
