@@ -15,6 +15,9 @@ Pac-Man è uno dei videogiochi arcade più iconici e riconoscibili di tutti i te
 - Durante questo periodo, puoi mangiare i fantasmi per ottenere punti bonus
 - Completa tutti i livelli per ottenere il punteggio più alto possibile
 
+## Collegamenti esterni
+- [Pac-Man Wiki](https://www.masswerk.at/JavaPac/JS-PacMan2.html)
+
 ## Caratteristiche Principali
 - Labirinto con percorsi strategici
 - Quattro fantasmi con comportamenti di inseguimento diversi
