@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 2: Variabili e Canvas - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 2: Variabili e Canvas</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione, ci immergeremo nel mondo del canvas HTML5 e delle variabili JavaScript 
+            che ci permetteranno di creare la base grafica del nostro gioco Frogger.</p>
+        </div>
+
+        <h2>1. Introduzione al Canvas HTML5</h2>
+        <p>Il canvas è un elemento HTML che ci permette di disegnare grafiche 2D utilizzando JavaScript. È la tecnologia perfetta per creare giochi nel browser senza bisogno di plugin esterni.</p>
+
+        <p>Ecco come creare un elemento canvas:</p>
+        <pre><code>&lt;canvas id="gameCanvas" width="600" height="650"&gt;&lt;/canvas&gt;</code></pre>
+
+        <p>Per poter disegnare su questo canvas, dobbiamo ottenere il suo contesto di rendering:</p>
+        <pre><code>const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');</code></pre>
+
+        <h2>2. Le Variabili di Base per Frogger</h2>
+        <p>Prima di iniziare a disegnare, definiamo alcune variabili fondamentali che ci serviranno per il nostro gioco:</p>
+
+        <pre><code>// Dimensioni della griglia di gioco
+const gridSize = 50;  // Ogni cella della griglia è 50x50 pixel
+const rows = 13;      // 13 righe nella griglia
+const columns = 12;   // 12 colonne nella griglia
+
+// Posizione iniziale della rana
+let frogX = 5;        // Colonna 5 (partendo da 0)
+let frogY = 12;       // Ultima riga (partendo da 0)
+
+// Dimensioni del canvas
+const canvasWidth = columns * gridSize;    // 600px
+const canvasHeight = rows * gridSize;      // 650px</code></pre>
+
+        <h2>3. Disegnare Forme Base</h2>
+        <p>Il contesto 2D del canvas ci offre diversi metodi per disegnare forme. Ecco i principali che useremo:</p>
+
+        <h3>Rettangoli</h3>
+        <pre><code>// Disegna un rettangolo pieno
+ctx.fillStyle = 'green';  // Imposta il colore di riempimento
+ctx.fillRect(x, y, width, height);  // Disegna il rettangolo
+
+// Disegna un rettangolo con solo il bordo
+ctx.strokeStyle = 'black';  // Imposta il colore del bordo
+ctx.lineWidth = 2;         // Imposta lo spessore del bordo
+ctx.strokeRect(x, y, width, height);  // Disegna il bordo</code></pre>
+
+        <h3>Cerchi</h3>
+        <pre><code>// Disegna un cerchio
+ctx.beginPath();                                  // Inizia un nuovo percorso
+ctx.arc(centerX, centerY, radius, 0, Math.PI*2); // Disegna un arco completo (cerchio)
+ctx.fillStyle = 'red';                           // Imposta il colore
+ctx.fill();                                      // Riempie il cerchio</code></pre>
+
+        <h2>4. Implementazione di Base per Frogger</h2>
+        <p>Ora mettiamo insieme questi concetti per creare la base del nostro gioco Frogger:</p>
+
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 2&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+            color: white;
+        }
+        canvas { 
+            border: 2px solid #fff;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Frogger - Lezione 2: Canvas e Variabili&lt;/h1&gt;
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Layout del gioco
+        const gameLayout = [
+            'WWWWWWWWWWWW', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Posizione della rana
+        let frogX = 5;
+        let frogY = 12;
+        
+        // Funzione per disegnare la griglia di gioco
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    // Determina il colore della cella in base al layout
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break; // Fiume (blu scuro)
+                        case 'R': ctx.fillStyle = '#505050'; break; // Strada (grigio)
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break; // Zona sicura (verde)
+                    }
+                    
+                    // Disegna la cella
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    
+                    // Disegna il bordo della cella
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            // Disegna il traguardo nella prima riga
+            for (let x = 0; x < columns; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700'; // Oro
+                    ctx.fillRect(x * gridSize, 0, gridSize, gridSize/3);
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            // Corpo della rana (rettangolo verde)
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,  // x position
+                frogY * gridSize + gridSize/4,  // y position
+                gridSize/2,                    // width
+                gridSize/2                     // height
+            );
+            
+            // Occhi della rana (due cerchi neri)
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3,     // x centro
+                frogY * gridSize + gridSize/3,     // y centro
+                3,                                // raggio
+                0,                                // angolo iniziale
+                Math.PI * 2                       // angolo finale (cerchio completo)
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3,   // x centro
+                frogY * gridSize + gridSize/3,     // y centro
+                3,                                // raggio
+                0,                                // angolo iniziale
+                Math.PI * 2                       // angolo finale
+            );
+            ctx.fill();
+        }
+        
+        // Funzione principale di disegno
+        function draw() {
+            // Pulisci il canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna gli elementi del gioco
+            drawGrid();
+            drawFrog();
+        }
+        
+        // Chiamata iniziale alla funzione di disegno
+        draw();
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>5. Spiegazione del codice</h2>
+
+        <h3>Layout del Gioco</h3>
+        <p>Abbiamo definito la struttura del nostro gioco usando un array di stringhe, dove ogni carattere rappresenta un tipo di terreno:</p>
+        <ul>
+            <li><strong>W</strong>: Water (acqua/fiume)</li>
+            <li><strong>R</strong>: Road (strada)</li>
+            <li><strong>S</strong>: Safe Zone (zona sicura)</li>
+        </ul>
+
+        <h3>Disegno della Griglia</h3>
+        <p>La funzione <code>drawGrid()</code> itera attraverso questa matrice e disegna ogni cella con il colore appropriato. Inoltre, aggiungiamo un effetto speciale per il traguardo nella prima riga.</p>
+
+        <h3>Disegno della Rana</h3>
+        <p>La funzione <code>drawFrog()</code> disegna una rana semplice usando forme base:</p>
+        <ul>
+            <li>Un quadrato verde per il corpo</li>
+            <li>Due cerchi neri per gli occhi</li>
+        </ul>
+
+        <canvas id="demoCanvas" width="600" height="650" style="border: 2px solid #fff; margin: 20px auto; display: block;"></canvas>
+
+        <h2>6. Esercizi</h2>
+        <ol>
+            <li>Modifica i colori del gioco per creare un tema personalizzato</li>
+            <li>Aggiungi dettagli alla rana (ad esempio zampe o bocca)</li>
+            <li>Crea una variante della funzione <code>drawGrid()</code> che utilizzi motivi o texture diverse per strada, acqua e zone sicure</li>
+            <li>Aggiungi un elemento visivo per rappresentare il traguardo finale in maniera più elaborata</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione1.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione3.html" class="btn">Prossima lezione: Funzioni e Movimento</a>
+        </div>
+    </div>
+
+    <script>
+        // Demo canvas per visualizzare il risultato
+        const canvas = document.getElementById('demoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const gameLayout = [
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS'
+        ];
+        
+        let frogX = 5;
+        let frogY = 12;
+        
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            for (let x = 0; x < columns; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(x * gridSize, 0, gridSize, gridSize/3);
+                }
+            }
+        }
+        
+        function drawFrog() {
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3,
+                0,
+                Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawFrog();
+        }
+        
+        draw();
+    </script>
+</body>
+</html>

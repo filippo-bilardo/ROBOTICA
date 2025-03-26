@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 5: Loop di Gioco - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 5: Loop di Gioco</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione, implementeremo il loop di gioco, l'elemento fondamentale di qualsiasi videogioco che consente
+            l'aggiornamento continuo dello stato di gioco e l'animazione degli elementi sullo schermo.</p>
+        </div>
+
+        <h2>1. Cos'è un Loop di Gioco</h2>
+        <p>Un loop di gioco è una struttura che esegue continuamente tre operazioni principali:</p>
+        <ol>
+            <li><strong>Aggiorna</strong> - Modifica lo stato del gioco (posizioni, punteggi, ecc.)</li>
+            <li><strong>Disegna</strong> - Visualizza lo stato corrente del gioco</li>
+            <li><strong>Ripeti</strong> - Continua questo ciclo, tipicamente 60 volte al secondo</li>
+        </ol>
+
+        <h2>2. requestAnimationFrame</h2>
+        <p>JavaScript offre un metodo chiamato <code>requestAnimationFrame</code> che ci permette di creare animazioni fluide sincronizzate con il refresh del browser:</p>
+        
+        <pre><code>function gameLoop() {
+    // 1. Aggiorna lo stato del gioco
+    update();
+    
+    // 2. Disegna tutti gli elementi
+    render();
+    
+    // 3. Pianifica la prossima esecuzione
+    requestAnimationFrame(gameLoop);
+}
+
+// Avvia il loop di gioco
+requestAnimationFrame(gameLoop);</code></pre>
+
+        <h2>3. Implementazione del Loop di Gioco per Frogger</h2>
+        <p>Ora implementeremo un loop di gioco che animerà gli ostacoli (auto e tronchi) nel nostro Frogger:</p>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 5&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+            color: white;
+        }
+        canvas { 
+            border: 2px solid #fff;
+            margin-bottom: 20px; 
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: #444;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameInfo {
+            font-family: Arial, sans-serif;
+            margin-bottom: 10px;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="gameInfo"&gt;FPS: 0 | Tempo: 0s&lt;/div&gt;
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+    
+    &lt;div class="controls"&gt;
+        &lt;div id="btnLeft" class="control-btn"&gt;←&lt;/div&gt;
+        &lt;div id="btnUp" class="control-btn"&gt;↑&lt;/div&gt;
+        &lt;div id="btnDown" class="control-btn"&gt;↓&lt;/div&gt;
+        &lt;div id="btnRight" class="control-btn"&gt;→&lt;/div&gt;
+        &lt;div id="btnPause" class="control-btn" style="width: auto; padding: 0 10px;"&gt;Pausa&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Layout del gioco
+        const gameLayout = [
+            'WWWWWWWWWWWW', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Posizione della rana
+        let frogX = 5;
+        let frogY = 12;
+        
+        // Oggetto per il controllo dei tasti
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        
+        // Controllo movimento
+        let canMove = true;
+        const moveDelay = 150;
+        
+        // Definizione degli ostacoli: auto e tronchi
+        let obstacles = [
+            // Definizione di auto nelle corsie stradali
+            // { x, y, width, speed, type }
+            { x: 0, y: 5, width: 2, speed: 0.03, type: 'car' },
+            { x: 5, y: 6, width: 2, speed: -0.04, type: 'car' },
+            { x: 0, y: 7, width: 3, speed: 0.05, type: 'truck' },
+            { x: 8, y: 8, width: 2, speed: -0.03, type: 'car' },
+            { x: 0, y: 10, width: 2, speed: 0.04, type: 'car' },
+            { x: 5, y: 11, width: 3, speed: -0.02, type: 'truck' },
+            
+            // Definizione di tronchi nel fiume
+            { x: 0, y: 1, width: 3, speed: 0.02, type: 'log' },
+            { x: 7, y: 2, width: 4, speed: -0.03, type: 'log' },
+            { x: 3, y: 3, width: 3, speed: 0.025, type: 'log' }
+        ];
+        
+        // Variabili per il game loop
+        let lastTime = 0;
+        let gameTime = 0;
+        let fpsCounter = 0;
+        let fpsTimer = 0;
+        let fps = 0;
+        let paused = false;
+        
+        // Funzione per disegnare la griglia
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+        
+        // Funzione per disegnare gli ostacoli
+        function drawObstacles() {
+            for (const obs of obstacles) {
+                switch(obs.type) {
+                    case 'car':
+                        ctx.fillStyle = 'yellow';
+                        break;
+                    case 'truck':
+                        ctx.fillStyle = 'orange';
+                        break;
+                    case 'log':
+                        ctx.fillStyle = '#8B4513'; // Marrone
+                        break;
+                }
+                
+                // Disegna l'ostacolo alla posizione corrente
+                ctx.fillRect(
+                    obs.x * gridSize,
+                    obs.y * gridSize,
+                    obs.width * gridSize,
+                    gridSize
+                );
+                
+                // Aggiunge dettagli in base al tipo
+                if (obs.type === 'car') {
+                    // Finestrini delle auto
+                    ctx.fillStyle = '#87CEEB'; // Azzurro
+                    ctx.fillRect(
+                        obs.x * gridSize + gridSize * 0.3,
+                        obs.y * gridSize + gridSize * 0.25,
+                        obs.width * gridSize * 0.4,
+                        gridSize * 0.3
+                    );
+                } else if (obs.type === 'truck') {
+                    // Cabina del camion
+                    ctx.fillStyle = '#A9A9A9'; // Grigio scuro
+                    ctx.fillRect(
+                        (obs.speed > 0 ? obs.x : obs.x + obs.width - 0.8) * gridSize,
+                        obs.y * gridSize + gridSize * 0.15,
+                        gridSize * 0.8,
+                        gridSize * 0.7
+                    );
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            // Corpo della rana
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            // Occhi
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Funzione per aggiornare la posizione degli ostacoli
+        function updateObstacles(deltaTime) {
+            for (const obs of obstacles) {
+                // Aggiorna la posizione in base alla velocità e al tempo trascorso
+                obs.x += obs.speed * deltaTime;
+                
+                // Gestisce il wrapping degli oggetti quando escono dallo schermo
+                if (obs.speed > 0 && obs.x > columns) {
+                    obs.x = -obs.width;
+                } else if (obs.speed < 0 && obs.x < -obs.width) {
+                    obs.x = columns;
+                }
+                
+                // Se la rana è su un tronco, la facciamo muovere con esso
+                if (obs.type === 'log' && 
+                    Math.floor(frogY) === obs.y && 
+                    frogX >= obs.x - 0.5 && 
+                    frogX <= obs.x + obs.width - 0.5) {
+                    frogX += obs.speed * deltaTime;
+                }
+            }
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            // Controlla se la rana è uscita dai bordi del gioco
+            if (frogX < 0) frogX = 0;
+            if (frogX > columns - 1) frogX = columns - 1;
+            
+            // Verifica se la rana è sull'acqua
+            if (frogY >= 1 && frogY <= 3) {
+                let onLog = false;
+                
+                // Controlla se la rana è su un tronco
+                for (const obs of obstacles) {
+                    if (obs.type === 'log' && 
+                        Math.floor(frogY) === obs.y && 
+                        frogX >= obs.x - 0.5 && 
+                        frogX <= obs.x + obs.width - 0.5) {
+                        onLog = true;
+                        break;
+                    }
+                }
+                
+                // Se la rana è nell'acqua e non su un tronco, è game over
+                if (!onLog) {
+                    gameOver('SPLASH!');
+                }
+            }
+            
+            // Verifica collisioni con veicoli
+            if ((frogY >= 5 && frogY <= 8) || (frogY >= 10 && frogY <= 11)) {
+                for (const obs of obstacles) {
+                    if ((obs.type === 'car' || obs.type === 'truck') && 
+                        Math.floor(frogY) === obs.y && 
+                        frogX >= obs.x - 0.5 && 
+                        frogX <= obs.x + obs.width - 0.5) {
+                        gameOver('SPLAT!');
+                    }
+                }
+            }
+            
+            // Verifica se la rana ha raggiunto il traguardo
+            if (frogY === 0) {
+                win();
+            }
+        }
+        
+        // Funzione per gestire il game over
+        function gameOver(message) {
+            ctx.fillStyle = 'red';
+            ctx.font = '30px Arial';
+            ctx.fillText(message, canvas.width/2-60, canvas.height/2);
+            
+            paused = true;
+            
+            // Reset dopo 1.5 secondi
+            setTimeout(() => {
+                frogX = 5;
+                frogY = 12;
+                paused = false;
+            }, 1500);
+        }
+        
+        // Funzione per gestire la vittoria
+        function win() {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '30px Arial';
+            ctx.fillText('HAI VINTO!', canvas.width/2-80, canvas.height/2);
+            
+            paused = true;
+            
+            // Reset dopo 2 secondi
+            setTimeout(() => {
+                frogX = 5;
+                frogY = 12;
+                paused = false;
+            }, 2000);
+        }
+        
+        // Funzione per muovere la rana
+        function moveFrog(direction) {
+            if (!canMove || paused) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false;
+                setTimeout(() => {
+                    canMove = true;
+                    checkInput();
+                }, moveDelay);
+            }
+        }
+        
+        // Funzione per controllare gli input
+        function checkInput() {
+            if (!canMove || paused) return;
+            
+            if (keys.ArrowUp) moveFrog('up');
+            else if (keys.ArrowDown) moveFrog('down');
+            else if (keys.ArrowLeft) moveFrog('left');
+            else if (keys.ArrowRight) moveFrog('right');
+        }
+        
+        // Funzione principale di disegno
+        function draw() {
+            // Pulisce il canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Disegna gli elementi del gioco
+            drawGrid();
+            drawObstacles();
+            drawFrog();
+        }
+        
+        // Funzione di aggiornamento
+        function update(timestamp) {
+            // Calcola il delta time (tempo trascorso dall'ultimo frame)
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            // Aggiorna il tempo totale di gioco e FPS
+            if (!paused) {
+                gameTime += deltaTime;
+                fpsCounter++;
+                fpsTimer += deltaTime;
+            }
+            
+            // Aggiorna FPS ogni secondo
+            if (fpsTimer >= 1000) {
+                fps = fpsCounter;
+                fpsCounter = 0;
+                fpsTimer = 0;
+                
+                // Aggiorna il display delle informazioni
+                document.getElementById('gameInfo').textContent = 
+                    `FPS: ${fps} | Tempo: ${Math.floor(gameTime/1000)}s`;
+            }
+            
+            // Se il gioco non è in pausa, aggiorna gli elementi
+            if (!paused) {
+                updateObstacles(deltaTime / 1000);
+                checkCollisions();
+            }
+            
+            // Disegna lo stato corrente
+            draw();
+            
+            // Continua il loop
+            requestAnimationFrame(update);
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+                checkInput();
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+        
+        // Event listeners per i bottoni touch
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Toggle di pausa
+        document.getElementById('btnPause').addEventListener('click', () => {
+            paused = !paused;
+            document.getElementById('btnPause').textContent = paused ? 'Riprendi' : 'Pausa';
+        });
+        
+        // Avvia il loop di gioco
+        requestAnimationFrame(update);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>4. Spiegazione del codice</h2>
+        
+        <h3>Game Loop con requestAnimationFrame</h3>
+        <p>Il cuore del nostro gioco è la funzione <code>update</code> che viene chiamata ad ogni frame attraverso <code>requestAnimationFrame</code>. Questa funzione:</p>
+        <ul>
+            <li>Calcola il tempo trascorso tra un frame e l'altro (<code>deltaTime</code>)</li>
+            <li>Aggiorna le posizioni degli ostacoli in base al tempo trascorso</li>
+            <li>Controlla le collisioni</li>
+            <li>Aggiorna la visualizzazione</li>
+        </ul>
+
+        <h3>Ostacoli mobili</h3>
+        <p>Abbiamo aggiunto due tipi di ostacoli:</p>
+        <ul>
+            <li><strong>Veicoli</strong> (auto e camion) che si muovono sulle strade e possono investire la rana</li>
+            <li><strong>Tronchi</strong> che galleggiano sull'acqua e permettono alla rana di attraversare il fiume</li>
+        </ul>
+
+        <h3>Sistema di pausa</h3>
+        <p>Abbiamo implementato un sistema di pausa che permette di fermare temporaneamente il gioco e poi riprendere da dove si era interrotto.</p>
+
+        <canvas id="gameCanvas" width="600" height="650"></canvas>
+        <div class="controls">
+            <div id="btnLeft" class="control-btn">←</div>
+            <div id="btnUp" class="control-btn">↑</div>
+            <div id="btnDown" class="control-btn">↓</div>
+            <div id="btnRight" class="control-btn">→</div>
+            <div id="btnPause" class="control-btn" style="width: auto; padding: 0 10px;">Pausa</div>
+        </div>
+
+        <h2>Esercizi</h2>
+        <ol>
+            <li>Modifica le velocità degli ostacoli per rendere il gioco più facile o più difficile</li>
+            <li>Aggiungi più ostacoli per aumentare la sfida</li>
+            <li>Implementa un sistema per rallentare progressivamente il gioco quando si mette in pausa</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione4.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione6.html" class="btn">Prossima lezione: Collisioni</a>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        const gameLayout = [
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS'
+        ];
+        
+        let frogX = 5;
+        let frogY = 12;
+        
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        
+        let canMove = true;
+        const moveDelay = 150;
+        
+        let obstacles = [
+            { x: 0, y: 5, width: 2, speed: 0.03, type: 'car' },
+            { x: 5, y: 6, width: 2, speed: -0.04, type: 'car' },
+            { x: 0, y: 7, width: 3, speed: 0.05, type: 'truck' },
+            { x: 8, y: 8, width: 2, speed: -0.03, type: 'car' },
+            { x: 0, y: 10, width: 2, speed: 0.04, type: 'car' },
+            { x: 5, y: 11, width: 3, speed: -0.02, type: 'truck' },
+            { x: 0, y: 1, width: 3, speed: 0.02, type: 'log' },
+            { x: 7, y: 2, width: 4, speed: -0.03, type: 'log' },
+            { x: 3, y: 3, width: 3, speed: 0.025, type: 'log' }
+        ];
+        
+        let lastTime = 0;
+        let gameTime = 0;
+        let fpsCounter = 0;
+        let fpsTimer = 0;
+        let fps = 0;
+        let paused = false;
+        
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+        
+        function drawObstacles() {
+            for (const obs of obstacles) {
+                switch(obs.type) {
+                    case 'car': ctx.fillStyle = 'yellow'; break;
+                    case 'truck': ctx.fillStyle = 'orange'; break;
+                    case 'log': ctx.fillStyle = '#8B4513'; break;
+                }
+                
+                ctx.fillRect(
+                    obs.x * gridSize,
+                    obs.y * gridSize,
+                    obs.width * gridSize,
+                    gridSize
+                );
+                
+                if (obs.type === 'car') {
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(
+                        obs.x * gridSize + gridSize * 0.3,
+                        obs.y * gridSize + gridSize * 0.25,
+                        obs.width * gridSize * 0.4,
+                        gridSize * 0.3
+                    );
+                } else if (obs.type === 'truck') {
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.fillRect(
+                        (obs.speed > 0 ? obs.x : obs.x + obs.width - 0.8) * gridSize,
+                        obs.y * gridSize + gridSize * 0.15,
+                        gridSize * 0.8,
+                        gridSize * 0.7
+                    );
+                }
+            }
+        }
+        
+        function drawFrog() {
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        function updateObstacles(deltaTime) {
+            for (const obs of obstacles) {
+                obs.x += obs.speed * deltaTime;
+                
+                if (obs.speed > 0 && obs.x > columns) {
+                    obs.x = -obs.width;
+                } else if (obs.speed < 0 && obs.x < -obs.width) {
+                    obs.x = columns;
+                }
+                
+                if (obs.type === 'log' && 
+                    Math.floor(frogY) === obs.y && 
+                    frogX >= obs.x - 0.5 && 
+                    frogX <= obs.x + obs.width - 0.5) {
+                    frogX += obs.speed * deltaTime;
+                }
+            }
+        }
+        
+        function checkCollisions() {
+            if (frogX < 0) frogX = 0;
+            if (frogX > columns - 1) frogX = columns - 1;
+            
+            if (frogY >= 1 && frogY <= 3) {
+                let onLog = false;
+                
+                for (const obs of obstacles) {
+                    if (obs.type === 'log' && 
+                        Math.floor(frogY) === obs.y && 
+                        frogX >= obs.x - 0.5 && 
+                        frogX <= obs.x + obs.width - 0.5) {
+                        onLog = true;
+                        break;
+                    }
+                }
+                
+                if (!onLog) {
+                    gameOver('SPLASH!');
+                }
+            }
+            
+            if ((frogY >= 5 && frogY <= 8) || (frogY >= 10 && frogY <= 11)) {
+                for (const obs of obstacles) {
+                    if ((obs.type === 'car' || obs.type === 'truck') && 
+                        Math.floor(frogY) === obs.y && 
+                        frogX >= obs.x - 0.5 && 
+                        frogX <= obs.x + obs.width - 0.5) {
+                        gameOver('SPLAT!');
+                    }
+                }
+            }
+            
+            if (frogY === 0) {
+                win();
+            }
+        }
+        
+        function gameOver(message) {
+            ctx.fillStyle = 'red';
+            ctx.font = '30px Arial';
+            ctx.fillText(message, canvas.width/2-60, canvas.height/2);
+            
+            paused = true;
+            
+            setTimeout(() => {
+                frogX = 5;
+                frogY = 12;
+                paused = false;
+            }, 1500);
+        }
+        
+        function win() {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '30px Arial';
+            ctx.fillText('HAI VINTO!', canvas.width/2-80, canvas.height/2);
+            
+            paused = true;
+            
+            setTimeout(() => {
+                frogX = 5;
+                frogY = 12;
+                paused = false;
+            }, 2000);
+        }
+        
+        function moveFrog(direction) {
+            if (!canMove || paused) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false;
+                setTimeout(() => {
+                    canMove = true;
+                    checkInput();
+                }, moveDelay);
+            }
+        }
+        
+        function checkInput() {
+            if (!canMove || paused) return;
+            
+            if (keys.ArrowUp) moveFrog('up');
+            else if (keys.ArrowDown) moveFrog('down');
+            else if (keys.ArrowLeft) moveFrog('left');
+            else if (keys.ArrowRight) moveFrog('right');
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawGrid();
+            drawObstacles();
+            drawFrog();
+        }
+        
+        function update(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            if (!paused) {
+                gameTime += deltaTime;
+                fpsCounter++;
+                fpsTimer += deltaTime;
+            }
+            
+            if (fpsTimer >= 1000) {
+                fps = fpsCounter;
+                fpsCounter = 0;
+                fpsTimer = 0;
+                
+                document.getElementById('gameInfo').textContent = 
+                    `FPS: ${fps} | Tempo: ${Math.floor(gameTime/1000)}s`;
+            }
+            
+            if (!paused) {
+                updateObstacles(deltaTime / 1000);
+                checkCollisions();
+            }
+            
+            draw();
+            
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+                checkInput();
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+        
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        document.getElementById('btnPause').addEventListener('click', () => {
+            paused = !paused;
+            document.getElementById('btnPause').textContent = paused ? 'Riprendi' : 'Pausa';
+        });
+        
+        requestAnimationFrame(update);
+    </script>
+</body>
+</html>

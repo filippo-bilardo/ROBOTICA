@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 9: Assets e Suoni - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 9: Assets e Suoni</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione impareremo a migliorare l'aspetto grafico e l'esperienza sonora del nostro gioco Frogger
+            aggiungendo immagini sprite, effetti sonori e musica di sottofondo.</p>
+        </div>
+
+        <h2>1. Utilizzo delle immagini in un gioco Canvas</h2>
+        <p>Le immagini (sprite) migliorano notevolmente l'aspetto grafico del gioco, sostituendo le forme geometriche con grafica dettagliata. Ecco come caricare e utilizzare le immagini:</p>
+        
+        <pre><code>// Caricamento di un'immagine
+const frogImage = new Image();
+frogImage.src = 'img/frog.png';
+
+// Attesa del caricamento completo
+frogImage.onload = function() {
+    // L'immagine è pronta per essere utilizzata
+};
+
+// Disegno dell'immagine sul canvas
+ctx.drawImage(frogImage, x, y, width, height);</code></pre>
+
+        <h2>2. Gestione degli effetti sonori</h2>
+        <p>L'audio arricchisce l'esperienza di gioco fornendo feedback immediato alle azioni del giocatore. Ecco come implementare gli effetti sonori:</p>
+        
+        <pre><code>// Caricamento di un suono
+const jumpSound = new Audio('sounds/jump.wav');
+
+// Riproduzione di un suono
+function playSound(sound) {
+    sound.currentTime = 0; // Riavvolgi il suono per permettere riproduzioni multiple ravvicinate
+    sound.play();
+}
+
+// Esempio di utilizzo
+function moveFrog() {
+    // ...logica di movimento...
+    playSound(jumpSound);
+}</code></pre>
+
+        <h2>3. Implementazione completa con sprite e suoni</h2>
+        <p>Ora implementiamo una versione migliorata del nostro Frogger con asset grafici e sonori:</p>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 9&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            border: 2px solid #fff;
+            margin-bottom: 20px; 
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: #444;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameUI {
+            display: flex;
+            justify-content: space-between;
+            width: 600px;
+            margin-bottom: 10px;
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+        }
+        .overlay-content {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+        }
+        .btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .sound-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .hidden {
+            display: none;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="gameUI"&gt;
+        &lt;div&gt;Livello: &lt;span id="level"&gt;1&lt;/span&gt;&lt;/div&gt;
+        &lt;div&gt;Punteggio: &lt;span id="score"&gt;0&lt;/span&gt;&lt;/div&gt;
+        &lt;div&gt;
+            Vite: 
+            &lt;span id="livesDisplay"&gt;❤️❤️❤️&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div&gt;Tempo: &lt;span id="timer"&gt;30&lt;/span&gt;s&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+    
+    &lt;div class="controls"&gt;
+        &lt;div id="btnLeft" class="control-btn"&gt;←&lt;/div&gt;
+        &lt;div id="btnUp" class="control-btn"&gt;↑&lt;/div&gt;
+        &lt;div id="btnDown" class="control-btn"&gt;↓&lt;/div&gt;
+        &lt;div id="btnRight" class="control-btn"&gt;→&lt;/div&gt;
+        &lt;div id="btnPause" class="control-btn" style="width: auto; padding: 0 10px;"&gt;Pausa&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;button id="btnSoundToggle" class="sound-control"&gt;🔊&lt;/button&gt;
+    
+    &lt;!-- Overlay schermate varie --&gt;
+    &lt;div id="loadingOverlay" class="overlay"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;CARICAMENTO...&lt;/h2&gt;
+            &lt;p&gt;Attendere il caricamento degli asset&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="gameOverOverlay" class="overlay hidden"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;GAME OVER&lt;/h2&gt;
+            &lt;p&gt;Punteggio finale: &lt;span id="finalScore"&gt;0&lt;/span&gt;&lt;/p&gt;
+            &lt;button id="btnRestart" class="btn"&gt;Ricomincia&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="levelCompleteOverlay" class="overlay hidden"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;LIVELLO COMPLETATO!&lt;/h2&gt;
+            &lt;p&gt;Punteggio: &lt;span id="levelScore"&gt;0&lt;/span&gt;&lt;/p&gt;
+            &lt;button id="btnNextLevel" class="btn"&gt;Prossimo Livello&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Riferimenti UI
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const timerDisplay = document.getElementById('timer');
+        const livesDisplay = document.getElementById('livesDisplay');
+        
+        // Stato del gioco
+        let gameStarted = false;
+        let paused = false;
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let timeRemaining = 30;
+        let frogX = 5;
+        let frogY = 12;
+        let frogDirection = 'up';
+        let lastTime = 0;
+        let soundEnabled = true;
+        
+        // Variabili per effetti
+        let hitEffect = 0;
+        let winEffect = 0;
+        
+        // -----------------------------------------------
+        // CARICAMENTO DEGLI ASSET
+        // -----------------------------------------------
+        
+        // Contenitore di asset da caricare
+        const assets = {
+            images: {},
+            sounds: {},
+            totalAssets: 0,
+            loadedAssets: 0
+        };
+        
+        // Funzione per caricare un'immagine
+        function loadImage(key, src) {
+            assets.totalAssets++;
+            assets.images[key] = new Image();
+            assets.images[key].onload = assetLoaded;
+            assets.images[key].src = src;
+        }
+        
+        // Funzione per caricare un suono
+        function loadSound(key, src) {
+            assets.totalAssets++;
+            assets.sounds[key] = new Audio(src);
+            assets.sounds[key].oncanplaythrough = assetLoaded;
+            assets.sounds[key].load();
+        }
+        
+        // Funzione di callback quando un asset è caricato
+        function assetLoaded() {
+            assets.loadedAssets++;
+            
+            // Se tutti gli asset sono caricati, avvia il gioco
+            if (assets.loadedAssets === assets.totalAssets) {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                gameStarted = true;
+                
+                // Avvia la musica di sottofondo
+                if (soundEnabled) {
+                    assets.sounds.bgMusic.loop = true;
+                    assets.sounds.bgMusic.volume = 0.5;
+                    assets.sounds.bgMusic.play();
+                }
+            }
+        }
+        
+        // Caricamento degli asset grafici
+        loadImage('background', '../assets/images/background.png');
+        loadImage('frog', '../assets/images/frog.png');
+        loadImage('frogUp', '../assets/images/frog_up.png');
+        loadImage('frogDown', '../assets/images/frog_down.png');
+        loadImage('frogLeft', '../assets/images/frog_left.png');
+        loadImage('frogRight', '../assets/images/frog_right.png');
+        loadImage('car1', '../assets/images/car1.png');
+        loadImage('car2', '../assets/images/car2.png');
+        loadImage('truck', '../assets/images/truck.png');
+        loadImage('log', '../assets/images/log.png');
+        loadImage('water', '../assets/images/water.png');
+        loadImage('road', '../assets/images/road.png');
+        loadImage('grass', '../assets/images/grass.png');
+        loadImage('goal', '../assets/images/goal.png');
+        
+        // Caricamento degli asset sonori
+        loadSound('bgMusic', '../assets/sounds/background_music.mp3');
+        loadSound('jump', '../assets/sounds/jump.wav');
+        loadSound('splash', '../assets/sounds/splash.wav');
+        loadSound('squash', '../assets/sounds/squash.wav');
+        loadSound('win', '../assets/sounds/win.wav');
+        loadSound('coin', '../assets/sounds/coin.wav');
+        loadSound('levelUp', '../assets/sounds/level_up.wav');
+        loadSound('gameOver', '../assets/sounds/game_over.wav');
+        
+        // Funzione per riprodurre un suono
+        function playSound(key) {
+            if (!soundEnabled) return;
+            
+            const sound = assets.sounds[key];
+            sound.currentTime = 0;
+            sound.play();
+        }
+        
+        // Layout del gioco
+        const gameLayout = [
+            'GGGGGGGGGGGG', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Definizione degli ostacoli
+        let obstacles = [
+            // Auto e camion
+            { x: 0, y: 5, width: 2, height: 0.8, speed: 0.03, type: 'car1', color: 'yellow' },
+            { x: 5, y: 6, width: 2, height: 0.8, speed: -0.04, type: 'car2', color: 'red' },
+            { x: 0, y: 7, width: 3, height: 0.8, speed: 0.05, type: 'truck', color: 'orange' },
+            { x: 8, y: 8, width: 2, height: 0.8, speed: -0.03, type: 'car1', color: 'blue' },
+            { x: 0, y: 10, width: 2, height: 0.8, speed: 0.04, type: 'car2', color: 'green' },
+            { x: 5, y: 11, width: 3, height: 0.8, speed: -0.02, type: 'truck', color: 'purple' },
+            
+            // Tronchi
+            { x: 0, y: 1, width: 3, height: 0.8, speed: 0.02, type: 'log', color: '#8B4513' },
+            { x: 7, y: 2, width: 4, height: 0.8, speed: -0.03, type: 'log', color: '#8B4513' },
+            { x: 3, y: 3, width: 3, height: 0.8, speed: 0.025, type: 'log', color: '#8B4513' }
+        ];
+        
+        // Funzione per verificare la collisione AABB
+        function checkAABBCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+        
+        // Funzione per disegnare la griglia con immagini
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    let img;
+                    switch(gameLayout[y][x]) {
+                        case 'W': img = assets.images.water; break;
+                        case 'R': img = assets.images.road; break;
+                        case 'S': img = assets.images.grass; break;
+                        case 'G': img = assets.images.goal; break;
+                    }
+                    
+                    if (img) {
+                        ctx.drawImage(img, x * gridSize, y * gridSize, gridSize, gridSize);
+                    }
+                }
+            }
+        }
+        
+        // Funzione per disegnare gli ostacoli con immagini
+        function drawObstacles() {
+            for (const obs of obstacles) {
+                let img;
+                
+                switch(obs.type) {
+                    case 'car1': img = assets.images.car1; break;
+                    case 'car2': img = assets.images.car2; break;
+                    case 'truck': img = assets.images.truck; break;
+                    case 'log': img = assets.images.log; break;
+                }
+                
+                if (img) {
+                    ctx.save();
+                    
+                    // Ruota l'immagine se si muove verso sinistra
+                    if (obs.speed < 0 && obs.type !== 'log') {
+                        ctx.translate((obs.x + obs.width) * gridSize, obs.y * gridSize);
+                        ctx.scale(-1, 1);
+                        ctx.drawImage(
+                            img, 
+                            0,
+                            0,
+                            obs.width * gridSize,
+                            gridSize
+                        );
+                    } else {
+                        ctx.drawImage(
+                            img, 
+                            obs.x * gridSize,
+                            obs.y * gridSize,
+                            obs.width * gridSize,
+                            gridSize
+                        );
+                    }
+                    
+                    ctx.restore();
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            let frogImg;
+            
+            // Seleziona l'immagine della rana in base alla direzione
+            if (hitEffect > 0) {
+                // Effetto quando viene colpita
+                frogImg = hitEffect % 2 === 0 ? null : assets.images[`frog${frogDirection.charAt(0).toUpperCase()}${frogDirection.slice(1)}`];
+            } else if (winEffect > 0) {
+                // Effetto quando vince
+                frogImg = winEffect % 2 === 0 ? assets.images.frog : assets.images[`frog${frogDirection.charAt(0).toUpperCase()}${frogDirection.slice(1)}`];
+            } else {
+                frogImg = assets.images[`frog${frogDirection.charAt(0).toUpperCase()}${frogDirection.slice(1)}`];
+            }
+            
+            if (frogImg) {
+                ctx.drawImage(
+                    frogImg,
+                    frogX * gridSize,
+                    frogY * gridSize,
+                    gridSize,
+                    gridSize
+                );
+            } else if (hitEffect > 0) {
+                // Disegno di fallback per l'effetto hit
+                ctx.fillStyle = 'red';
+                ctx.fillRect(
+                    frogX * gridSize + gridSize/4,
+                    frogY * gridSize + gridSize/4,
+                    gridSize/2,
+                    gridSize/2
+                );
+            }
+            
+            // Aggiorna gli effetti
+            if (hitEffect > 0) hitEffect--;
+            if (winEffect > 0) winEffect--;
+        }
+        
+        // Funzione per aggiornare le posizioni degli ostacoli
+        function updateObstacles(deltaTime) {
+            for (const obs of obstacles) {
+                obs.x += obs.speed * deltaTime;
+                
+                if (obs.speed > 0 && obs.x > columns) {
+                    obs.x = -obs.width;
+                } else if (obs.speed < 0 && obs.x < -obs.width) {
+                    obs.x = columns;
+                }
+                
+                if (obs.type === 'log' && frogY === obs.y) {
+                    const frogRect = {
+                        x: frogX + 0.25,
+                        y: frogY + 0.25,
+                        width: 0.5,
+                        height: 0.5
+                    };
+                    
+                    const logRect = {
+                        x: obs.x,
+                        y: obs.y,
+                        width: obs.width,
+                        height: 1
+                    };
+                    
+                    if (checkAABBCollision(frogRect, logRect)) {
+                        frogX += obs.speed * deltaTime;
+                    }
+                }
+            }
+        }
+        
+        // Funzione per aggiornare il timer
+        function updateTimer(deltaTime) {
+            if (timeRemaining > 0) {
+                timeRemaining -= deltaTime;
+                if (timeRemaining <= 0) {
+                    timeRemaining = 0;
+                    die("TEMPO SCADUTO!");
+                }
+            }
+            
+            timerDisplay.textContent = Math.ceil(timeRemaining);
+            
+            if (timeRemaining <= 5) {
+                timerDisplay.style.color = 'red';
+            } else {
+                timerDisplay.style.color = 'white';
+            }
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            if (frogX < 0) frogX = 0;
+            if (frogX > columns - 1) frogX = columns - 1;
+            
+            const frogRect = {
+                x: frogX + 0.25,
+                y: frogY + 0.25,
+                width: 0.5,
+                height: 0.5
+            };
+            
+            // Controlla se la rana è nell'acqua
+            if (frogY >= 1 && frogY <= 3) {
+                let onLog = false;
+                
+                for (const obs of obstacles) {
+                    if (obs.type === 'log') {
+                        const logRect = {
+                            x: obs.x,
+                            y: obs.y,
+                            width: obs.width,
+                            height: 1
+                        };
+                        
+                        if (checkAABBCollision(frogRect, logRect)) {
+                            onLog = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!onLog) {
+                    die('SPLASH!');
+                    playSound('splash');
+                }
+            }
+            
+            // Controlla collisioni con veicoli
+            if ((frogY >= 5 && frogY <= 8) || (frogY >= 10 && frogY <= 11)) {
+                for (const obs of obstacles) {
+                    if (obs.type === 'car1' || obs.type === 'car2' || obs.type === 'truck') {
+                        const vehicleRect = {
+                            x: obs.x,
+                            y: obs.y,
+                            width: obs.width,
+                            height: 1
+                        };
+                        
+                        if (checkAABBCollision(frogRect, vehicleRect)) {
+                            die('SPLAT!');
+                            playSound('squash');
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Controlla se la rana ha raggiunto il traguardo
+            if (frogY === 0) {
+                win();
+                playSound('win');
+            }
+        }
+        
+        // Funzione per aggiornare la UI
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = level;
+            
+            // Aggiorna display delle vite
+            livesDisplay.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                livesDisplay.innerHTML += '❤️';
+            }
+        }
+        
+        // Funzione per la morte della rana
+        function die(message) {
+            if (hitEffect > 0) return;
+            
+            lives--;
+            updateUI();
+            hitEffect = 10;
+            
+            // Mostra messaggio
+            ctx.fillStyle = 'red';
+            ctx.font = '30px Arial';
+            ctx.fillText(message, canvas.width/2-80, canvas.height/2);
+            
+            if (lives <= 0) {
+                // Game over
+                setTimeout(() => {
+                    playSound('gameOver');
+                    showGameOver();
+                }, 1000);
+            } else {
+                // Reset della posizione della rana
+                setTimeout(() => {
+                    resetFrog();
+                }, 1000);
+            }
+        }
+        
+        // Funzione per resettare la posizione della rana
+        function resetFrog() {
+            frogX = 5;
+            frogY = 12;
+            frogDirection = 'up';
+        }
+        
+        // Funzione per la vittoria del livello
+        function win() {
+            winEffect = 10;
+            paused = true;
+            
+            // Aggiorna il punteggio
+            score += 50 + Math.floor(timeRemaining) * 10;
+            
+            // Mostra schermata vittoria
+            setTimeout(() => {
+                playSound('levelUp');
+                
+                // Aggiorna UI vittoria
+                document.getElementById('levelScore').textContent = score;
+                
+                levelCompleteOverlay.classList.remove('hidden');
+            }, 1500);
+            
+            updateUI();
+        }
+        
+        // Funzione per avanzare al prossimo livello
+        function nextLevel() {
+            level++;
+            resetFrog();
+            timeRemaining = 30;
+            
+            // Aumenta velocità degli ostacoli
+            obstacles.forEach(obs => {
+                obs.speed *= 1.2;
+            });
+            
+            // Nascondi overlay
+            levelCompleteOverlay.classList.add('hidden');
+            paused = false;
+            
+            // Aggiorna UI
+            updateUI();
+        }
+        
+        // Funzione per mostrare schermata Game Over
+        function showGameOver() {
+            document.getElementById('finalScore').textContent = score;
+            gameOverOverlay.classList.remove('hidden');
+            paused = true;
+        }
+        
+        // Funzione per ricominciare il gioco
+        function restartGame() {
+            score = 0;
+            level = 1;
+            lives = 3;
+            timeRemaining = 30;
+            resetFrog();
+            paused = false;
+            
+            // Ripristina velocità originali degli ostacoli
+            obstacles.forEach((obs, index) => {
+                if (index === 0) obs.speed = 0.03;
+                else if (index === 1) obs.speed = -0.04;
+                else if (index === 2) obs.speed = 0.05;
+                else if (index === 3) obs.speed = -0.03;
+                else if (index === 4) obs.speed = 0.04;
+                else if (index === 5) obs.speed = -0.02;
+                else if (index === 6) obs.speed = 0.02;
+                else if (index === 7) obs.speed = -0.03;
+                else if (index === 8) obs.speed = 0.025;
+            });
+            
+            updateUI();
+            gameOverOverlay.classList.add('hidden');
+        }
+        
+        // Funzione per muovere la rana
+        function moveFrog(direction) {
+            if (paused || hitEffect > 0) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            // Aggiorna direzione della rana
+            frogDirection = direction;
+            
+            switch(direction) {
+                case 'up': 
+                    if (frogY > 0) {
+                        frogY -= 1;
+                        score += 10;
+                    }
+                    break;
+                case 'down': 
+                    if (frogY < rows - 1) {
+                        frogY += 1;
+                    }
+                    break;
+                case 'left': 
+                    if (frogX > 0) {
+                        frogX -= 1;
+                        score += 5;
+                    }
+                    break;
+                case 'right': 
+                    if (frogX < columns - 1) {
+                        frogX += 1;
+                        score += 5;
+                    }
+                    break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                playSound('jump');
+                updateUI();
+            }
+        }
+        
+        // Funzione principale di disegno
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawObstacles();
+            drawFrog();
+        }
+        
+        // Loop principale del gioco
+        function update(timestamp) {
+            if (!gameStarted) {
+                requestAnimationFrame(update);
+                return;
+            }
+            
+            // Calcola delta time
+            const deltaTime = timestamp - lastTime;
+            const dt = deltaTime / 1000; // in secondi
+            lastTime = timestamp;
+            
+            // Se il gioco è in corso, aggiorna gli elementi
+            if (!paused && hitEffect === 0) {
+                updateObstacles(dt);
+                checkCollisions();
+                updateTimer(dt);
+            }
+            
+            // Disegna lo stato corrente
+            draw();
+            
+            // Continua il loop
+            requestAnimationFrame(update);
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            if (paused || hitEffect > 0) return;
+            
+            switch(event.key) {
+                case 'ArrowUp':
+                    moveFrog('up');
+                    break;
+                case 'ArrowDown':
+                    moveFrog('down');
+                    break;
+                case 'ArrowLeft':
+                    moveFrog('left');
+                    break;
+                case 'ArrowRight':
+                    moveFrog('right');
+                    break;
+            }
+        });
+        
+        // Event listeners per i bottoni touch
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Toggle di pausa
+        document.getElementById('btnPause').addEventListener('click', () => {
+            paused = !paused;
+            document.getElementById('btnPause').textContent = paused ? 'Riprendi' : 'Pausa';
+        });
+        
+        // Toggle di audio
+        document.getElementById('btnSoundToggle').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('btnSoundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+            
+            // Muta/riattiva la musica di sottofondo
+            if (soundEnabled) {
+                assets.sounds.bgMusic.play();
+            } else {
+                assets.sounds.bgMusic.pause();
+            }
+        });
+        
+        // Event listeners per i bottoni degli overlay
+        document.getElementById('btnNextLevel').addEventListener('click', nextLevel);
+        document.getElementById('btnRestart').addEventListener('click', restartGame);
+        
+        // Inizializza la UI
+        updateUI();
+        
+        // Avvia il loop di gioco
+        requestAnimationFrame(update);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>4. Spiegazione del codice</h2>
+        
+        <h3>Sistema di caricamento degli asset</h3>
+        <p>Abbiamo implementato un sistema completo che:</p>
+        <ul>
+            <li>Carica immagini e suoni in modo asincrono</li>
+            <li>Monitora lo stato di caricamento di ogni asset</li>
+            <li>Mostra una schermata di caricamento durante il processo</li>
+            <li>Avvia il gioco solo quando tutti gli asset sono pronti</li>
+        </ul>
+
+        <h3>Utilizzo delle immagini</h3>
+        <p>Ora tutte le componenti grafiche sono rappresentate con immagini invece che con forme geometriche semplici:</p>
+        <ul>
+            <li>La rana ha quattro sprite diversi in base alla direzione</li>
+            <li>I veicoli hanno sprite distinti per tipo e sono orientati in base alla direzione</li>
+            <li>Lo sfondo è composto da texture per acqua, strada e erba</li>
+        </ul>
+
+        <h3>Sistema audio completo</h3>
+        <p>Abbiamo aggiunto un sistema audio che include:</p>
+        <ul>
+            <li>Musica di sottofondo con regolazione del volume</li>
+            <li>Effetti sonori per ogni azione (salto, morte, vittoria)</li>
+            <li>Controllo per attivare/disattivare l'audio del gioco</li>
+        </ul>
+
+        <img src="../assets/images/preview_lezione9.png" alt="Preview del gioco con assets" style="max-width: 600px; margin: 20px auto; display: block;">
+
+        <h2>Struttura dei file per gli asset</h2>
+        <p>Per utilizzare gli asset nel gioco, è necessario creare una struttura di directory come questa:</p>
+
+        <pre><code>/home/git-projects/frogger/
+  |-- assets/
+      |-- images/
+      |   |-- frog.png
+      |   |-- frog_up.png  
+      |   |-- frog_down.png
+      |   |-- frog_left.png
+      |   |-- frog_right.png
+      |   |-- car1.png
+      |   |-- car2.png
+      |   |-- truck.png
+      |   |-- log.png
+      |   |-- water.png
+      |   |-- road.png
+      |   |-- grass.png  
+      |   |-- goal.png
+      |
+      |-- sounds/
+          |-- background_music.mp3
+          |-- jump.wav
+          |-- splash.wav
+          |-- squash.wav
+          |-- win.wav
+          |-- coin.wav
+          |-- level_up.wav
+          |-- game_over.wav</code></pre>
+
+        <h2>Esercizi</h2>
+        <ol>
+            <li>Aggiungi animazioni alla rana per renderla più dinamica (es. frame multipli per il salto)</li>
+            <li>Crea sprite personalizzati per i diversi tipi di veicoli e ostacoli</li>
+            <li>Aggiungi effetti sonori specifici per i diversi tipi di collisione</li>
+            <li>Implementa musiche diverse per i vari livelli del gioco</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione8.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione10.html" class="btn">Prossima lezione: Progetto Finale</a>
+        </div>
+    </div>
+
+    <script>
+        // Script demo per visualizzare un'anteprima del gioco con assets
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = 600;
+        canvas.height = 650;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = '20px Arial';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('Anteprima del gioco con asset grafici e sonori', canvas.width/2, 320);
+        ctx.fillText('Vedi le immagini di esempio sopra', canvas.width/2, 350);
+    </script>
+</body>
+</html>

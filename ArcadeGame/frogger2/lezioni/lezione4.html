@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 4: Eventi e Input Utente - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 4: Eventi e Input Utente</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione, approfondiremo la gestione degli eventi in JavaScript, implementando
+            controlli più avanzati per il nostro gioco Frogger e aggiungendo funzionalità di interazione.</p>
+        </div>
+
+        <h2>1. Eventi in JavaScript</h2>
+        <p>Gli eventi sono azioni o occorrenze che accadono nel sistema e che il browser ci comunica in modo da poter rispondere ad essi. Esempi comuni sono:</p>
+        <ul>
+            <li><code>click</code>: quando un elemento viene cliccato</li>
+            <li><code>keydown</code>, <code>keyup</code>: quando un tasto viene premuto o rilasciato</li>
+            <li><code>load</code>: quando una pagina o un'immagine ha finito di caricare</li>
+            <li><code>mousemove</code>: quando il mouse viene spostato</li>
+        </ul>
+        
+        <h2>2. Event Listeners</h2>
+        <p>Gli event listeners sono funzioni che vengono eseguite quando un specifico evento si verifica:</p>
+        
+        <pre><code>// Sintassi base
+elemento.addEventListener('tipoEvento', funzioneHandler);
+
+// Esempio: ascoltiamo un evento keydown sul documento
+document.addEventListener('keydown', function(event) {
+    console.log('Tasto premuto: ' + event.key);
+});
+
+// Oppure con una funzione nominata
+function handleKeyDown(event) {
+    console.log('Tasto premuto: ' + event.key);
+}
+document.addEventListener('keydown', handleKeyDown);</code></pre>
+
+        <h2>3. Implementazione di controlli avanzati</h2>
+        <p>Ora miglioreremo i controlli del gioco implementando un sistema che permette:</p>
+        <ol>
+            <li>Gestione contemporanea di più tasti</li>
+            <li>Prevenzione del movimento continuo tenendo premuto un tasto</li>
+            <li>Aggiunta di controlli touch per dispositivi mobili</li>
+        </ol>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 4&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+        }
+        canvas { 
+            border: 2px solid #fff;
+            margin-bottom: 20px; 
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: #444;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+    
+    &lt;!-- Controlli touch per dispositivi mobili --&gt;
+    &lt;div class="controls"&gt;
+        &lt;div id="btnLeft" class="control-btn"&gt;←&lt;/div&gt;
+        &lt;div id="btnUp" class="control-btn"&gt;↑&lt;/div&gt;
+        &lt;div id="btnDown" class="control-btn"&gt;↓&lt;/div&gt;
+        &lt;div id="btnRight" class="control-btn"&gt;→&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Layout del gioco
+        const gameLayout = [
+            'WWWWWWWWWWWW', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Posizione della rana
+        let frogX = 5;
+        let frogY = 12;
+        
+        // Oggetto per tenere traccia dei tasti premuti
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        
+        // Variabile per controllare il movimento (impedire il movimento continuo)
+        let canMove = true;
+        const moveDelay = 150; // millisecondi tra un movimento e l'altro
+        
+        // Funzione per disegnare la griglia
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            // Corpo della rana
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            // Occhi
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Funzione per muovere la rana
+        function moveFrog(direction) {
+            if (!canMove) return; // Se non possiamo ancora muoverci, usciamo
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            // Controlliamo se la rana ha effettivamente cambiato posizione
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false; // Impediamo nuovi movimenti
+                
+                // Dopo il ritardo, permettiamo di nuovo il movimento
+                setTimeout(() => {
+                    canMove = true;
+                    checkInput(); // Controlliamo se ci sono tasti ancora premuti
+                }, moveDelay);
+                
+                draw(); // Ridisegniamo solo se c'è stato movimento
+                
+                // Controlliamo se la rana ha raggiunto una posizione speciale
+                checkPosition();
+            }
+        }
+        
+        // Funzione per controllare la posizione della rana
+        function checkPosition() {
+            // Verificare se la rana è arrivata al traguardo (riga 0)
+            if (frogY === 0) {
+                // Se siamo arrivati al traguardo
+                ctx.fillStyle = 'yellow';
+                ctx.font = '30px Arial';
+                ctx.fillText('HAI VINTO!', canvas.width/2-80, canvas.height/2);
+                
+                // Reset della posizione dopo 2 secondi
+                setTimeout(() => {
+                    frogX = 5;
+                    frogY = 12;
+                    draw();
+                }, 2000);
+            }
+            
+            // Verificare se la rana è nell'acqua (ed eventualmente gestire la morte)
+            if (gameLayout[frogY][frogX] === 'W') {
+                // Per ora solo un messaggio, in seguito gestiremo la morte effettiva
+                ctx.fillStyle = 'red';
+                ctx.font = '30px Arial';
+                ctx.fillText('SPLASH!', canvas.width/2-60, canvas.height/2);
+                
+                // Reset della posizione dopo 1 secondo
+                setTimeout(() => {
+                    frogX = 5;
+                    frogY = 12;
+                    draw();
+                }, 1000);
+            }
+        }
+        
+        // Funzione per controllare gli input (tasti premuti)
+        function checkInput() {
+            if (!canMove) return;
+            
+            if (keys.ArrowUp) moveFrog('up');
+            else if (keys.ArrowDown) moveFrog('down');
+            else if (keys.ArrowLeft) moveFrog('left');
+            else if (keys.ArrowRight) moveFrog('right');
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+                checkInput();
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+        
+        // Event listeners per i bottoni touch
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Funzione principale di disegno
+        function draw() {
+            drawGrid();
+            drawFrog();
+        }
+        
+        // Avvia il gioco
+        draw();
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>4. Spiegazione del codice</h2>
+        
+        <h3>Sistema di controllo avanzato</h3>
+        <p>Abbiamo implementato:</p>
+        <ul>
+            <li>Un oggetto <code>keys</code> che tiene traccia dei tasti premuti</li>
+            <li>Un sistema di blocco temporaneo del movimento (<code>canMove</code>) per evitare movimenti troppo rapidi</li>
+            <li>Bottoni touch per dispositivi mobili</li>
+        </ul>
+
+        <h3>Controlli di posizione</h3>
+        <p>La funzione <code>checkPosition()</code> verifica:</p>
+        <ul>
+            <li>Se la rana ha raggiunto il traguardo (riga 0)</li>
+            <li>Se la rana è finita nell'acqua, dove non dovrebbe stare</li>
+        </ul>
+
+        <h3>Eventi multipli</h3>
+        <p>Utilizziamo sia event listeners per la tastiera (<code>keydown</code> e <code>keyup</code>), sia event listeners per il click sui pulsanti touch.</p>
+
+        <canvas id="gameCanvas" width="600" height="650"></canvas>
+        
+        <div class="controls">
+            <div id="btnLeft" class="control-btn">←</div>
+            <div id="btnUp" class="control-btn">↑</div>
+            <div id="btnDown" class="control-btn">↓</div>
+            <div id="btnRight" class="control-btn">→</div>
+        </div>
+
+        <h2>Esercizi</h2>
+        <ol>
+            <li>Aggiungi una funzione per visualizzare un messaggio quando la rana viene investita da un'auto (per ora senza veicoli reali)</li>
+            <li>Implementa un sistema di vite e visualizza quante ne rimangono</li>
+            <li>Aggiungi un bottone "Pausa" che ferma temporaneamente il gioco</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione3.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione5.html" class="btn">Prossima lezione: Loop di Gioco</a>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        const gameLayout = [
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS'
+        ];
+        
+        let frogX = 5;
+        let frogY = 12;
+        
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        
+        let canMove = true;
+        const moveDelay = 150;
+        
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+        
+        function drawFrog() {
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3, 
+                frogY * gridSize + gridSize/3, 
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        function moveFrog(direction) {
+            if (!canMove) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false;
+                
+                setTimeout(() => {
+                    canMove = true;
+                    checkInput();
+                }, moveDelay);
+                
+                draw();
+                checkPosition();
+            }
+        }
+        
+        function checkPosition() {
+            if (frogY === 0) {
+                ctx.fillStyle = 'yellow';
+                ctx.font = '30px Arial';
+                ctx.fillText('HAI VINTO!', canvas.width/2-80, canvas.height/2);
+                
+                setTimeout(() => {
+                    frogX = 5;
+                    frogY = 12;
+                    draw();
+                }, 2000);
+            }
+            
+            if (gameLayout[frogY][frogX] === 'W') {
+                ctx.fillStyle = 'red';
+                ctx.font = '30px Arial';
+                ctx.fillText('SPLASH!', canvas.width/2-60, canvas.height/2);
+                
+                setTimeout(() => {
+                    frogX = 5;
+                    frogY = 12;
+                    draw();
+                }, 1000);
+            }
+        }
+        
+        function checkInput() {
+            if (!canMove) return;
+            
+            if (keys.ArrowUp) moveFrog('up');
+            else if (keys.ArrowDown) moveFrog('down');
+            else if (keys.ArrowLeft) moveFrog('left');
+            else if (keys.ArrowRight) moveFrog('right');
+        }
+        
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+                checkInput();
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+        
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        function draw() {
+            drawGrid();
+            drawFrog();
+        }
+        
+        draw();
+    </script>
+</body>
+</html>

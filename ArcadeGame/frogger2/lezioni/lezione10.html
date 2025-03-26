@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 10: Progetto Finale - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 10: Progetto Finale</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione finale metteremo insieme tutto ciò che abbiamo imparato per creare la versione completa 
+            del nostro gioco Frogger, rifinendo ogni aspetto e aggiungendo alcune funzionalità avanzate.</p>
+        </div>
+
+        <h2>1. Obiettivi del progetto finale</h2>
+        <p>Per completare il nostro gioco Frogger, implementeremo:</p>
+        <ul>
+            <li>Una struttura di codice pulita e modulare</li>
+            <li>Persistenza dei dati (record personali e impostazioni)</li>
+            <li>Menu iniziale e schermata dei crediti</li>
+            <li>Sistema di salvataggio dei progressi</li>
+            <li>Ottimizzazioni delle performance</li>
+        </ul>
+
+        <h2>2. Struttura del progetto</h2>
+        <p>Il progetto finale sarà organizzato in una struttura di file e cartelle ben definita:</p>
+        
+        <pre><code>/home/git-projects/frogger/
+  |-- assets/
+  |   |-- images/   (tutte le immagini)
+  |   |-- sounds/   (tutti i file audio)
+  |
+  |-- css/
+  |   |-- style.css (stili del sito)
+  |   |-- game.css  (stili specifici per il gioco)
+  |
+  |-- js/
+  |   |-- game.js         (logica principale del gioco)
+  |   |-- assets.js       (gestione degli asset)
+  |   |-- controller.js   (input e controlli)
+  |   |-- renderer.js     (rendering degli elementi)
+  |   |-- entities.js     (classi per gli elementi del gioco)
+  |   |-- ui.js           (interfaccia utente)
+  |   |-- storage.js      (salvataggio e caricamento dati)
+  |
+  |-- index.html     (pagina iniziale con menu)
+  |-- game.html      (pagina del gioco)
+  |-- credits.html   (crediti e riferimenti)
+  |-- README.md      (documentazione)</code></pre>
+
+        <h2>3. Organizzazione del codice in moduli</h2>
+        <p>Divideremo il nostro codice in moduli funzionali per una migliore organizzazione e manutenibilità:</p>
+        
+        <h3>game.js - Il cuore del gioco</h3>
+        <pre><code>// game.js - Modulo principale che orchestra tutte le componenti
+class Game {
+    constructor() {
+        this.assets = new AssetManager();
+        this.renderer = new Renderer(this);
+        this.controller = new Controller(this);
+        this.ui = new UI(this);
+        this.storage = new Storage();
+        this.levels = new LevelManager();
+        
+        this.state = {
+            currentScreen: 'loading',
+            level: 1,
+            score: 0,
+            lives: 3,
+            timeRemaining: 30,
+            paused: false,
+            gameOver: false,
+            // ... altri stati
+        };
+    }
+    
+    async init() {
+        await this.assets.loadAll();
+        this.ui.showMenu();
+        this.loop();
+    }
+    
+    startGame() {
+        this.state.currentScreen = 'game';
+        this.levels.loadLevel(this.state.level);
+        // ... inizializzazione del gioco
+    }
+    
+    update(deltaTime) {
+        if (this.state.currentScreen !== 'game' || this.state.paused) return;
+        
+        // ... logica di aggiornamento
+    }
+    
+    render() {
+        this.renderer.clear();
+        
+        switch (this.state.currentScreen) {
+            case 'loading':
+                this.ui.renderLoadingScreen();
+                break;
+            case 'menu':
+                this.ui.renderMenu();
+                break;
+            case 'game':
+                this.renderer.renderGame();
+                break;
+            case 'gameOver':
+                this.ui.renderGameOver();
+                break;
+            // ... altri schermi
+        }
+    }
+    
+    loop(timestamp) {
+        const deltaTime = this.lastTime ? (timestamp - this.lastTime) / 1000 : 0;
+        this.lastTime = timestamp;
+        
+        this.update(deltaTime);
+        this.render();
+        
+        requestAnimationFrame(this.loop.bind(this));
+    }
+}
+
+// Avvia il gioco quando la pagina è pronta
+document.addEventListener('DOMContentLoaded', () => {
+    const game = new Game();
+    game.init();
+});</code></pre>
+
+        <h3>assets.js - Gestione degli asset</h3>
+        <pre><code>// assets.js - Gestione del caricamento e utilizzo degli asset
+class AssetManager {
+    constructor() {
+        this.images = {};
+        this.sounds = {};
+        this.totalAssets = 0;
+        this.loadedAssets = 0;
+    }
+    
+    async loadAll() {
+        await Promise.all([
+            this.loadImage('frog', 'assets/images/frog.png'),
+            this.loadImage('car1', 'assets/images/car1.png'),
+            // ... altri asset da caricare
+            this.loadSound('jump', 'assets/sounds/jump.wav'),
+            // ... altri suoni
+        ]);
+    }
+    
+    async loadImage(key, src) {
+        return new Promise((resolve, reject) => {
+            this.totalAssets++;
+            const img = new Image();
+            img.onload = () => {
+                this.images[key] = img;
+                this.loadedAssets++;
+                resolve();
+            };
+            img.onerror = reject;
+            img.src = src;
+        });
+    }
+    
+    async loadSound(key, src) {
+        return new Promise((resolve, reject) => {
+            this.totalAssets++;
+            const sound = new Audio();
+            sound.oncanplaythrough = () => {
+                this.sounds[key] = sound;
+                this.loadedAssets++;
+                resolve();
+            };
+            sound.onerror = reject;
+            sound.src = src;
+        });
+    }
+    
+    get loadingProgress() {
+        return this.totalAssets > 0 ? this.loadedAssets / this.totalAssets : 0;
+    }
+    
+    playSound(key, volume = 1.0) {
+        if (this.sounds[key]) {
+            const sound = this.sounds[key].cloneNode();
+            sound.volume = volume;
+            sound.play();
+        }
+    }
+}</code></pre>
+
+        <h2>4. Persistenza dei dati</h2>
+        <p>Per salvare i progressi e i record dei giocatori, utilizzeremo la localStorage:</p>
+        
+        <pre><code>// storage.js - Gestione del salvataggio e caricamento dei dati
+class Storage {
+    constructor() {
+        this.highScores = this.loadHighScores();
+        this.settings = this.loadSettings();
+    }
+    
+    loadHighScores() {
+        const scores = localStorage.getItem('frogger_highscores');
+        return scores ? JSON.parse(scores) : [];
+    }
+    
+    saveHighScore(name, score, level) {
+        this.highScores.push({ name, score, level, date: new Date().toISOString() });
+        this.highScores.sort((a, b) => b.score - a.score);
+        
+        // Mantieni solo i migliori 10 punteggi
+        if (this.highScores.length > 10) {
+            this.highScores = this.highScores.slice(0, 10);
+        }
+        
+        localStorage.setItem('frogger_highscores', JSON.stringify(this.highScores));
+        return this.highScores;
+    }
+    
+    loadSettings() {
+        const settings = localStorage.getItem('frogger_settings');
+        return settings ? JSON.parse(settings) : {
+            soundEnabled: true,
+            musicVolume: 0.7,
+            sfxVolume: 1.0,
+            difficulty: 'normal'
+        };
+    }
+    
+    saveSettings(settings) {
+        localStorage.setItem('frogger_settings', JSON.stringify(settings));
+        this.settings = settings;
+    }
+    
+    saveGameProgress(state) {
+        localStorage.setItem('frogger_savegame', JSON.stringify({
+            level: state.level,
+            score: state.score,
+            lives: state.lives,
+            timestamp: Date.now()
+        }));
+    }
+    
+    loadGameProgress() {
+        const progress = localStorage.getItem('frogger_savegame');
+        return progress ? JSON.parse(progress) : null;
+    }
+}</code></pre>
+
+        <h2>5. Il progetto finale completo</h2>
+        <p>Il codice completo del progetto finale è piuttosto esteso. Puoi trovare l'implementazione completa nel file scaricabile dal repository del corso:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="../progetto-finale.zip" class="btn-download">Scarica il progetto finale completo</a>
+        </div>
+        
+        <p>La struttura dei file è organizzata come descritto nella sezione "Struttura del progetto". Il codice è ben documentato con commenti che spiegano la funzione di ogni componente.</p>
+
+        <h2>6. Considerazioni finali e miglioramenti futuri</h2>
+        <p>Il nostro progetto Frogger è ora completo e giocabile, ma ci sono sempre possibili miglioramenti:</p>
+        <ul>
+            <li><strong>Miglioramenti grafici</strong>: Animazioni più fluide, effetti particellari, transizioni</li>
+            <li><strong>Modalità multigiocatore</strong>: Permettere a più giocatori di sfidarsi</li>
+            <li><strong>Livelli personalizzati</strong>: Editor di livelli per creare i propri percorsi</li>
+            <li><strong>Ottimizzazioni avanzate</strong>: Object pooling, gestione avanzata della memoria</li>
+            <li><strong>Estensioni</strong>: Powerup, nemici con comportamenti complessi, meccaniche aggiuntive</li>
+        </ul>
+
+        <h2>7. Conclusione del corso</h2>
+        <p>Congratulazioni! Hai completato il corso JavaScript con Frogger! Hai imparato concetti fondamentali di programmazione di videogiochi come:</p>
+        <ul>
+            <li>Strutture dati e algoritmi di gioco</li>
+            <li>Gestione di input utente e controlli</li>
+            <li>Rendering grafico con Canvas</li>
+            <li>Gestione delle collisioni</li>
+            <li>Game loop e animazioni</li>
+            <li>Gestione di asset multimediali</li>
+            <li>Implementazione di UI interattive</li>
+            <li>Salvataggio e caricamento dei dati</li>
+        </ul>
+        
+        <p>Ora disponi delle conoscenze necessarie per intraprendere progetti di sviluppo di giochi più complessi e applicare questi concetti in contesti diversi!</p>
+
+        <div class="navigation">
+            <a href="lezione9.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="../index.html" class="btn">Gioca al gioco completo!</a>
+        </div>
+
+    </div>
+</body>
+</html>

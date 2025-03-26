@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 3: Funzioni e Movimento - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 3: Funzioni e Movimento</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione, implementeremo il movimento della rana utilizzando funzioni JavaScript 
+            ed esploreremo come gestire gli input dell'utente per controllare il personaggio.</p>
+        </div>
+
+        <h2>1. Riutilizzo del Codice con le Funzioni</h2>
+        <p>Le funzioni sono blocchi di codice riutilizzabili che ci permettono di organizzare il nostro programma in modo più efficiente. In un gioco, le funzioni sono essenziali per separare le diverse responsabilità come l'aggiornamento della posizione, il disegno degli elementi e la gestione degli input.</p>
+
+        <p>Ecco come strutturare una funzione in JavaScript:</p>
+        <pre><code>// Definizione di una funzione
+function nomeFunzione(parametro1, parametro2) {
+    // Corpo della funzione: istruzioni da eseguire
+    let risultato = parametro1 + parametro2;
+    
+    // Valore di ritorno (opzionale)
+    return risultato;
+}
+
+// Chiamata della funzione
+let somma = nomeFunzione(5, 3); // somma sarà 8</code></pre>
+
+        <h2>2. Implementazione del Movimento della Rana</h2>
+        <p>Per muovere la rana nel nostro gioco Frogger, dobbiamo:</p>
+        <ol>
+            <li>Creare funzioni per gestire il movimento nelle quattro direzioni</li>
+            <li>Associare queste funzioni agli input dell'utente (tastiera)</li>
+            <li>Aggiornare la posizione della rana e ridisegnare il gioco</li>
+        </ol>
+
+        <p>Ecco come implementare queste funzionalità:</p>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 3&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+            color: white;
+        }
+        canvas { 
+            border: 2px solid #fff;
+            margin-bottom: 20px; 
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: #444;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Frogger - Lezione 3: Funzioni e Movimento&lt;/h1&gt;
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+    
+    &lt;div class="controls"&gt;
+        &lt;div id="btnLeft" class="control-btn"&gt;←&lt;/div&gt;
+        &lt;div id="btnUp" class="control-btn"&gt;↑&lt;/div&gt;
+        &lt;div id="btnDown" class="control-btn"&gt;↓&lt;/div&gt;
+        &lt;div id="btnRight" class="control-btn"&gt;→&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Layout del gioco
+        const gameLayout = [
+            'WWWWWWWWWWWW', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Posizione della rana
+        let frogX = 5;
+        let frogY = 12;
+        
+        // Variabile per limitare la velocità di movimento
+        let canMove = true;
+        const moveDelay = 150; // millisecondi
+        
+        // Funzione per disegnare la griglia
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            // Disegna il traguardo
+            for (let x = 0; x < columns; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(x * gridSize, 0, gridSize, gridSize/3);
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Funzione per muovere la rana in una direzione specifica
+        function moveFrog(direction) {
+            // Se non possiamo muoverci, ignora l'input
+            if (!canMove) return;
+            
+            // Memorizza la posizione precedente
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            // Aggiorna la posizione in base alla direzione
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            // Se la posizione è cambiata, applica il ritardo di movimento
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false;
+                
+                // Dopo il ritardo, permetti nuovamente il movimento
+                setTimeout(() => {
+                    canMove = true;
+                }, moveDelay);
+                
+                // Ridisegna il gioco per mostrare la nuova posizione
+                draw();
+            }
+        }
+        
+        // Funzione principale di disegno
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawFrog();
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            switch(event.key) {
+                case 'ArrowUp': 
+                    moveFrog('up'); 
+                    event.preventDefault(); // Previene lo scrolling della pagina
+                    break;
+                case 'ArrowDown': 
+                    moveFrog('down'); 
+                    event.preventDefault();
+                    break;
+                case 'ArrowLeft': 
+                    moveFrog('left'); 
+                    event.preventDefault();
+                    break;
+                case 'ArrowRight': 
+                    moveFrog('right'); 
+                    event.preventDefault();
+                    break;
+            }
+        });
+        
+        // Event listeners per i bottoni touch
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Disegna la scena iniziale
+        draw();
+        
+        // Funzione per verificare il raggiungimento del traguardo
+        function checkGoal() {
+            // Se la rana raggiunge la prima riga, ha vinto
+            if (frogY === 0) {
+                setTimeout(() => {
+                    alert('Hai vinto! La rana ha raggiunto il traguardo.');
+                    resetFrog();
+                }, 100);
+            }
+        }
+        
+        // Funzione per resettare la posizione della rana
+        function resetFrog() {
+            frogX = 5;
+            frogY = 12;
+            draw();
+        }
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>3. Spiegazione del codice</h2>
+        
+        <h3>Movimento Controllato</h3>
+        <p>Abbiamo implementato il controllo del movimento tramite:</p>
+        <ul>
+            <li><strong>Tastiera</strong>: Utilizzando i tasti freccia</li>
+            <li><strong>Pulsanti touch</strong>: Per dispositivi mobili o interazione col mouse</li>
+        </ul>
+
+        <h3>Funzione di Movimento</h3>
+        <p>La funzione <code>moveFrog(direction)</code> è responsabile di:</p>
+        <ul>
+            <li>Verificare se il movimento è permesso (controllo dei bordi)</li>
+            <li>Aggiornare la posizione della rana</li>
+            <li>Implementare un ritardo tra un movimento e l'altro</li>
+            <li>Ridisegnare il gioco per riflettere la nuova posizione</li>
+        </ul>
+
+        <h3>Controllo dei Limiti</h3>
+        <p>Abbiamo aggiunto controlli per impedire alla rana di uscire dai bordi del gioco:</p>
+        <pre><code>if (frogY > 0) frogY -= 1; // Impedisce di andare oltre il bordo superiore
+if (frogY < rows - 1) frogY += 1; // Impedisce di andare oltre il bordo inferiore
+if (frogX > 0) frogX -= 1; // Impedisce di andare oltre il bordo sinistro
+if (frogX < columns - 1) frogX += 1; // Impedisce di andare oltre il bordo destro</code></pre>
+
+        <canvas id="demoCanvas" width="600" height="650" style="border: 2px solid #fff; margin: 20px auto; display: block;"></canvas>
+        <div class="controls" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+            <div id="btnLeft" class="control-btn" style="width: 60px; height: 60px; background: #444; color: white; border: 2px solid #666; border-radius: 10px; font-size: 24px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center;">←</div>
+            <div id="btnUp" class="control-btn" style="width: 60px; height: 60px; background: #444; color: white; border: 2px solid #666; border-radius: 10px; font-size: 24px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center;">↑</div>
+            <div id="btnDown" class="control-btn" style="width: 60px; height: 60px; background: #444; color: white; border: 2px solid #666; border-radius: 10px; font-size: 24px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center;">↓</div>
+            <div id="btnRight" class="control-btn" style="width: 60px; height: 60px; background: #444; color: white; border: 2px solid #666; border-radius: 10px; font-size: 24px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center;">→</div>
+        </div>
+
+        <h2>4. Interazioni con l'Ambiente</h2>
+        <p>Ora che possiamo muovere la rana, dobbiamo aggiungere alcune interazioni base con l'ambiente:</p>
+        <ul>
+            <li>Verificare quando la rana raggiunge il traguardo</li>
+            <li>Resettare la posizione della rana dopo la vittoria</li>
+        </ul>
+
+        <p>La funzione <code>checkGoal()</code> verifica se la rana ha raggiunto la prima riga (traguardo) e mostra un messaggio di vittoria. Successivamente, riporta la rana alla posizione iniziale.</p>
+
+        <p>Questo è un primo passo verso un sistema di interazioni più complesso che svilupperemo nelle prossime lezioni, aggiungendo:</p>
+        <ul>
+            <li>Collisioni con veicoli</li>
+            <li>Interazione con tronchi galleggianti</li>
+            <li>Condizioni di game over</li>
+            <li>Sistema di punteggio</li>
+        </ul>
+
+        <h2>5. Esercizi</h2>
+        <ol>
+            <li>Aggiungi un effetto visivo quando la rana si muove (es. un lampeggio o una breve animazione)</li>
+            <li>Personalizza l'aspetto della rana in base alla direzione di movimento (es. ruotala)</li>
+            <li>Aggiungi un contatore di mosse e visualizzalo sullo schermo</li>
+            <li>Implementa un sistema di stampa dei messaggi nella parte inferiore dello schermo</li>
+            <li>Aggiungi un suono quando la rana si muove (suggerimento: usa <code>new Audio('path/to/sound.mp3').play()</code>)</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione2.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione4.html" class="btn">Prossima lezione: Eventi e Input Utente</a>
+        </div>
+    </div>
+
+    <script>
+        // Demo interattivo
+        const canvas = document.getElementById('demoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const gameLayout = [
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'WWWWWWWWWWWW',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS',
+            'RRRRRRRRRRRR',
+            'RRRRRRRRRRRR',
+            'SSSSSSSSSSSS'
+        ];
+        
+        let frogX = 5;
+        let frogY = 12;
+        let canMove = true;
+        const moveDelay = 150;
+        
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            for (let x = 0; x < columns; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(x * gridSize, 0, gridSize, gridSize/3);
+                }
+            }
+        }
+        
+        function drawFrog() {
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                frogX * gridSize + gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3, 0, Math.PI * 2
+            );
+            ctx.arc(
+                frogX * gridSize + 2*gridSize/3,
+                frogY * gridSize + gridSize/3,
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        function moveFrog(direction) {
+            if (!canMove) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': if (frogY > 0) frogY -= 1; break;
+                case 'down': if (frogY < rows - 1) frogY += 1; break;
+                case 'left': if (frogX > 0) frogX -= 1; break;
+                case 'right': if (frogX < columns - 1) frogX += 1; break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                canMove = false;
+                setTimeout(() => {
+                    canMove = true;
+                }, moveDelay);
+                
+                draw();
+                checkGoal();
+            }
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawFrog();
+        }
+        
+        function checkGoal() {
+            if (frogY === 0) {
+                setTimeout(() => {
+                    alert('Hai vinto! La rana ha raggiunto il traguardo.');
+                    resetFrog();
+                }, 100);
+            }
+        }
+        
+        function resetFrog() {
+            frogX = 5;
+            frogY = 12;
+            draw();
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            switch(event.key) {
+                case 'ArrowUp': 
+                    moveFrog('up'); 
+                    event.preventDefault();
+                    break;
+                case 'ArrowDown': 
+                    moveFrog('down'); 
+                    event.preventDefault();
+                    break;
+                case 'ArrowLeft': 
+                    moveFrog('left'); 
+                    event.preventDefault();
+                    break;
+                case 'ArrowRight': 
+                    moveFrog('right'); 
+                    event.preventDefault();
+                    break;
+            }
+        });
+        
+        // Event listeners per i bottoni touch demo
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Disegna stato iniziale
+        draw();
+    </script>
+</body>
+</html>

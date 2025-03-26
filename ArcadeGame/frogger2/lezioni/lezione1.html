@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 1: Introduzione e Configurazione - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 1: Introduzione e Configurazione</h1>
+        
+        <div class="code-explanation">
+            <p>Benvenuti al corso JavaScript con Frogger! In questa prima lezione, esploreremo il concetto base del gioco Frogger,
+            configureremo l'ambiente di sviluppo e creeremo la struttura base del nostro progetto.</p>
+        </div>
+
+        <h2>1. Frogger: Storia e Concetti</h2>
+        <p>Frogger è un celebre videogioco arcade rilasciato da Konami nel 1981. Il concetto è semplice ma avvincente:</p>
+        <ul>
+            <li>Il giocatore controlla una rana che deve attraversare una strada trafficata e un fiume pericoloso</li>
+            <li>Sulla strada, la rana deve evitare le auto in movimento</li>
+            <li>Sul fiume, la rana deve saltare su tronchi galleggianti e tartarughe per attraversare</li>
+            <li>L'obiettivo è raggiungere delle "case" sicure sul lato opposto del fiume</li>
+        </ul>
+
+        <p>Questo gioco mette alla prova riflessi, tempismo e pianificazione del giocatore, ed è perfetto per imparare i concetti fondamentali della programmazione di videogiochi in JavaScript.</p>
+
+        <h2>2. Strumenti Necessari</h2>
+        <p>Per seguire questo corso avrai bisogno di:</p>
+        <ul>
+            <li><strong>Un editor di codice</strong>: Consigliamo Visual Studio Code, Sublime Text o Atom</li>
+            <li><strong>Un browser moderno</strong>: Chrome, Firefox, Edge o Safari (aggiornato all'ultima versione)</li>
+            <li><strong>Conoscenze di base</strong>: HTML, CSS e nozioni base di JavaScript</li>
+        </ul>
+
+        <h2>3. Struttura del Progetto</h2>
+        <p>Iniziamo creando la struttura base del nostro progetto Frogger:</p>
+        <pre><code>/home/git-projects/frogger/
+  |-- assets/
+  |   |-- images/
+  |   |-- sounds/
+  |
+  |-- css/
+  |   |-- style.css
+  |
+  |-- js/
+  |
+  |-- lezioni/
+  |   |-- lezione1.html
+  |   |-- lezione2.html
+  |   |-- ...
+  |
+  |-- index.html
+  |-- README.md</code></pre>
+
+        <h2>4. Creazione della Struttura Base HTML</h2>
+        <p>Creiamo la nostra prima pagina HTML che ci servirà come base per il gioco:</p>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Frogger JavaScript&lt;/title&gt;
+    &lt;style&gt;
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameContainer {
+            margin: 0 auto;
+            width: 600px;
+            height: 650px;
+            position: relative;
+            background-color: #000;
+            border: 4px solid #4CAF50;
+            border-radius: 8px;
+        }
+        
+        h1 {
+            color: #4CAF50;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Frogger JavaScript&lt;/h1&gt;
+    
+    &lt;div id="gameContainer"&gt;
+        &lt;!-- Qui inseriremo il canvas del gioco nelle prossime lezioni --&gt;
+        &lt;p style="padding-top: 300px; color: #4CAF50;"&gt;Canvas del gioco (prossima lezione)&lt;/p&gt;
+    &lt;/div&gt;
+    
+    &lt;p&gt;Usa i tasti freccia per muovere la rana.&lt;/p&gt;
+    
+    &lt;script&gt;
+        // Qui inseriremo il codice JavaScript nelle prossime lezioni
+        console.log('Benvenuto al corso di Frogger JavaScript!');
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>5. Concetti Fondamentali del Corso</h2>
+        <p>Durante questo corso esploreremo numerosi concetti fondamentali di programmazione e sviluppo di videogiochi:</p>
+        <ul>
+            <li><strong>HTML Canvas</strong>: L'elemento che utilizzeremo per disegnare la grafica del gioco</li>
+            <li><strong>Game Loop</strong>: La struttura che aggiorna e disegna costantemente il gioco</li>
+            <li><strong>Rilevamento Collisioni</strong>: Come identificare quando due oggetti si scontrano</li>
+            <li><strong>Gestione Input</strong>: Come catturare e rispondere agli input dell'utente</li>
+            <li><strong>Stato del Gioco</strong>: Come gestire diverse situazioni (menu, gioco, game over)</li>
+            <li><strong>Audio</strong>: Come aggiungere effetti sonori e musica</li>
+            <li><strong>Assets</strong>: Come caricare e utilizzare immagini e altri media</li>
+        </ul>
+
+        <h2>6. Prima Sfida: Personalizza la Pagina</h2>
+        <p>Per iniziare a prendere confidenza con il progetto, prova a personalizzare la pagina HTML di base:</p>
+        <ol>
+            <li>Cambia il colore dello sfondo o del bordo del contenitore di gioco</li>
+            <li>Aggiungi un titolo personalizzato o un sottotitolo</li>
+            <li>Aggiungi un piè di pagina con il tuo nome come sviluppatore</li>
+        </ol>
+
+        <h2>Conclusione</h2>
+        <p>In questa prima lezione, abbiamo posto le basi per il nostro progetto Frogger. Abbiamo esplorato la storia e i concetti del gioco originale, configurato l'ambiente di sviluppo e creato la struttura base del nostro progetto.</p>
+        <p>Nella prossima lezione, introdurremo l'elemento canvas di HTML5 e inizieremo a disegnare i primi elementi del nostro gioco.</p>
+
+        <div class="navigation">
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione2.html" class="btn">Prossima lezione: Variabili e Canvas</a>
+        </div>
+    </div>
+</body>
+</html>

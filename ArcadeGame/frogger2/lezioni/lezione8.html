@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lezione 8: Livelli e Difficoltà - Corso JavaScript Frogger</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lezione 8: Livelli e Difficoltà</h1>
+        
+        <div class="code-explanation">
+            <p>In questa lezione implementeremo un sistema avanzato di livelli e difficoltà progressiva per il nostro gioco Frogger,
+            rendendo il gameplay più ricco e la sfida sempre crescente.</p>
+        </div>
+
+        <h2>1. Sistemi di progressione nei videogiochi</h2>
+        <p>Un buon sistema di livelli deve bilanciare la difficoltà per mantenere il giocatore interessato senza frustarlo. Ecco alcuni approcci:</p>
+        <ul>
+            <li><strong>Difficoltà incrementale</strong>: ogni livello è leggermente più difficile del precedente</li>
+            <li><strong>Nuove meccaniche</strong>: introduzione graduale di nuove sfide o ostacoli</li>
+            <li><strong>Modifica dei parametri</strong>: cambio della velocità, densità o comportamento degli elementi di gioco</li>
+            <li><strong>Obiettivi speciali</strong>: livelli con requisiti o condizioni di vittoria particolari</li>
+        </ul>
+
+        <h2>2. Implementazione di un sistema di livelli per Frogger</h2>
+        <p>Nel nostro Frogger, svilupperemo un sistema di livelli che include:</p>
+        <ul>
+            <li>Aumento progressivo della velocità degli ostacoli</li>
+            <li>Generazione procedurale di layout di livello</li>
+            <li>Introduzione di nuovi tipi di ostacoli nei livelli avanzati</li>
+            <li>Timer che si riduce nei livelli superiori</li>
+            <li>Obiettivi speciali come raccogliere oggetti o raggiungere posizioni specifiche</li>
+        </ul>
+
+        <h2>3. Implementazione completa</h2>
+        <p>Ecco il codice completo con il sistema di livelli:</p>
+        
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Frogger - Lezione 8&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #333; 
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            border: 2px solid #fff;
+            margin-bottom: 20px; 
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: #444;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameUI {
+            display: flex;
+            justify-content: space-between;
+            width: 600px;
+            margin-bottom: 10px;
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+        }
+        .overlay-content {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+        }
+        .btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .target {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: gold;
+            border-radius: 15px;
+            transform: translate(-50%, -50%);
+        }
+        #collectibles {
+            position: absolute;
+            pointer-events: none;
+        }
+        .hidden {
+            display: none;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="gameUI"&gt;
+        &lt;div&gt;Livello: &lt;span id="level"&gt;1&lt;/span&gt;&lt;/div&gt;
+        &lt;div&gt;Punteggio: &lt;span id="score"&gt;0&lt;/span&gt;&lt;/div&gt;
+        &lt;div&gt;
+            Vite: 
+            &lt;span id="livesDisplay"&gt;❤️❤️❤️&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div&gt;Tempo: &lt;span id="timer"&gt;30&lt;/span&gt;s&lt;/div&gt;
+        &lt;div&gt;
+            Obiettivo: &lt;span id="objective"&gt;Raggiungi il traguardo&lt;/span&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div style="position: relative;"&gt;
+        &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+        &lt;div id="collectibles"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div class="controls"&gt;
+        &lt;div id="btnLeft" class="control-btn"&gt;←&lt;/div&gt;
+        &lt;div id="btnUp" class="control-btn"&gt;↑&lt;/div&gt;
+        &lt;div id="btnDown" class="control-btn"&gt;↓&lt;/div&gt;
+        &lt;div id="btnRight" class="control-btn"&gt;→&lt;/div&gt;
+        &lt;div id="btnPause" class="control-btn" style="width: auto; padding: 0 10px;"&gt;Pausa&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;!-- Overlay per Game Over --&gt;
+    &lt;div id="gameOverOverlay" class="overlay hidden"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;GAME OVER&lt;/h2&gt;
+            &lt;p&gt;Punteggio finale: &lt;span id="finalScore"&gt;0&lt;/span&gt;&lt;/p&gt;
+            &lt;p&gt;Hai raggiunto il livello: &lt;span id="finalLevel"&gt;1&lt;/span&gt;&lt;/p&gt;
+            &lt;button id="btnRestart" class="btn"&gt;Ricomincia&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;!-- Overlay per Vittoria Livello --&gt;
+    &lt;div id="levelCompleteOverlay" class="overlay hidden"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;LIVELLO &lt;span id="completedLevel"&gt;1&lt;/span&gt; COMPLETATO!&lt;/h2&gt;
+            &lt;p&gt;Punteggio: &lt;span id="levelScore"&gt;0&lt;/span&gt;&lt;/p&gt;
+            &lt;p id="bonusText"&gt;Bonus tempo: &lt;span id="timeBonus"&gt;0&lt;/span&gt; punti&lt;/p&gt;
+            &lt;p id="objectiveBonus" class="hidden"&gt;Bonus obiettivo: &lt;span id="objBonusValue"&gt;0&lt;/span&gt; punti&lt;/p&gt;
+            &lt;p id="perfectText" class="hidden"&gt;Bonus Perfect: 1000 punti!&lt;/p&gt;
+            &lt;p&gt;Totale: &lt;span id="totalScore"&gt;0&lt;/span&gt;&lt;/p&gt;
+            &lt;button id="btnNextLevel" class="btn"&gt;Prossimo Livello&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;!-- Overlay per introduzione del livello --&gt;
+    &lt;div id="levelIntroOverlay" class="overlay hidden"&gt;
+        &lt;div class="overlay-content"&gt;
+            &lt;h2&gt;LIVELLO &lt;span id="introLevel"&gt;1&lt;/span&gt;&lt;/h2&gt;
+            &lt;p id="introObjective"&gt;Raggiungi il traguardo prima che il tempo finisca&lt;/p&gt;
+            &lt;p id="introHint" class="hidden"&gt;Suggerimento: &lt;span id="levelHint"&gt;&lt;/span&gt;&lt;/p&gt;
+            &lt;p&gt;Tempo: &lt;span id="introTime"&gt;30&lt;/span&gt; secondi&lt;/p&gt;
+            &lt;button id="btnStartLevel" class="btn"&gt;Inizia!&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Configurazione del canvas e dimensioni
+        const gridSize = 50;
+        const rows = 13;
+        const columns = 12;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = columns * gridSize;
+        canvas.height = rows * gridSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Riferimenti agli elementi UI
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const timerDisplay = document.getElementById('timer');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const objectiveDisplay = document.getElementById('objective');
+        const collectiblesContainer = document.getElementById('collectibles');
+        
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const levelCompleteOverlay = document.getElementById('levelCompleteOverlay');
+        const levelIntroOverlay = document.getElementById('levelIntroOverlay');
+        
+        // Configurazione dei livelli
+        const levelConfigs = [
+            // Livello 1 - Tutorial
+            {
+                timeLimit: 30,
+                roadSpeed: 1,
+                riverSpeed: 1,
+                objective: 'basic',
+                objectiveText: 'Raggiungi il traguardo',
+                hint: 'Usa i tronchi per attraversare il fiume!'
+            },
+            // Livello 2 - Velocità aumentata
+            {
+                timeLimit: 25,
+                roadSpeed: 1.3,
+                riverSpeed: 1.2,
+                objective: 'basic',
+                objectiveText: 'Raggiungi il traguardo',
+                hint: 'Attenzione! Le auto sono più veloci!'
+            },
+            // Livello 3 - Colleziona monete
+            {
+                timeLimit: 30,
+                roadSpeed: 1.4,
+                riverSpeed: 1.3,
+                objective: 'collect',
+                objectiveText: 'Raccogli 3 monete e raggiungi il traguardo',
+                collectibles: 3,
+                hint: 'Raccogli le monete dorate prima di arrivare al traguardo!'
+            },
+            // Livello 4 - Tempo ridotto
+            {
+                timeLimit: 20,
+                roadSpeed: 1.5,
+                riverSpeed: 1.4,
+                objective: 'basic',
+                objectiveText: 'Raggiungi il traguardo velocemente!',
+                hint: 'Il tempo è molto limitato, non perdere tempo!'
+            },
+            // Livello 5 - Più monete
+            {
+                timeLimit: 35,
+                roadSpeed: 1.6,
+                riverSpeed: 1.5,
+                objective: 'collect',
+                objectiveText: 'Raccogli 5 monete e raggiungi il traguardo',
+                collectibles: 5,
+                hint: 'Più monete, più punti!'
+            }
+            // Puoi continuare ad aggiungere livelli...
+        ];
+        
+        // Layout base del gioco
+        const baseGameLayout = [
+            'WWWWWWWWWWWW', // Riga 0 (traguardo)
+            'WWWWWWWWWWWW', // Riga 1 (fiume)
+            'WWWWWWWWWWWW', // Riga 2 (fiume)
+            'WWWWWWWWWWWW', // Riga 3 (fiume)
+            'SSSSSSSSSSSS', // Riga 4 (zona sicura)
+            'RRRRRRRRRRRR', // Riga 5 (strada)
+            'RRRRRRRRRRRR', // Riga 6 (strada)
+            'RRRRRRRRRRRR', // Riga 7 (strada)
+            'RRRRRRRRRRRR', // Riga 8 (strada)
+            'SSSSSSSSSSSS', // Riga 9 (zona sicura centrale)
+            'RRRRRRRRRRRR', // Riga 10 (strada)
+            'RRRRRRRRRRRR', // Riga 11 (strada)
+            'SSSSSSSSSSSS'  // Riga 12 (partenza)
+        ];
+        
+        // Stato del gioco
+        let gameLayout;          // Layout corrente
+        let frogX = 5;
+        let frogY = 12;
+        let lives = 3;
+        let score = 0;
+        let level = 1;
+        let timeRemaining = 30;
+        let paused = false;
+        let gameStarted = false;
+        let lastTime = 0;
+        let hitEffect = 0;
+        let winEffect = 0;
+        let deathCount = 0;      // Morti nel livello corrente
+        let currentConfig;       // Configurazione del livello corrente
+        let collectiblesCount = 0; // Contatore di collezionabili raccolti
+        let collectiblesTotal = 0; // Numero totale di collezionabili da raccogliere
+        let collectibles = [];   // Array dei collezionabili
+        
+        // Controllo input
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        let canMove = true;
+        const moveDelay = 150;
+        
+        // Template base degli ostacoli (da personalizzare per livello)
+        let baseObstacles = [
+            // Auto e camion
+            { x: 0, y: 5, width: 2, height: 0.8, baseSpeed: 0.03, type: 'car', color: 'yellow' },
+            { x: 5, y: 6, width: 2, height: 0.8, baseSpeed: -0.04, type: 'car', color: 'red' },
+            { x: 0, y: 7, width: 3, height: 0.8, baseSpeed: 0.05, type: 'truck', color: 'orange' },
+            { x: 8, y: 8, width: 2, height: 0.8, baseSpeed: -0.03, type: 'car', color: 'blue' },
+            { x: 0, y: 10, width: 2, height: 0.8, baseSpeed: 0.04, type: 'car', color: 'green' },
+            { x: 5, y: 11, width: 3, height: 0.8, baseSpeed: -0.02, type: 'truck', color: 'purple' },
+            
+            // Tronchi
+            { x: 0, y: 1, width: 3, height: 0.8, baseSpeed: 0.02, type: 'log', color: '#8B4513' },
+            { x: 7, y: 2, width: 4, height: 0.8, baseSpeed: -0.03, type: 'log', color: '#8B4513' },
+            { x: 3, y: 3, width: 3, height: 0.8, baseSpeed: 0.025, type: 'log', color: '#8B4513' }
+        ];
+        
+        // Ostacoli correnti
+        let obstacles = [];
+        
+        // Inizializzazione del livello
+        function initLevel(levelNum) {
+            // Aggiorna le variabili di stato
+            level = levelNum;
+            const levelIdx = Math.min(levelNum - 1, levelConfigs.length - 1);
+            currentConfig = levelConfigs[levelIdx];
+            
+            // Resetta stato
+            frogX = 5;
+            frogY = 12;
+            deathCount = 0;
+            timeRemaining = currentConfig.timeLimit;
+            
+            // Copia e modifica layout se necessario
+            gameLayout = [...baseGameLayout];
+            
+            // Genera gli ostacoli in base al livello
+            generateObstacles();
+            
+            // Inizializza collezionabili se richiesti
+            collectibles = [];
+            collectiblesContainer.innerHTML = '';
+            collectiblesCount = 0;
+            
+            if (currentConfig.objective === 'collect') {
+                collectiblesTotal = currentConfig.collectibles;
+                generateCollectibles();
+                objectiveDisplay.textContent = `Raccogli ${collectiblesTotal} monete (${collectiblesCount}/${collectiblesTotal})`;
+            } else {
+                collectiblesTotal = 0;
+                objectiveDisplay.textContent = currentConfig.objectiveText;
+            }
+            
+            // Aggiorna UI
+            updateUI();
+            
+            // Mostra schermata introduttiva del livello
+            document.getElementById('introLevel').textContent = level;
+            document.getElementById('introObjective').textContent = currentConfig.objectiveText;
+            document.getElementById('introTime').textContent = currentConfig.timeLimit;
+            
+            if (currentConfig.hint) {
+                document.getElementById('introHint').classList.remove('hidden');
+                document.getElementById('levelHint').textContent = currentConfig.hint;
+            } else {
+                document.getElementById('introHint').classList.add('hidden');
+            }
+            
+            levelIntroOverlay.classList.remove('hidden');
+        }
+        
+        // Generazione degli ostacoli basata sul livello
+        function generateObstacles() {
+            obstacles = [];
+            
+            // Copia gli ostacoli base e modifica le velocità
+            for (const obs of baseObstacles) {
+                const newObs = { ...obs };
+                
+                // Applica il moltiplicatore di velocità in base al tipo e livello
+                if (newObs.type === 'car' || newObs.type === 'truck') {
+                    newObs.speed = newObs.baseSpeed * currentConfig.roadSpeed;
+                } else if (newObs.type === 'log') {
+                    newObs.speed = newObs.baseSpeed * currentConfig.riverSpeed;
+                }
+                
+                obstacles.push(newObs);
+            }
+            
+            // Aggiungi eventuali ostacoli specifici del livello
+            if (level >= 3) {
+                // Aggiungi un'auto extra veloce
+                obstacles.push({
+                    x: -3, y: 8, width: 2, height: 0.8, 
+                    speed: 0.08 * currentConfig.roadSpeed, 
+                    type: 'car', color: 'crimson'
+                });
+            }
+            
+            if (level >= 5) {
+                // Aggiungi un camion lungo nei livelli avanzati
+                obstacles.push({
+                    x: -5, y: 10, width: 4, height: 0.8, 
+                    speed: 0.06 * currentConfig.roadSpeed, 
+                    type: 'truck', color: 'darkviolet'
+                });
+            }
+        }
+        
+        // Generazione dei collezionabili
+        function generateCollectibles() {
+            collectibles = [];
+            collectiblesContainer.innerHTML = '';
+            
+            // Genera il numero richiesto di collezionabili in posizioni casuali sicure
+            for (let i = 0; i < collectiblesTotal; i++) {
+                let safePosition = false;
+                let x, y;
+                
+                // Trova una posizione sicura (non nell'acqua o sul traguardo)
+                while (!safePosition) {
+                    x = Math.floor(Math.random() * columns);
+                    y = Math.floor(Math.random() * rows);
+                    
+                    // Evita posizioni nell'acqua e sul traguardo e dove si trova inizialmente la rana
+                    if ((y >= 1 && y <= 3) || y === 0 || (x === frogX && y === frogY)) {
+                        safePosition = false;
+                    } else {
+                        safePosition = true;
+                    }
+                }
+                
+                // Crea il collezionabile
+                const collectible = {
+                    x: x,
+                    y: y,
+                    collected: false
+                };
+                
+                collectibles.push(collectible);
+                
+                // Crea l'elemento visivo
+                const coinElement = document.createElement('div');
+                coinElement.className = 'target';
+                coinElement.style.left = (x * gridSize + gridSize/2) + 'px';
+                coinElement.style.top = (y * gridSize + gridSize/2) + 'px';
+                coinElement.dataset.index = i;
+                
+                collectiblesContainer.appendChild(coinElement);
+            }
+        }
+        
+        // Funzione per verificare la collisione AABB
+        function checkAABBCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+        
+        // Funzione per disegnare la griglia
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    switch(gameLayout[y][x]) {
+                        case 'W': ctx.fillStyle = '#000080'; break;
+                        case 'R': ctx.fillStyle = '#505050'; break;
+                        case 'S': ctx.fillStyle = '#0f5f0f'; break;
+                    }
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            // Disegna il traguardo
+            for (let x = 0; x < columns; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(x * gridSize, 0, gridSize, gridSize/3);
+                }
+            }
+        }
+        
+        // Funzione per disegnare gli ostacoli
+        function drawObstacles() {
+            for (const obs of obstacles) {
+                ctx.fillStyle = obs.color;
+                
+                ctx.fillRect(
+                    obs.x * gridSize,
+                    obs.y * gridSize + gridSize * (1-obs.height) / 2,
+                    obs.width * gridSize,
+                    obs.height * gridSize
+                );
+                
+                if (obs.type === 'car') {
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(
+                        (obs.speed > 0 ? obs.x + 0.3 : obs.x + obs.width - 1.3) * gridSize,
+                        obs.y * gridSize + gridSize * 0.25,
+                        gridSize * 0.6,
+                        gridSize * 0.3
+                    );
+                } else if (obs.type === 'truck') {
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.fillRect(
+                        (obs.speed > 0 ? obs.x : obs.x + obs.width - 0.8) * gridSize,
+                        obs.y * gridSize + gridSize * 0.15,
+                        gridSize * 0.8,
+                        gridSize * 0.5
+                    );
+                }
+            }
+        }
+        
+        // Funzione per disegnare la rana
+        function drawFrog() {
+            if (hitEffect > 0) {
+                ctx.fillStyle = hitEffect % 2 === 0 ? 'red' : 'white';
+                hitEffect--;
+            } else if (winEffect > 0) {
+                ctx.fillStyle = winEffect % 2 === 0 ? '#FFD700' : 'lime';
+                winEffect--;
+            } else {
+                ctx.fillStyle = 'lime';
+            }
+            
+            ctx.fillRect(
+                frogX * gridSize + gridSize/4,
+                frogY * gridSize + gridSize/4,
+                gridSize/2,
+                gridSize/2
+            );
+            
+            if (hitEffect === 0) {
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(
+                    frogX * gridSize + gridSize/3, 
+                    frogY * gridSize + gridSize/3, 
+                    3, 0, Math.PI * 2
+                );
+                ctx.arc(
+                    frogX * gridSize + 2*gridSize/3, 
+                    frogY * gridSize + gridSize/3, 
+                    3, 0, Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+        
+        // Funzione per aggiornare le posizioni degli ostacoli
+        function updateObstacles(deltaTime) {
+            for (const obs of obstacles) {
+                obs.x += obs.speed * deltaTime;
+                
+                if (obs.speed > 0 && obs.x > columns) {
+                    obs.x = -obs.width;
+                } else if (obs.speed < 0 && obs.x < -obs.width) {
+                    obs.x = columns;
+                }
+                
+                if (obs.type === 'log' && frogY === obs.y) {
+                    const frogRect = {
+                        x: frogX + 0.25,
+                        y: frogY + 0.25,
+                        width: 0.5,
+                        height: 0.5
+                    };
+                    
+                    const logRect = {
+                        x: obs.x,
+                        y: obs.y,
+                        width: obs.width,
+                        height: 1
+                    };
+                    
+                    if (checkAABBCollision(frogRect, logRect)) {
+                        frogX += obs.speed * deltaTime;
+                    }
+                }
+            }
+        }
+        
+        // Funzione per aggiornare il timer
+        function updateTimer(deltaTime) {
+            if (timeRemaining > 0) {
+                timeRemaining -= deltaTime;
+                if (timeRemaining <= 0) {
+                    timeRemaining = 0;
+                    die("TEMPO SCADUTO!");
+                }
+            }
+            
+            timerDisplay.textContent = Math.ceil(timeRemaining);
+            
+            if (timeRemaining <= 5) {
+                timerDisplay.style.color = 'red';
+            } else {
+                timerDisplay.style.color = 'white';
+            }
+        }
+        
+        // Funzione per controllare le collisioni con collezionabili
+        function checkCollectibles() {
+            for (let i = 0; i < collectibles.length; i++) {
+                if (!collectibles[i].collected && 
+                    Math.floor(frogX) === collectibles[i].x && 
+                    Math.floor(frogY) === collectibles[i].y) {
+                    
+                    // Raccolta collezionabile
+                    collectibles[i].collected = true;
+                    collectiblesCount++;
+                    
+                    // Aggiorna i punti
+                    score += 200;
+                    updateUI();
+                    
+                    // Nascondi l'elemento visivo
+                    const coinElements = collectiblesContainer.querySelectorAll('.target');
+                    coinElements[i].style.visibility = 'hidden';
+                    
+                    // Aggiorna l'obiettivo
+                    objectiveDisplay.textContent = `Raccogli ${collectiblesTotal} monete (${collectiblesCount}/${collectiblesTotal})`;
+                    
+                    // Effetto visivo
+                    ctx.fillStyle = 'gold';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('+200', frogX * gridSize, frogY * gridSize);
+                }
+            }
+        }
+        
+        // Funzione per controllare le collisioni
+        function checkCollisions() {
+            if (frogX < 0) frogX = 0;
+            if (frogX > columns - 1) frogX = columns - 1;
+            
+            const frogRect = {
+                x: frogX + 0.25,
+                y: frogY + 0.25,
+                width: 0.5,
+                height: 0.5
+            };
+            
+            // Controlla se la rana è nell'acqua
+            if (frogY >= 1 && frogY <= 3) {
+                let onLog = false;
+                
+                for (const obs of obstacles) {
+                    if (obs.type === 'log') {
+                        const logRect = {
+                            x: obs.x,
+                            y: obs.y,
+                            width: obs.width,
+                            height: 1
+                        };
+                        
+                        if (checkAABBCollision(frogRect, logRect)) {
+                            onLog = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!onLog) {
+                    die('SPLASH!');
+                }
+            }
+            
+            // Controlla collisioni con veicoli
+            if ((frogY >= 5 && frogY <= 8) || (frogY >= 10 && frogY <= 11)) {
+                for (const obs of obstacles) {
+                    if (obs.type === 'car' || obs.type === 'truck') {
+                        const vehicleRect = {
+                            x: obs.x,
+                            y: obs.y,
+                            width: obs.width,
+                            height: 1
+                        };
+                        
+                        if (checkAABBCollision(frogRect, vehicleRect)) {
+                            die('SPLAT!');
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Controlla collisioni con collezionabili
+            if (currentConfig.objective === 'collect') {
+                checkCollectibles();
+            }
+            
+            // Controlla se la rana ha raggiunto il traguardo
+            if (frogY === 0) {
+                if (currentConfig.objective === 'collect' && collectiblesCount < collectiblesTotal) {
+                    // Avvisa il giocatore che deve raccogliere tutti i collezionabili
+                    ctx.fillStyle = 'yellow';
+                    ctx.font = '20px Arial';
+                    ctx.fillText(`Devi raccogliere ${collectiblesTotal - collectiblesCount} monete!`, 
+                                canvas.width/2-150, canvas.height/2);
+                } else {
+                    win();
+                }
+            }
+        }
+        
+        // Funzione per aggiornare la UI
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = level;
+            
+            // Aggiorna display delle vite
+            livesDisplay.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                livesDisplay.innerHTML += '❤️';
+            }
+        }
+        
+        // Funzione per la morte della rana
+        function die(message) {
+            if (hitEffect > 0) return;
+            
+            lives--;
+            deathCount++;
+            updateUI();
+            hitEffect = 10;
+            
+            // Mostra messaggio
+            ctx.fillStyle = 'red';
+            ctx.font = '30px Arial';
+            ctx.fillText(message, canvas.width/2-80, canvas.height/2);
+            
+            if (lives <= 0) {
+                // Game over
+                setTimeout(() => {
+                    showGameOver();
+                }, 1000);
+            } else {
+                // Reset della posizione della rana
+                setTimeout(() => {
+                    resetFrog();
+                }, 1000);
+            }
+        }
+        
+        // Funzione per resettare la posizione della rana
+        function resetFrog() {
+            frogX = 5;
+            frogY = 12;
+        }
+        
+        // Funzione per la vittoria del livello
+        function win() {
+            winEffect = 10;
+            paused = true;
+            
+            // Calcola bonus
+            const timeBonus = Math.floor(timeRemaining) * 10;
+            const levelBonus = level * 100;
+            const objectiveBonus = currentConfig.objective === 'collect' ? collectiblesCount * 200 : 0;
+            const perfectBonus = deathCount === 0 ? 1000 : 0;
+            
+            // Aggiorna il punteggio
+            score += 50 + timeBonus + levelBonus + perfectBonus;
+            
+            // Aggiorna UI
+            document.getElementById('completedLevel').textContent = level;
+            levelScoreDisplay.textContent = score;
+            timeBonusDisplay.textContent = timeBonus;
+            totalScoreDisplay.textContent = score;
+            
+            // Mostra bonus per obiettivo se applicabile
+            if (objectiveBonus > 0) {
+                document.getElementById('objectiveBonus').classList.remove('hidden');
+                document.getElementById('objBonusValue').textContent = objectiveBonus;
+            } else {
+                document.getElementById('objectiveBonus').classList.add('hidden');
+            }
+            
+            // Mostra bonus perfect se applicabile
+            if (perfectBonus > 0) {
+                document.getElementById('perfectText').classList.remove('hidden');
+            } else {
+                document.getElementById('perfectText').classList.add('hidden');
+            }
+            
+            // Mostra schermata vittoria
+            setTimeout(() => {
+                levelCompleteOverlay.classList.remove('hidden');
+            }, 1500);
+            
+            updateUI();
+        }
+        
+        // Funzione per avanzare al prossimo livello
+        function nextLevel() {
+            const nextLevelNum = level + 1;
+            
+            // Se abbiamo completato tutti i livelli configurati, ricominciamo con difficoltà maggiore
+            if (nextLevelNum > levelConfigs.length) {
+                alert('Hai completato tutti i livelli disponibili! Ricominciamo con difficoltà aumentata.');
+                initLevel(1);
+            } else {
+                initLevel(nextLevelNum);
+            }
+            
+            levelCompleteOverlay.classList.add('hidden');
+        }
+        
+        // Funzione per mostrare schermata Game Over
+        function showGameOver() {
+            finalScoreDisplay.textContent = score;
+            finalLevelDisplay.textContent = level;
+            gameOverOverlay.classList.remove('hidden');
+            paused = true;
+        }
+        
+        // Funzione per ricominciare il gioco
+        function restartGame() {
+            score = 0;
+            level = 1;
+            lives = 3;
+            paused = false;
+            gameStarted = false;
+            
+            initLevel(1);
+            gameOverOverlay.classList.add('hidden');
+        }
+        
+        // Funzione per iniziare il livello corrente
+        function startLevel() {
+            gameStarted = true;
+            paused = false;
+            levelIntroOverlay.classList.add('hidden');
+        }
+        
+        // Funzione per muovere la rana
+        function moveFrog(direction) {
+            if (!canMove || paused || hitEffect > 0) return;
+            
+            const prevX = frogX;
+            const prevY = frogY;
+            
+            switch(direction) {
+                case 'up': 
+                    if (frogY > 0) {
+                        frogY -= 1;
+                        score += 10;
+                    }
+                    break;
+                case 'down': 
+                    if (frogY < rows - 1) {
+                        frogY += 1;
+                    }
+                    break;
+                case 'left': 
+                    if (frogX > 0) {
+                        frogX -= 1;
+                        score += 5;
+                    }
+                    break;
+                case 'right': 
+                    if (frogX < columns - 1) {
+                        frogX += 1;
+                        score += 5;
+                    }
+                    break;
+            }
+            
+            if (prevX !== frogX || prevY !== frogY) {
+                updateUI();
+                
+                canMove = false;
+                setTimeout(() => {
+                    canMove = true;
+                    checkInput();
+                }, moveDelay);
+            }
+        }
+        
+        // Funzione per controllare l'input
+        function checkInput() {
+            if (!canMove || paused || hitEffect > 0) return;
+            
+            if (keys.ArrowUp) moveFrog('up');
+            else if (keys.ArrowDown) moveFrog('down');
+            else if (keys.ArrowLeft) moveFrog('left');
+            else if (keys.ArrowRight) moveFrog('right');
+        }
+        
+        // Funzione principale di disegno
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawObstacles();
+            drawFrog();
+        }
+        
+        // Loop principale del gioco
+        function update(timestamp) {
+            // Calcola delta time
+            const deltaTime = timestamp - lastTime;
+            const dt = deltaTime / 1000; // in secondi
+            lastTime = timestamp;
+            
+            // Se il gioco è in corso, aggiorna gli elementi
+            if (gameStarted && !paused && hitEffect === 0) {
+                updateObstacles(dt);
+                checkCollisions();
+                updateTimer(dt);
+            }
+            
+            // Disegna lo stato corrente
+            draw();
+            
+            // Continua il loop
+            requestAnimationFrame(update);
+        }
+        
+        // Event listeners per la tastiera
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+                event.preventDefault();
+                checkInput();
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+                event.preventDefault();
+            }
+        });
+        
+        // Event listeners per i bottoni touch
+        document.getElementById('btnUp').addEventListener('click', () => moveFrog('up'));
+        document.getElementById('btnDown').addEventListener('click', () => moveFrog('down'));
+        document.getElementById('btnLeft').addEventListener('click', () => moveFrog('left'));
+        document.getElementById('btnRight').addEventListener('click', () => moveFrog('right'));
+        
+        // Toggle di pausa
+        document.getElementById('btnPause').addEventListener('click', () => {
+            if (gameStarted) {
+                paused = !paused;
+                document.getElementById('btnPause').textContent = paused ? 'Riprendi' : 'Pausa';
+            }
+        });
+        
+        // Event listeners per i bottoni degli overlay
+        document.getElementById('btnNextLevel').addEventListener('click', nextLevel);
+        document.getElementById('btnRestart').addEventListener('click', restartGame);
+        document.getElementById('btnStartLevel').addEventListener('click', startLevel);
+        
+        // Inizializza il primo livello
+        initLevel(1);
+        
+        // Avvia il loop di gioco
+        requestAnimationFrame(update);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>4. Spiegazione del codice</h2>
+        
+        <h3>Sistema di livelli e configurazioni</h3>
+        <p>Abbiamo implementato un sistema di livelli basato su configurazioni che definiscono:</p>
+        <ul>
+            <li><strong>Limite di tempo</strong>: quanto tempo ha il giocatore per completare il livello</li>
+            <li><strong>Velocità degli ostacoli</strong>: velocità separate per strada e fiume</li>
+            <li><strong>Obiettivi</strong>: condizioni di vittoria (base o raccolta oggetti)</li>
+            <li><strong>Suggerimenti</strong>: aiuti mostrati all'inizio del livello</li>
+        </ul>
+
+        <h3>Obiettivi speciali</h3>
+        <p>Abbiamo aggiunto due tipi di obiettivi:</p>
+        <ul>
+            <li><strong>Base</strong>: raggiungi semplicemente il traguardo</li>
+            <li><strong>Raccolta</strong>: devi raccogliere un certo numero di collezionabili prima di raggiungere il traguardo</li>
+        </ul>
+
+        <h3>Sistema di collezionabili</h3>
+        <p>Abbiamo implementato un sistema di monete collezionabili che:</p>
+        <ul>
+            <li>Vengono posizionate in punti casuali sicuri nella mappa</li>
+            <li>Danno punti bonus quando raccolte</li>
+            <li>Possono essere richieste per completare un livello</li>
+        </ul>
+
+        <h3>Schermate introduttive</h3>
+        <p>Abbiamo aggiunto una schermata introduttiva per ogni livello che mostra:</p>
+        <ul>
+            <li>Il numero del livello</li>
+            <li>L'obiettivo specifico</li>
+            <li>Suggerimenti utili per completarlo</li>
+            <li>Il tempo a disposizione</li>
+        </ul>
+
+        <canvas id="gameCanvas" width="600" height="650"></canvas>
+        <div id="gameUI">
+            <div>Livello: <span id="level">1</span></div>
+            <div>Punteggio: <span id="score">0</span></div>
+            <div>Vite: <span id="livesDisplay">❤️❤️❤️</span></div>
+            <div>Tempo: <span id="timer">30</span>s</div>
+            <div>Obiettivo: <span id="objective">Raggiungi il traguardo</span></div>
+        </div>
+        <div class="controls">
+            <div id="btnLeft" class="control-btn">←</div>
+            <div id="btnUp" class="control-btn">↑</div>
+            <div id="btnDown" class="control-btn">↓</div>
+            <div id="btnRight" class="control-btn">→</div>
+            <div id="btnPause" class="control-btn" style="width: auto; padding: 0 10px;">Pausa</div>
+        </div>
+
+        <h2>Esercizi</h2>
+        <ol>
+            <li>Crea un nuovo tipo di livello con un obiettivo speciale (es: raggiungi il traguardo in meno di 15 secondi)</li>
+            <li>Implementa livelli con layout diversi (es: aggiungi isole nel fiume, blocchi nella strada)</li>
+            <li>Aggiungi nuovi tipi di ostacoli nei livelli avanzati (es: coccodrilli nell'acqua che fanno perdere anche se ci salti sopra)</li>
+            <li>Crea un editor di livelli che permette di salvare e caricare configurazioni personalizzate</li>
+        </ol>
+
+        <div class="navigation">
+            <a href="lezione7.html" class="btn">Lezione precedente</a>
+            <a href="../README.md" class="btn">Indice del corso</a>
+            <a href="lezione9.html" class="btn">Prossima lezione: Assets e Suoni</a>
+        </div>
+    </div>
+
+    <script>
+        // Script per demo interattiva
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = 600;
+        canvas.height = 650;
+        const ctx = canvas.getContext('2d');
+        
+        // Demo script
+        function drawDemo() {
+            // Sfondo fiume, strada e zone sicure
+            ctx.fillStyle = '#000080';
+            ctx.fillRect(0, 0, canvas.width, 200);
+            ctx.fillStyle = '#0f5f0f';
+            ctx.fillRect(0, 200, canvas.width, 50);
+            ctx.fillStyle = '#505050';
+            ctx.fillRect(0, 250, canvas.width, 200);
+            ctx.fillStyle = '#0f5f0f';
+            ctx.fillRect(0, 450, canvas.width, 50);
+            ctx.fillStyle = '#505050';
+            ctx.fillRect(0, 500, canvas.width, 100);
+            ctx.fillStyle = '#0f5f0f';
+            ctx.fillRect(0, 600, canvas.width, 50);
+            
+            // Traguardo
+            for (let x = 0; x < 12; x++) {
+                if (x % 2 === 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(x * 50, 0, 50, 15);
+                }
+            }
+            
+            // Tronchi
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(100, 50, 150, 40);
+            ctx.fillRect(400, 100, 200, 40);
+            ctx.fillRect(50, 150, 150, 40);
+            
+            // Auto
+            ctx.fillStyle = 'red';
+            ctx.fillRect(300, 250, 100, 40);
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(100, 300, 100, 40);
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(450, 350, 100, 40);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(200, 500, 100, 40);
+            ctx.fillStyle = 'purple';
+            ctx.fillRect(400, 550, 150, 40);
+            
+            // Monete collezionabili
+            ctx.fillStyle = 'gold';
+            ctx.beginPath();
+            ctx.arc(150, 225, 15, 0, Math.PI * 2);
+            ctx.arc(350, 475, 15, 0, Math.PI * 2);
+            ctx.arc(450, 625, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rana
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(290, 615, 20, 20);
+        }
+        
+        drawDemo();
+        
+        // Simulazione di cambiamento livello
+        let demoLevel = 1;
+        const levelDisplay = document.getElementById('level');
+        
+        setInterval(() => {
+            demoLevel = (demoLevel % 5) + 1;
+            levelDisplay.textContent = demoLevel;
+            
+            // Cambia obiettivo in base al livello
+            const objective = document.getElementById('objective');
+            if (demoLevel === 3 || demoLevel === 5) {
+                objective.textContent = `Raccogli ${demoLevel === 3 ? '3' : '5'} monete e raggiungi il traguardo`;
+            } else {
+                objective.textContent = "Raggiungi il traguardo";
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
