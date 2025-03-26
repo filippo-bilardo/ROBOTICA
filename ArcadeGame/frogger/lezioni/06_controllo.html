@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strutture di Controllo | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Strutture di Controllo</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Le strutture di controllo sono blocchi di codice che determinano come e quando le istruzioni vengono eseguite. Esse permettono di controllare il flusso di esecuzione del programma in base a condizioni specifiche o di ripetere blocchi di codice più volte. In questa lezione, esploreremo le principali strutture di controllo in JavaScript e come utilizzarle nel nostro gioco Frogger.
+    </p>
+    
+    <h2>Istruzioni Condizionali</h2>
+    <p>
+        Le istruzioni condizionali permettono di eseguire blocchi di codice diversi in base a condizioni specifiche. In JavaScript, le principali istruzioni condizionali sono <code>if</code>, <code>else if</code>, <code>else</code> e <code>switch</code>.
+    </p>
+    
+    <h3>1. Istruzione if</h3>
+    <p>
+        L'istruzione <code>if</code> esegue un blocco di codice se una condizione specificata è vera.
+    </p>
+    <div class="example">
+        <pre><code>// Verifica se la rana ha raggiunto la destinazione
+if (ranaY <= 50) {
+    // La rana ha completato il livello
+    punteggio += 100;
+    resetRana();
+    console.log("Livello completato!");
+}</code></pre>
+    </div>
+    
+    <h3>2. Istruzione if...else</h3>
+    <p>
+        L'istruzione <code>if...else</code> esegue un blocco di codice se una condizione è vera e un altro blocco se la condizione è falsa.
+    </p>
+    <div class="example">
+        <pre><code>// Verifica se il giocatore ha ancora vite
+if (vite > 0) {
+    // Continua il gioco
+    continueGame();
+    console.log("Vite rimanenti: " + vite);
+} else {
+    // Game over
+    gameOver();
+    console.log("Game Over!");
+}</code></pre>
+    </div>
+    
+    <h3>3. Istruzione if...else if...else</h3>
+    <p>
+        L'istruzione <code>if...else if...else</code> permette di verificare più condizioni in sequenza.
+    </p>
+    <div class="example">
+        <pre><code>// Verifica lo stato del gioco
+if (gameOver) {
+    // Mostra schermata di game over
+    mostraGameOver();
+    console.log("Game Over!");
+} else if (inPausa) {
+    // Mostra menu di pausa
+    mostraMenuPausa();
+    console.log("Gioco in pausa");
+} else {
+    // Continua il gioco
+    aggiornaGioco();
+    console.log("Gioco in corso");
+}</code></pre>
+    </div>
+    
+    <h3>4. Istruzione switch</h3>
+    <p>
+        L'istruzione <code>switch</code> valuta un'espressione e esegue blocchi di codice diversi in base al valore dell'espressione.
+    </p>
+    <div class="example">
+        <pre><code>// Gestione degli input da tastiera
+switch (tasto) {
+    case "ArrowUp":
+        // Muovi la rana verso l'alto
+        ranaY -= 30;
+        console.log("Movimento verso l'alto");
+        break;
+    case "ArrowDown":
+        // Muovi la rana verso il basso
+        ranaY += 30;
+        console.log("Movimento verso il basso");
+        break;
+    case "ArrowLeft":
+        // Muovi la rana verso sinistra
+        ranaX -= 30;
+        console.log("Movimento verso sinistra");
+        break;
+    case "ArrowRight":
+        // Muovi la rana verso destra
+        ranaX += 30;
+        console.log("Movimento verso destra");
+        break;
+    case "p":
+    case "P":
+        // Metti in pausa il gioco
+        togglePausa();
+        console.log("Pausa/Riprendi");
+        break;
+    default:
+        // Ignora altri tasti
+        console.log("Tasto non riconosciuto: " + tasto);
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> L'istruzione <code>break</code> è importante nelle istruzioni <code>switch</code>. Senza di essa, l'esecuzione continuerebbe nei casi successivi, anche se non corrispondono al valore valutato.
+    </div>
+    
+    <h2>Cicli (Loop)</h2>
+    <p>
+        I cicli permettono di eseguire un blocco di codice più volte. In JavaScript, i principali tipi di cicli sono <code>for</code>, <code>while</code>, <code>do...while</code> e <code>for...of</code>.
+    </p>
+    
+    <h3>1. Ciclo for</h3>
+    <p>
+        Il ciclo <code>for</code> ripete un blocco di codice un numero specifico di volte. È composto da tre parti: inizializzazione, condizione e incremento/decremento.
+    </p>
+    <div class="example">
+        <pre><code>// Aggiorna la posizione di tutti gli ostacoli
+for (let i = 0; i < ostacoli.length; i++) {
+    // Aggiorna la posizione dell'ostacolo corrente
+    ostacoli[i].x += ostacoli[i].velocita;
+    
+    // Se l'ostacolo esce dallo schermo, riportalo dall'altra parte
+    if (ostacoli[i].x > larghezzaCanvas) {
+        ostacoli[i].x = -ostacoli[i].larghezza;
+    } else if (ostacoli[i].x < -ostacoli[i].larghezza) {
+        ostacoli[i].x = larghezzaCanvas;
+    }
+    
+    console.log("Ostacolo " + i + " aggiornato");
+}</code></pre>
+    </div>
+    
+    <h3>2. Ciclo while</h3>
+    <p>
+        Il ciclo <code>while</code> ripete un blocco di codice finché una condizione specificata è vera.
+    </p>
+    <div class="example">
+        <pre><code>// Continua a generare nuovi ostacoli finché non ne abbiamo abbastanza
+let numeroOstacoli = 0;
+let maxOstacoli = 10;
+
+while (numeroOstacoli < maxOstacoli) {
+    // Crea un nuovo ostacolo
+    let nuovoOstacolo = {
+        x: Math.random() * larghezzaCanvas,
+        y: 100 + Math.random() * 300,
+        larghezza: 50,
+        altezza: 30,
+        velocita: 1 + Math.random() * 3
+    };
+    
+    // Aggiungi l'ostacolo all'array
+    ostacoli.push(nuovoOstacolo);
+    numeroOstacoli++;
+    
+    console.log("Nuovo ostacolo creato. Totale: " + numeroOstacoli);
+}</code></pre>
+    </div>
+    
+    <h3>3. Ciclo do...while</h3>
+    <p>
+        Il ciclo <code>do...while</code> è simile al ciclo <code>while</code>, ma esegue il blocco di codice almeno una volta prima di verificare la condizione.
+    </p>
+    <div class="example">
+        <pre><code>// Genera una posizione casuale per la rana che non sia in collisione con ostacoli
+let nuovaPosX, nuovaPosY;
+let posizioneValida = false;
+
+do {
+    // Genera una nuova posizione casuale
+    nuovaPosX = Math.floor(Math.random() * (larghezzaCanvas - ranaLarghezza));
+    nuovaPosY = Math.floor(Math.random() * (altezzaCanvas - ranaAltezza));
+    
+    // Verifica se la posizione è valida (non in collisione con ostacoli)
+    posizioneValida = true;
+    for (let i = 0; i < ostacoli.length; i++) {
+        if (verificaCollisione(nuovaPosX, nuovaPosY, ranaLarghezza, ranaAltezza,
+                              ostacoli[i].x, ostacoli[i].y, ostacoli[i].larghezza, ostacoli[i].altezza)) {
+            posizioneValida = false;
+            break;
+        }
+    }
+    
+    console.log("Tentativo posizione: (" + nuovaPosX + ", " + nuovaPosY + ")");
+} while (!posizioneValida);
+
+// Imposta la nuova posizione della rana
+ranaX = nuovaPosX;
+ranaY = nuovaPosY;
+console.log("Nuova posizione valida trovata: (" + ranaX + ", " + ranaY + ")");</code></pre>
+    </div>
+    
+    <h3>4. Ciclo for...of</h3>
+    <p>
+        Il ciclo <code>for...of</code> è un modo più moderno e conciso per iterare attraverso elementi di un array o di un oggetto iterabile.
+    </p>
+    <div class="example">
+        <pre><code>// Disegna tutti gli ostacoli
+for (const ostacolo of ostacoli) {
+    // Disegna l'ostacolo corrente
+    ctx.fillStyle = ostacolo.colore || "red";
+    ctx.fillRect(ostacolo.x, ostacolo.y, ostacolo.larghezza, ostacolo.altezza);
+    
+    console.log("Ostacolo disegnato a: (" + ostacolo.x + ", " + ostacolo.y + ")");
+}</code></pre>
+    </div>
+    
+    <h2>Istruzioni di Controllo del Ciclo</h2>
+    <p>
+        JavaScript fornisce istruzioni speciali per controllare il flusso all'interno dei cicli: <code>break</code> e <code>continue</code>.
+    </p>
+    
+    <h3>1. Istruzione break</h3>
+    <p>
+        L'istruzione <code>break</code> termina il ciclo corrente e passa il controllo all'istruzione successiva al ciclo.
+    </p>
+    <div class="example">
+        <pre><code>// Cerca il primo ostacolo in collisione con la rana
+let collisione = false;
+
+for (let i = 0; i < ostacoli.length; i++) {
+    if (verificaCollisione(ranaX, ranaY, ranaLarghezza, ranaAltezza,
+                          ostacoli[i].x, ostacoli[i].y, ostacoli[i].larghezza, ostacoli[i].altezza)) {
+        console.log("Collisione rilevata con l'ostacolo " + i);
+        collisione = true;
+        break; // Esci dal ciclo appena trovi una collisione
+    }
+}
+
+if (collisione) {
+    perdiVita();
+    resetRana();
+}</code></pre>
+    </div>
+    
+    <h3>2. Istruzione continue</h3>
+    <p>
+        L'istruzione <code>continue</code> salta l'iterazione corrente del ciclo e passa alla successiva.
+    </p>
+    <div class="example">
+        <pre><code>// Aggiorna solo gli ostacoli visibili sullo schermo
+for (let i = 0; i < ostacoli.length; i++) {
+    // Salta gli ostacoli che sono completamente fuori dallo schermo
+    if (ostacoli[i].x + ostacoli[i].larghezza < 0 || ostacoli[i].x > larghezzaCanvas) {
+        console.log("Ostacolo " + i + " fuori dallo schermo, saltato");
+        continue; // Passa al prossimo ostacolo
+    }
+    
+    // Aggiorna l'ostacolo corrente
+    ostacoli[i].x += ostacoli[i].velocita;
+    console.log("Ostacolo " + i + " aggiornato");
+}</code></pre>
+    </div>
+    
+    <h2>Gestione degli Eventi nel Gioco Frogger</h2>
+    <p>
+        Nel nostro gioco Frogger, utilizzeremo le strutture di controllo per gestire vari aspetti del gioco, come il movimento della rana, le collisioni con gli ostacoli e il flusso generale del gioco.
+    </p>
+    
+    <h3>Esempio: Loop Principale del Gioco</h3>
+    <div class="example">
+        <pre><code>// Funzione principale del gioco che viene chiamata ripetutamente
+function gameLoop() {
+    // Verifica se il gioco è attivo
+    if (!inGioco) {
+        return; // Esci dal loop se il gioco non è attivo
+    }
+    
+    // Pulisci il canvas
+    ctx.clearRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    
+    // Aggiorna la posizione degli ostacoli
+    for (let i = 0; i < ostacoli.length; i++) {
+        ostacoli[i].x += ostacoli[i].velocita;
+        
+        // Riporta gli ostacoli dall'altra parte dello schermo quando escono
+        if (ostacoli[i].velocita > 0 && ostacoli[i].x > larghezzaCanvas) {
+            ostacoli[i].x = -ostacoli[i].larghezza;
+        } else if (ostacoli[i].velocita < 0 && ostacoli[i].x + ostacoli[i].larghezza < 0) {
+            ostacoli[i].x = larghezzaCanvas;
+        }
+    }
+    
+    // Verifica le collisioni
+    let collisione = false;
+    for (const ostacolo of ostacoli) {
+        if (verificaCollisione(ranaX, ranaY, ranaLarghezza, ranaAltezza,
+                              ostacolo.x, ostacolo.y, ostacolo.larghezza, ostacolo.altezza)) {
+            collisione = true;
+            break;
+        }
+    }
+    
+    if (collisione) {
+        // Gestisci la collisione
+        vite--;
+        if (vite <= 0) {
+            // Game over
+            inGioco = false;
+            mostraGameOver();
+        } else {
+            // Resetta la posizione della rana
+            resetRana();
+        }
+    } else if (ranaY <= 50) {
+        // La rana ha raggiunto la destinazione
+        punteggio += 100;
+        resetRana();
+        
+        // Aumenta la difficoltà se necessario
+        if (punteggio % 500 === 0) {
+            aumentaDifficolta();
+        }
+    }
+    
+    // Disegna tutti gli elementi del gioco
+    disegnaGioco();
+    
+    // Aggiorna l'interfaccia utente
+    aggiornaUI();
+    
+    // Richiama il loop per il prossimo frame
+    requestAnimationFrame(gameLoop);
+}</code></pre>
+    </div>
+    
+    <h3>Esempio: Gestione degli Input da Tastiera</h3>
+    <div class="example">
+        <pre><code>// Funzione per gestire gli eventi da tastiera
+function gestisciInput(evento) {
+    // Verifica se il gioco è attivo
+    if (!inGioco) {
+        // Se non è attivo, controlla solo il tasto per iniziare il gioco
+        if (evento.key === "Enter") {
+            iniziaGioco();
+        }
+        return;
+    }
+    
+    // Gestisci i tasti di movimento
+    switch (evento.key) {
+        case "ArrowUp":
+            // Muovi la rana verso l'alto se non è al bordo superiore
+            if (ranaY > 0) {
+                ranaY -= 30;
+            }
+            break;
+        case "ArrowDown":
+            // Muovi la rana verso il basso se non è al bordo inferiore
+            if (ranaY < altezzaCanvas - ranaAltezza) {
+                ranaY += 30;
+            }
+            break;
+        case "ArrowLeft":
+            // Muovi la rana verso sinistra se non è al bordo sinistro
+            if (ranaX > 0) {
+                ranaX -= 30;
+            }
+            break;
+        case "ArrowRight":
+            // Muovi la rana verso destra se non è al bordo destro
+            if (ranaX < larghezzaCanvas - ranaLarghezza) {
+                ranaX += 30;
+            }
+            break;
+        case "p":
+        case "P":
+            // Metti in pausa il gioco
+            togglePausa();
+            break;
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Diagrammi di Flusso</h2>
+    <p>
+        I diagrammi di flusso sono strumenti visivi utili per rappresentare il flusso di controllo in un programma. Ecco un esempio semplificato di come potrebbe apparire il flusso di controllo principale del nostro gioco Frogger:
+    </p>
+    
+    <div class="flowchart">
+        <pre>
++---------------------+
+|    Inizio Gioco     |
++---------------------+
+           |
+           v
++---------------------+
+|  Loop Principale    |<----+
++---------------------+     |
+           |                |
+           v                |
++---------------------+     |
+| Gioco in corso?     |     |
++---------------------+     |
+     |        |             |
+     | Sì     | No          |
+     v        v             |
++--------+ +--------+      |
+|Aggiorna| |Mostra  |      |
+|Elementi| |Menu    |      |
++--------+ +--------+      |
+     |                     |
+     v                     |
++---------------------+    |
+| Verifica Collisioni |    |
++---------------------+    |
+     |        |            |
+     | Sì     | No         |
+     v        v            |
++--------+ +--------+     |
+|Perdi    | |Continua|     |
+|Vita     | |Gioco   |     |
++--------+ +--------+     |
+     |        |            |
+     v        v            |
++---------------------+    |
+| Disegna Elementi    |    |
++---------------------+    |
+           |                |
+           v                |
++---------------------+    |
+| Prossimo Frame      |----+
++---------------------+
+        </pre>
+    </div>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti esercizi per mettere in pratica ciò che hai imparato:
+    </p>
+    <ol>
+        <li>Scrivi una funzione che utilizzi un ciclo <code>for</code> per creare un array di ostacoli con posizioni casuali.</li>
+        <li>Implementa una funzione che utilizzi un'istruzione <code>switch</code> per cambiare il colore della rana in base al livello di gioco.</li>
+        <li>Crea una funzione che utilizzi un ciclo <code>while</code> per spostare gradualmente la rana verso una destinazione specifica.</li>
+        <li>Implementa una funzione che utilizzi istruzioni condizionali per verificare se la rana è in una zona sicura o pericolosa.</li>
+    </ol>
+    
+    <div class="navigation">
+        <a href="05_operatori.html">Lezione Precedente: Operatori e Espressioni</a>
+        <a href="07_funzioni.html">Prossima Lezione: Funzioni in JavaScript</a>
+    </div>
+</body>
+</html>

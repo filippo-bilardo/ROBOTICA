@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introduzione a JavaScript | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .timeline {
+            position: relative;
+            max-width: 700px;
+            margin: 30px auto;
+        }
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            background-color: #3498db;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -2px;
+        }
+        .container {
+            padding: 10px 40px;
+            position: relative;
+            background-color: inherit;
+            width: 45%;
+        }
+        .container.left {
+            left: 0;
+        }
+        .container.right {
+            left: 50%;
+        }
+        .container::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            right: -10px;
+            background-color: white;
+            border: 4px solid #3498db;
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .container.right::after {
+            left: -10px;
+        }
+        .content {
+            padding: 15px;
+            background-color: white;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container.left .content {
+            border-right: 4px solid #3498db;
+        }
+        .container.right .content {
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>Introduzione a JavaScript</h1>
+    
+    <h2>Cos'è JavaScript?</h2>
+    <p>
+        JavaScript è un linguaggio di programmazione interpretato, orientato agli oggetti e di alto livello. È uno dei tre pilastri del web moderno, insieme a HTML (struttura) e CSS (stile). Mentre HTML e CSS sono linguaggi di markup che definiscono la struttura e l'aspetto di una pagina web, JavaScript è un vero e proprio linguaggio di programmazione che aggiunge interattività e comportamento dinamico alle pagine web.
+    </p>
+    <p>
+        Nonostante il nome, JavaScript non ha una relazione diretta con il linguaggio Java. Il nome fu scelto principalmente per ragioni di marketing, dato che Java era molto popolare quando JavaScript fu introdotto.
+    </p>
+    
+    <div class="note">
+        <strong>Nota:</strong> JavaScript è spesso abbreviato come "JS" e i file JavaScript hanno tipicamente l'estensione <code>.js</code>.
+    </div>
+    
+    <h2>Storia di JavaScript</h2>
+    <p>
+        La storia di JavaScript è affascinante e riflette l'evoluzione del web stesso. Ecco i momenti chiave nella storia di questo linguaggio:
+    </p>
+    
+    <div class="timeline">
+        <div class="container left">
+            <div class="content">
+                <h3>1995</h3>
+                <p>Brendan Eich crea JavaScript (inizialmente chiamato "Mocha", poi "LiveScript") in soli 10 giorni mentre lavorava per Netscape. Il linguaggio viene rilasciato con Netscape Navigator 2.0.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>1996</h3>
+                <p>JavaScript viene rinominato da "LiveScript" a "JavaScript" come mossa di marketing per sfruttare la popolarità di Java. Nello stesso anno, Microsoft rilascia JScript, una versione compatibile di JavaScript per Internet Explorer.</p>
+            </div>
+        </div>
+        <div class="container left">
+            <div class="content">
+                <h3>1997</h3>
+                <p>JavaScript viene standardizzato da ECMA International come ECMAScript (ECMA-262). Questa standardizzazione è fondamentale per garantire la compatibilità tra diversi browser.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>2005</h3>
+                <p>Jesse James Garrett conia il termine "AJAX" (Asynchronous JavaScript and XML), una tecnica che permette di aggiornare parti di una pagina web senza ricaricarla completamente. Questo segna l'inizio dell'era delle applicazioni web moderne.</p>
+            </div>
+        </div>
+        <div class="container left">
+            <div class="content">
+                <h3>2009</h3>
+                <p>ECMAScript 5 (ES5) viene rilasciato, introducendo importanti miglioramenti come i metodi di array, il supporto JSON nativo e la modalità strict.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>2015</h3>
+                <p>ECMAScript 2015 (ES6) viene rilasciato, rappresentando il più grande aggiornamento del linguaggio fino ad oggi. Introduce classi, moduli, arrow functions, promesse e molto altro.</p>
+            </div>
+        </div>
+        <div class="container left">
+            <div class="content">
+                <h3>2016-Oggi</h3>
+                <p>JavaScript continua a evolversi con rilasci annuali di nuove specifiche ECMAScript. Il linguaggio è ora utilizzato non solo per il web, ma anche per lo sviluppo di applicazioni desktop, mobile e server (Node.js).</p>
+            </div>
+        </div>
+    </div>
+    
+    <h2>Caratteristiche Principali di JavaScript</h2>
+    <ul>
+        <li><strong>Linguaggio interpretato:</strong> JavaScript viene eseguito direttamente dal browser senza necessità di compilazione.</li>
+        <li><strong>Tipizzazione dinamica:</strong> Le variabili non hanno un tipo fisso e possono cambiare tipo durante l'esecuzione.</li>
+        <li><strong>Orientato agli oggetti:</strong> Supporta la programmazione orientata agli oggetti con prototipi anziché classi (anche se ES6 ha introdotto la sintassi delle classi).</li>
+        <li><strong>Funzioni di prima classe:</strong> Le funzioni sono trattate come qualsiasi altra variabile e possono essere passate come argomenti, restituite da altre funzioni, ecc.</li>
+        <li><strong>Event-driven:</strong> JavaScript è progettato per rispondere a eventi come clic del mouse, pressioni di tasti, caricamento di pagine, ecc.</li>
+        <li><strong>Single-threaded con modello asincrono:</strong> JavaScript esegue un'operazione alla volta, ma può gestire operazioni asincrone tramite callback, promesse e async/await.</li>
+    </ul>
+    
+    <h2>Perché JavaScript è Importante?</h2>
+    <p>
+        JavaScript è diventato uno dei linguaggi di programmazione più importanti e diffusi al mondo per diversi motivi:
+    </p>
+    <ul>
+        <li><strong>Ubiquità:</strong> È supportato da tutti i browser web moderni senza necessità di plugin.</li>
+        <li><strong>Versatilità:</strong> Può essere utilizzato per sviluppare applicazioni web, mobile, desktop e server.</li>
+        <li><strong>Ecosistema ricco:</strong> Dispone di un vasto ecosistema di librerie, framework e strumenti (React, Angular, Vue, Node.js, ecc.).</li>
+        <li><strong>Comunità attiva:</strong> Ha una delle comunità di sviluppatori più grandi e attive.</li>
+        <li><strong>Evoluzione continua:</strong> Il linguaggio continua a evolversi e migliorare con nuove funzionalità.</li>
+    </ul>
+    
+    <h2>JavaScript e lo Sviluppo di Giochi</h2>
+    <p>
+        JavaScript, combinato con HTML5 Canvas, è diventato una piattaforma potente per lo sviluppo di giochi web. Ecco alcuni vantaggi dell'utilizzo di JavaScript per lo sviluppo di giochi:
+    </p>
+    <ul>
+        <li><strong>Accessibilità:</strong> I giochi JavaScript possono essere giocati su qualsiasi dispositivo con un browser, senza installazioni.</li>
+        <li><strong>API Canvas:</strong> Fornisce un'API potente per disegnare grafica 2D (e con WebGL anche 3D).</li>
+        <li><strong>Prestazioni:</strong> I moderni motori JavaScript sono ottimizzati per offrire prestazioni elevate.</li>
+        <li><strong>Facilità di distribuzione:</strong> I giochi possono essere facilmente condivisi e distribuiti online.</li>
+    </ul>
+    
+    <h2>Il Nostro Progetto: Frogger</h2>
+    <p>
+        In questo corso, utilizzeremo JavaScript per ricreare il classico gioco arcade Frogger. Questo progetto ci permetterà di esplorare molti concetti fondamentali di JavaScript in un contesto pratico e divertente.
+    </p>
+    <p>
+        Frogger è un gioco arcade del 1981 in cui il giocatore guida una rana attraverso una strada trafficata e un fiume pieno di pericoli per raggiungere la sicurezza. È un gioco perfetto per imparare JavaScript perché:
+    </p>
+    <ul>
+        <li>Ha una meccanica di gioco semplice ma coinvolgente</li>
+        <li>Richiede l'implementazione di concetti come il movimento, le collisioni e il punteggio</li>
+        <li>Può essere realizzato con grafica semplice utilizzando Canvas</li>
+        <li>Può essere esteso con funzionalità aggiuntive man mano che si acquisiscono nuove competenze</li>
+    </ul>
+    
+    <div class="example">
+        <h3>Il tuo primo codice JavaScript</h3>
+        <p>Ecco un semplice esempio di codice JavaScript che mostra un messaggio di benvenuto:</p>
+        <pre><code>// Questo è un commento in JavaScript
+
+// Definizione di una variabile
+let nomeGioco = "Frogger";
+
+// Funzione che mostra un messaggio di benvenuto
+function mostraBenvenuto() {
+    console.log("Benvenuto al corso di " + nomeGioco + "!");
+    alert("Benvenuto al corso di " + nomeGioco + "!");
+}
+
+// Chiamata della funzione
+mostraBenvenuto();</code></pre>
+        <p>Questo codice definisce una variabile, crea una funzione e la chiama per mostrare un messaggio di benvenuto sia nella console che in un alert.</p>
+    </div>
+    
+    <div class="navigation">
+        <a href="../README.md">Indice del Corso</a>
+        <a href="02_setup.html">Prossima Lezione: Setup dell'Ambiente di Sviluppo</a>
+    </div>
+</body>
+</html>

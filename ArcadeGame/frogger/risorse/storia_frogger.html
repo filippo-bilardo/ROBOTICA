@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storia del Gioco Frogger | Corso JavaScript</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .timeline {
+            position: relative;
+            max-width: 700px;
+            margin: 30px auto;
+        }
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            background-color: #3498db;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -2px;
+        }
+        .container {
+            padding: 10px 40px;
+            position: relative;
+            background-color: inherit;
+            width: 45%;
+        }
+        .container.left {
+            left: 0;
+        }
+        .container.right {
+            left: 50%;
+        }
+        .container::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            right: -10px;
+            background-color: white;
+            border: 4px solid #3498db;
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .container.right::after {
+            left: -10px;
+        }
+        .content {
+            padding: 15px;
+            background-color: white;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container.left .content {
+            border-right: 4px solid #3498db;
+        }
+        .container.right .content {
+            border-left: 4px solid #3498db;
+        }
+        .game-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Storia del Gioco Frogger</h1>
+    
+    <h2>Le Origini di Frogger</h2>
+    <p>
+        Frogger è uno dei videogiochi arcade più iconici e riconoscibili della storia. Sviluppato da Konami e pubblicato da Sega/Gremlin nel 1981, il gioco ha rapidamente conquistato il cuore dei giocatori di tutto il mondo con la sua semplicità e il suo gameplay avvincente.
+    </p>
+    <p>
+        Il concetto del gioco è semplice ma geniale: il giocatore controlla una rana che deve attraversare una strada trafficata e un fiume pieno di pericoli per raggiungere la sicurezza delle tane sulla sponda opposta. Nonostante la semplicità del concetto, Frogger offre una sfida considerevole che richiede tempismo preciso e rapidi riflessi.
+    </p>
+    
+    <div class="example">
+        <h3>Curiosità</h3>
+        <p>Il nome originale giapponese del gioco era "Kaeru no Tame ni Kane wa Naru" (カエルの為に鐘は鳴る), che si traduce approssimativamente come "La campana suona per la rana".</p>
+    </div>
+    
+    <h2>Evoluzione e Impatto Culturale</h2>
+    <p>
+        Dalla sua uscita, Frogger ha avuto un impatto significativo sulla cultura pop e sull'industria dei videogiochi. Ecco alcuni momenti chiave nella storia di questo iconico gioco:
+    </p>
+    
+    <div class="timeline">
+        <div class="container left">
+            <div class="content">
+                <h3>1981</h3>
+                <p>Frogger viene rilasciato nelle sale giochi. Diventa immediatamente uno dei giochi arcade più popolari, secondo solo a Pac-Man in termini di unità vendute quell'anno.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>1982</h3>
+                <p>Il gioco viene convertito per le console domestiche, inclusi Atari 2600 e Intellivision, portando l'esperienza arcade nelle case dei giocatori.</p>
+            </div>
+        </div>
+        <div class="container left">
+            <div class="content">
+                <h3>1983</h3>
+                <p>Frogger appare in un episodio della popolare sitcom "Seinfeld", dove il personaggio George Costanza cerca di mantenere il suo punteggio record in una sala giochi che sta per rimuovere la macchina.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>1997</h3>
+                <p>Hasbro Interactive rilascia un remake 3D di Frogger per PC e PlayStation, introducendo il gioco a una nuova generazione di giocatori.</p>
+            </div>
+        </div>
+        <div class="container left">
+            <div class="content">
+                <h3>2000-2010</h3>
+                <p>Numerosi sequel e spin-off vengono rilasciati su varie piattaforme, espandendo l'universo di Frogger con nuove meccaniche di gioco e ambientazioni.</p>
+            </div>
+        </div>
+        <div class="container right">
+            <div class="content">
+                <h3>2021</h3>
+                <p>In occasione del 40° anniversario, Frogger diventa un game show televisivo, dimostrando la duratura popolarità del franchise.</p>
+            </div>
+        </div>
+    </div>
+    
+    <h2>Meccaniche di Gioco</h2>
+    <p>
+        Le meccaniche di gioco di Frogger sono semplici ma efficaci:
+    </p>
+    <ul>
+        <li><strong>Controlli:</strong> Il giocatore muove la rana in quattro direzioni (su, giù, sinistra, destra) con un joystick o i tasti direzionali.</li>
+        <li><strong>Obiettivo:</strong> Guidare la rana attraverso una strada trafficata e un fiume per raggiungere una delle cinque tane sulla sponda opposta.</li>
+        <li><strong>Ostacoli:</strong> Sulla strada, il giocatore deve evitare auto, camion e altri veicoli. Nel fiume, la rana deve saltare su tronchi galleggianti e tartarughe per attraversare, poiché non può nuotare.</li>
+        <li><strong>Tempo:</strong> Un timer limita il tempo disponibile per completare ogni attraversamento.</li>
+        <li><strong>Punteggio:</strong> I punti vengono assegnati per ogni movimento in avanti, per il raggiungimento delle tane e per il salvataggio di insetti bonus.</li>
+    </ul>
+    
+    <h2>Perché Frogger è Perfetto per Imparare JavaScript</h2>
+    <p>
+        Frogger è un gioco ideale per chi sta imparando a programmare in JavaScript per diversi motivi:
+    </p>
+    <ul>
+        <li><strong>Complessità Gestibile:</strong> Il gioco ha meccaniche semplici ma sufficientemente complesse da rappresentare una sfida interessante.</li>
+        <li><strong>Concetti Fondamentali:</strong> Implementare Frogger richiede l'uso di molti concetti di programmazione fondamentali come variabili, condizioni, cicli, funzioni e gestione degli eventi.</li>
+        <li><strong>Grafica 2D:</strong> Il gioco si presta perfettamente all'uso dell'elemento Canvas di HTML5 per la grafica 2D.</li>
+        <li><strong>Fisica Semplice:</strong> Le collisioni e i movimenti in Frogger sono relativamente semplici da implementare.</li>
+        <li><strong>Modularità:</strong> Il gioco può essere suddiviso in componenti logiche (rana, veicoli, tronchi, ecc.), ideali per praticare la programmazione orientata agli oggetti.</li>
+        <li><strong>Estensibilità:</strong> Una volta implementate le meccaniche di base, è facile aggiungere nuove funzionalità e miglioramenti.</li>
+    </ul>
+    
+    <div class="note">
+        <strong>Nota:</strong> Nel nostro corso, implementeremo una versione moderna di Frogger utilizzando JavaScript e HTML5 Canvas, mantenendo lo spirito del gioco originale ma aggiungendo alcune funzionalità moderne.
+    </div>
+    
+    <h2>Eredità e Influenza</h2>
+    <p>
+        Frogger ha lasciato un'impronta indelebile nella storia dei videogiochi. La sua formula di gameplay è stata ripresa e reinterpretata in innumerevoli giochi successivi, e il suo protagonista, la piccola rana verde, è diventato un'icona riconoscibile della cultura pop.
+    </p>
+    <p>
+        Il gioco ha dimostrato che non è necessaria una grafica sofisticata o una trama complessa per creare un'esperienza coinvolgente e memorabile. È la semplicità e l'immediatezza del gameplay che hanno reso Frogger un classico senza tempo.
+    </p>
+    <p>
+        Oggi, mentre ci prepariamo a implementare la nostra versione di Frogger in JavaScript, rendiamo omaggio a questo classico che continua a ispirare generazioni di giocatori e sviluppatori.
+    </p>
+    
+    <div class="navigation">
+        <a href="../README.md">Torna all'Indice del Corso</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafica con Canvas | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+        .canvas-demo {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            text-align: center;
+        }
+        canvas {
+            background-color: #f9f9f9;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Grafica con Canvas in JavaScript</h1>
+    
+    <h2>Introduzione al Canvas</h2>
+    <p>
+        L'elemento HTML <code>&lt;canvas&gt;</code> è utilizzato per disegnare grafica in modo dinamico tramite JavaScript. È un contenitore rettangolare che fornisce un'area di disegno dove possiamo creare e manipolare immagini, animazioni e altri elementi grafici. Nel nostro gioco Frogger, utilizzeremo il canvas per disegnare la rana, gli ostacoli, il fiume, la strada e tutti gli altri elementi visivi del gioco.
+    </p>
+    
+    <h2>Creazione e Configurazione del Canvas</h2>
+    <p>
+        Per iniziare a utilizzare il canvas, dobbiamo prima crearlo nel nostro HTML e poi accedervi tramite JavaScript:
+    </p>
+    
+    <h3>1. Creazione del Canvas in HTML</h3>
+    <div class="example">
+        <pre><code>&lt;!-- HTML --&gt;
+&lt;canvas id="gameCanvas" width="600" height="600"&gt;&lt;/canvas&gt;</code></pre>
+    </div>
+    
+    <h3>2. Accesso al Canvas in JavaScript</h3>
+    <div class="example">
+        <pre><code>// JavaScript
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Verifica che il canvas sia supportato
+if (!canvas.getContext) {
+    console.error('Il tuo browser non supporta l\'elemento canvas!');
+}</code></pre>
+    </div>
+    
+    <h3>3. Dimensionamento del Canvas</h3>
+    <div class="example">
+        <pre><code>// Impostazione delle dimensioni del canvas
+const larghezzaCanvas = 600;
+const altezzaCanvas = 600;
+
+canvas.width = larghezzaCanvas;
+canvas.height = altezzaCanvas;
+
+// Adattamento del canvas alla finestra del browser
+function ridimensionaCanvas() {
+    const containerWidth = document.getElementById('game-container').clientWidth;
+    const scale = Math.min(1, containerWidth / larghezzaCanvas);
+    
+    canvas.style.width = (larghezzaCanvas * scale) + 'px';
+    canvas.style.height = (altezzaCanvas * scale) + 'px';
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> È importante distinguere tra le dimensioni effettive del canvas (canvas.width e canvas.height) e le dimensioni di visualizzazione (canvas.style.width e canvas.style.height). Le prime determinano la risoluzione effettiva dell'area di disegno, mentre le seconde controllano come il canvas viene visualizzato nella pagina.
+    </div>
+    
+    <h2>Disegno di Base sul Canvas</h2>
+    <p>
+        Il contesto 2D del canvas fornisce numerosi metodi per disegnare forme, testo e immagini. Vediamo i principali che utilizzeremo nel nostro gioco Frogger:
+    </p>
+    
+    <h3>1. Disegno di Rettangoli</h3>
+    <div class="example">
+        <pre><code>// Disegno di un rettangolo pieno (per la rana)
+function disegnaRana(x, y, larghezza, altezza) {
+    ctx.fillStyle = 'green'; // Imposta il colore di riempimento
+    ctx.fillRect(x, y, larghezza, altezza); // Disegna un rettangolo pieno
+}
+
+// Disegno di un rettangolo con bordo (per gli ostacoli)
+function disegnaOstacolo(x, y, larghezza, altezza, colore) {
+    ctx.fillStyle = colore; // Colore di riempimento
+    ctx.strokeStyle = 'black'; // Colore del bordo
+    ctx.lineWidth = 2; // Spessore del bordo
+    
+    ctx.fillRect(x, y, larghezza, altezza); // Rettangolo pieno
+    ctx.strokeRect(x, y, larghezza, altezza); // Bordo del rettangolo
+}
+
+// Cancellazione di un'area rettangolare
+function cancellaArea(x, y, larghezza, altezza) {
+    ctx.clearRect(x, y, larghezza, altezza);
+}</code></pre>
+    </div>
+    
+    <h3>2. Disegno di Percorsi (Paths)</h3>
+    <div class="example">
+        <pre><code>// Disegno di un cerchio (per le monete bonus)
+function disegnaMoneta(x, y, raggio) {
+    ctx.beginPath(); // Inizia un nuovo percorso
+    ctx.arc(x, y, raggio, 0, Math.PI * 2); // Disegna un cerchio completo
+    ctx.fillStyle = 'gold';
+    ctx.fill(); // Riempie il percorso
+    ctx.strokeStyle = 'darkgoldenrod';
+    ctx.lineWidth = 2;
+    ctx.stroke(); // Disegna il bordo del percorso
+    ctx.closePath(); // Chiude il percorso
+}
+
+// Disegno di un poligono personalizzato (per la rana stilizzata)
+function disegnaRanaStilizzata(x, y, dimensione) {
+    const centroX = x + dimensione / 2;
+    const centroY = y + dimensione / 2;
+    
+    ctx.beginPath();
+    
+    // Corpo della rana
+    ctx.arc(centroX, centroY, dimensione / 2, 0, Math.PI * 2);
+    
+    // Occhi
+    const occhioSinistroX = centroX - dimensione / 4;
+    const occhioDestroX = centroX + dimensione / 4;
+    const occhioY = centroY - dimensione / 6;
+    const raggioOcchio = dimensione / 10;
+    
+    ctx.moveTo(occhioSinistroX + raggioOcchio, occhioY);
+    ctx.arc(occhioSinistroX, occhioY, raggioOcchio, 0, Math.PI * 2);
+    
+    ctx.moveTo(occhioDestroX + raggioOcchio, occhioY);
+    ctx.arc(occhioDestroX, occhioY, raggioOcchio, 0, Math.PI * 2);
+    
+    // Zampe
+    ctx.moveTo(x, y + dimensione / 2);
+    ctx.lineTo(x - dimensione / 4, y + dimensione / 3);
+    
+    ctx.moveTo(x, y + dimensione / 2);
+    ctx.lineTo(x - dimensione / 4, y + dimensione * 2/3);
+    
+    ctx.moveTo(x + dimensione, y + dimensione / 2);
+    ctx.lineTo(x + dimensione + dimensione / 4, y + dimensione / 3);
+    
+    ctx.moveTo(x + dimensione, y + dimensione / 2);
+    ctx.lineTo(x + dimensione + dimensione / 4, y + dimensione * 2/3);
+    
+    // Colori e riempimento
+    ctx.fillStyle = 'green';
+    ctx.fill();
+    ctx.strokeStyle = 'darkgreen';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Occhi (pupille)
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(occhioSinistroX, occhioY, raggioOcchio / 2, 0, Math.PI * 2);
+    ctx.arc(occhioDestroX, occhioY, raggioOcchio / 2, 0, Math.PI * 2);
+    ctx.fill();
+}</code></pre>
+    </div>
+    
+    <h3>3. Disegno di Linee</h3>
+    <div class="example">
+        <pre><code>// Disegno delle strisce della strada
+function disegnaStrisce(y, numStrisce) {
+    const larghezzaStriscia = 30;
+    const spazioTraStrisce = 20;
+    const altezzaStriscia = 5;
+    
+    ctx.fillStyle = 'white';
+    
+    for (let i = 0; i < numStrisce; i++) {
+        const x = i * (larghezzaStriscia + spazioTraStrisce);
+        ctx.fillRect(x, y, larghezzaStriscia, altezzaStriscia);
+    }
+}
+
+// Disegno di una griglia per il debug
+function disegnaGriglia(dimensioneCella) {
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+    ctx.lineWidth = 0.5;
+    
+    // Linee verticali
+    for (let x = 0; x <= larghezzaCanvas; x += dimensioneCella) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, altezzaCanvas);
+        ctx.stroke();
+    }
+    
+    // Linee orizzontali
+    for (let y = 0; y <= altezzaCanvas; y += dimensioneCella) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(larghezzaCanvas, y);
+        ctx.stroke();
+    }
+}</code></pre>
+    </div>
+    
+    <h3>4. Disegno di Testo</h3>
+    <div class="example">
+        <pre><code>// Disegno di testo per punteggio e messaggi
+function disegnaTesto(testo, x, y, dimensione, colore, allineamento = 'center') {
+    ctx.font = `${dimensione}px Arial`;
+    ctx.fillStyle = colore;
+    ctx.textAlign = allineamento;
+    ctx.fillText(testo, x, y);
+}
+
+// Esempio di utilizzo per mostrare il punteggio
+function mostraPunteggio(punteggio) {
+    disegnaTesto(`Punteggio: ${punteggio}`, larghezzaCanvas / 2, 30, 20, 'black');
+}
+
+// Esempio di utilizzo per mostrare un messaggio di game over
+function mostraGameOver(punteggio) {
+    // Sfondo semi-trasparente
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    
+    // Testo di game over
+    disegnaTesto('GAME OVER', larghezzaCanvas / 2, altezzaCanvas / 2 - 40, 40, 'red');
+    disegnaTesto(`Punteggio finale: ${punteggio}`, larghezzaCanvas / 2, altezzaCanvas / 2 + 10, 24, 'white');
+    disegnaTesto('Premi SPAZIO per ricominciare', larghezzaCanvas / 2, altezzaCanvas / 2 + 50, 18, 'white');
+}</code></pre>
+    </div>
+    
+    <h2>Caricamento e Disegno di Immagini</h2>
+    <p>
+        Per rendere il nostro gioco più accattivante, possiamo utilizzare immagini invece di forme geometriche semplici. Ecco come caricare e disegnare immagini sul canvas:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Caricamento delle immagini
+const immagini = {};
+let immaginiCaricate = 0;
+const totaleImmagini = 5;
+
+function caricaImmagini(callback) {
+    const fonti = {
+        rana: 'images/rana.png',
+        auto: 'images/auto.png',
+        camion: 'images/camion.png',
+        tronco: 'images/tronco.png',
+        ninfea: 'images/ninfea.png'
+    };
+    
+    // Funzione per gestire il caricamento di ogni immagine
+    function onImmagineCaricata() {
+        immaginiCaricate++;
+        
+        if (immaginiCaricate === totaleImmagini) {
+            console.log('Tutte le immagini sono state caricate!');
+            callback();
+        }
+    }
+    
+    // Carica ogni immagine
+    for (const chiave in fonti) {
+        immagini[chiave] = new Image();
+        immagini[chiave].onload = onImmagineCaricata;
+        immagini[chiave].src = fonti[chiave];
+    }
+}
+
+// Disegno di un'immagine
+function disegnaImmagine(chiave, x, y, larghezza, altezza) {
+    if (immagini[chiave]) {
+        ctx.drawImage(immagini[chiave], x, y, larghezza, altezza);
+    } else {
+        console.error(`Immagine ${chiave} non trovata!`);
+    }
+}
+
+// Esempio di utilizzo
+function disegnaRana(rana) {
+    disegnaImmagine('rana', rana.x, rana.y, rana.larghezza, rana.altezza);
+}
+
+function disegnaOstacolo(ostacolo) {
+    disegnaImmagine(ostacolo.tipo, ostacolo.x, ostacolo.y, ostacolo.larghezza, ostacolo.altezza);
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> È importante assicurarsi che tutte le immagini siano caricate prima di iniziare il gioco. Per questo motivo, utilizziamo un callback che viene eseguito solo quando tutte le immagini sono state caricate con successo.
+    </div>
+    
+    <h2>Animazioni con Canvas</h2>
+    <p>
+        Per creare animazioni fluide, utilizziamo il metodo <code>requestAnimationFrame</code> che chiede al browser di eseguire una funzione di aggiornamento prima del prossimo repaint. Questo metodo è ottimizzato per le animazioni e si adatta automaticamente alla frequenza di aggiornamento del display.
+    </p>
+    
+    <div class="example">
+        <pre><code>// Variabili di gioco
+let rana = {
+    x: 300,
+    y: 550,
+    larghezza: 30,
+    altezza: 30,
+    velocita: 5
+};
+
+let ostacoli = [];
+let animazioneID;
+let inGioco = false;
+
+// Funzione principale del loop di gioco
+function gameLoop() {
+    // Pulisci il canvas
+    ctx.clearRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    
+    // Aggiorna la posizione degli ostacoli
+    aggiornaOstacoli();
+    
+    // Verifica le collisioni
+    verificaCollisioni();
+    
+    // Disegna lo sfondo
+    disegnaSfondo();
+    
+    // Disegna gli ostacoli
+    disegnaOstacoli();
+    
+    // Disegna la rana
+    disegnaRana(rana);
+    
+    // Disegna l'interfaccia (punteggio, vite, ecc.)
+    disegnaInterfaccia();
+    
+    // Continua il loop solo se il gioco è attivo
+    if (inGioco) {
+        animazioneID = requestAnimationFrame(gameLoop);
+    }
+}
+
+// Funzione per avviare il gioco
+function avviaGioco() {
+    inGioco = true;
+    inizializzaGioco();
+    gameLoop();
+}
+
+// Funzione per mettere in pausa il gioco
+function pausaGioco() {
+    inGioco = false;
+    cancelAnimationFrame(animazioneID);
+    
+    // Mostra messaggio di pausa
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    disegnaTesto('PAUSA', larghezzaCanvas / 2, altezzaCanvas / 2, 40, 'white');
+    disegnaTesto('Premi P per continuare', larghezzaCanvas / 2, altezzaCanvas / 2 + 40, 20, 'white');
+}
+
+// Funzione per riprendere il gioco
+function riprendiGioco() {
+    inGioco = true;
+    gameLoop();
+}
+
+// Funzione per terminare il gioco
+function terminaGioco() {
+    inGioco = false;
+    cancelAnimationFrame(animazioneID);
+    mostraGameOver(punteggio);
+}</code></pre>
+    </div>
+    
+    <h2>Gestione delle Collisioni</h2>
+    <p>
+        Un aspetto fondamentale del nostro gioco Frogger è la rilevazione delle collisioni tra la rana e gli altri elementi del gioco (veicoli, tronchi, ecc.). Ecco come implementare un sistema di rilevamento delle collisioni:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Funzione per verificare la collisione tra due rettangoli
+function verificaCollisione(rett1, rett2) {
+    return (
+        rett1.x < rett2.x + rett2.larghezza &&
+        rett1.x + rett1.larghezza > rett2.x &&
+        rett1.y < rett2.y + rett2.altezza &&
+        rett1.y + rett1.larghezza > rett2.y
+    );
+}
+
+// Funzione per verificare tutte le collisioni nel gioco
+function verificaCollisioni() {
+    // Verifica collisioni con i veicoli
+    for (const veicolo of ostacoli.filter(o => o.tipo === 'auto' || o.tipo === 'camion')) {
+        if (verificaCollisione(rana, veicolo)) {
+            // La rana è stata investita
+            perdiVita();
+            return;
+        }
+    }
+    
+    // Verifica se la rana è sull'acqua
+    if (rana.y >= 100 && rana.y <= 250) {
+        let sulTronco = false;
+        
+        // Verifica se la rana è su un tronco
+        for (const tronco of ostacoli.filter(o => o.tipo === 'tronco')) {
+            if (verificaCollisione(rana, tronco)) {
+                // La rana è sul tronco, si muove con esso
+                rana.x += tronco.velocita * tronco.direzione;
+                sulTronco = true;
+                break;
+            }
+        }
+        
+        // Se la rana è nell'acqua ma non su un tronco, perde una vita
+        if (!sulTronco) {
+            perdiVita();
+        }
+    }
+    
+    // Verifica se la rana ha raggiunto una ninfea
+    for (const ninfea of ninfee) {
+        if (!ninfea.occupata && verificaCollisione(rana, ninfea)) {
+            // La rana ha raggiunto una ninfea
+            ninfea.occupata = true;
+            aumentaPunteggio(100);
+            resetPosizionRana();
+            
+            // Verifica se tutte le ninfee sono occupate
+            if (ninfee.every(n => n.occupata)) {
+                passaAlLivelloSuccessivo();
+            }
+            
+            break;
+        }
+    }
+    
+    // Verifica se la rana è uscita dai bordi del canvas
+    if (rana.x < 0 || rana.x + rana.larghezza > larghezzaCanvas || 
+        rana.y < 0 || rana.y + rana.altezza > altezzaCanvas) {
+        // Riporta la rana all'interno dei bordi
+        rana.x = Math.max(0, Math.min(rana.x, larghezzaCanvas - rana.larghezza));
+        rana.y = Math.max(0, Math.min(rana.y, altezzaCanvas - rana.altezza));
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Ottimizzazione delle Prestazioni</h2>
+    <p>
+        Per garantire che il nostro gioco funzioni in modo fluido, è importante ottimizzare le prestazioni del canvas. Ecco alcune tecniche che possiamo utilizzare:
+    </p>
+    
+    <div class="example">
+        <pre><code>// 1. Utilizza un canvas fuori schermo per elementi statici
+const canvasSfondo = document.createElement('canvas');
+canvasSfondo.width = larghezzaCanvas;
+canvasSfondo.height = altezzaCanvas;
+const ctxSfondo = canvasSfondo.getContext('2d');
+
+function disegnaSfondoStatico() {
+    // Disegna lo sfondo una sola volta sul canvas fuori schermo
+    ctxSfondo.fillStyle = '#222';
+    ctxSfondo.fillRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    
+    // Disegna la strada
+    ctxSfondo.fillStyle = '#555';
+    ctxSfondo.fillRect(0, 300, larghezzaCanvas, 200);
+    
+    // Disegna il fiume
+    ctxSfondo.fillStyle = '#3498db';
+    ctxSfondo.fillRect(0, 100, larghezzaCanvas, 150);
+    
+    // Disegna l'area sicura
+    ctxSfondo.fillStyle = '#2ecc71';
+    ctxSfondo.fillRect(0, 50, larghezzaCanvas, 50);
+    ctxSfondo.fillRect(0, 250, larghezzaCanvas, 50);
+    ctxSfondo.fillRect(0, 500, larghezzaCanvas, 100);
+    
+    // Disegna le strisce della strada
+    ctxSfondo.fillStyle = 'white';
+    for (let y = 350; y < 500; y += 50) {
+        for (let x = 0; x < larghezzaCanvas; x += 50) {
+            ctxSfondo.fillRect(x, y, 30, 5);
+        }
+    }
+}
+
+// 2. Limita l'area di ridisegno
+function aggiornaAreaRana(vecchiaX, vecchiaY) {
+    // Cancella solo l'area dove si trovava la rana
+    const areaDaCancellare = 5; // Margine extra per sicurezza
+    ctx.clearRect(
+        vecchiaX - areaDaCancellare,
+        vecchiaY - areaDaCancellare,
+        rana.larghezza + areaDaCancellare * 2,
+        rana.altezza + areaDaCancellare * 2
+    );
+    
+    // Ridisegna lo sfondo nell'area cancellata
+    ctx.drawImage(
+        canvasSfondo,
+        vecchiaX - areaDaCancellare,
+        vecchiaY - areaDaCancellare,
+        rana.larghezza + areaDaCancellare * 2,
+        rana.altezza + areaDaCancellare * 2,
+        vecchiaX - areaDaCancellare,
+        vecchiaY - areaDaCancellare,
+        rana.larghezza + areaDaCancellare * 2,
+        rana.altezza + areaDaCancellare * 2
+    );
+    
+    // Disegna la rana nella nuova posizione
+    disegnaRana(rana);
+}
+
+// 3. Utilizza requestAnimationFrame in modo efficiente
+let ultimoTimestamp = 0;
+const FPS_TARGET = 60;
+const INTERVALLO_FRAME = 1000 / FPS_TARGET;
+
+function gameLoopOttimizzato(timestamp) {
+    // Calcola il tempo trascorso dall'ultimo frame
+    const deltaTime = timestamp - ultimoTimestamp;
+    
+    // Esegui l'aggiornamento solo se è trascorso abbastanza tempo
+    if (deltaTime >= INTERVALLO_FRAME) {
+        ultimoTimestamp = timestamp - (deltaTime % INTERVALLO_FRAME);
+        
+        // Aggiorna e disegna il gioco
+        aggiornaGioco(deltaTime / 1000); // Converti in secondi
+        disegnaGioco();
+    }
+    
+    // Continua il loop
+    if (inGioco) {
+        animazioneID = requestAnimationFrame(gameLoopOttimizzato);
+    }
+}
+
+// 4. Utilizza la trasformazione del canvas per elementi ruotati
+function disegnaVeicoloConRotazione(veicolo) {
+    // Salva lo stato corrente del contesto
+    ctx.save();
+    
+    // Trasla al centro dell'oggetto
+    ctx.translate(veicolo.x + veicolo.larghezza / 2, veicolo.y + veicolo.altezza / 2);
+    
+    // Ruota in base alla direzione
+    if (veicolo.direzione < 0) {
+        ctx.rotate(Math.PI); // 180 gradi
+    }
+    
+    // Disegna l'immagine centrata
+    ctx.drawImage(
+        immagini[veicolo.tipo],
+        -veicolo.larghezza / 2,
+        -veicolo.altezza / 2,
+        veicolo.larghezza,
+        veicolo.altezza
+    );
+    
+    // Ripristina lo stato precedente del contesto
+    ctx.restore();
+}</code></pre>
+    </div>
+    
+    <h2>Esempio Completo: Disegno della Scena di Gioco</h2>
+    <p>
+        Mettiamo insieme tutto ciò che abbiamo imparato per creare una funzione che diseg

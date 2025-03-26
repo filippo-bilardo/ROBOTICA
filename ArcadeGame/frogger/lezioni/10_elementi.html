@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selezione e Manipolazione Elementi | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .demo {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .element-tree {
+            font-family: monospace;
+            white-space: pre;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Selezione e Manipolazione Elementi</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Dopo aver esplorato il DOM (Document Object Model) nella lezione precedente, ora ci concentreremo su come selezionare e manipolare specifici elementi HTML all'interno della pagina. Queste tecniche sono fondamentali per creare un'interfaccia utente interattiva per il nostro gioco Frogger, permettendoci di aggiornare il punteggio, gestire le vite, mostrare messaggi e molto altro.
+    </p>
+    
+    <h2>Selezione degli Elementi</h2>
+    <p>
+        JavaScript offre diversi metodi per selezionare elementi dal DOM. Vediamo i principali che utilizzeremo nel nostro gioco:
+    </p>
+    
+    <h3>1. Selezione per ID</h3>
+    <p>
+        Il metodo <code>getElementById()</code> seleziona un elemento in base al suo attributo <code>id</code>. Poiché gli ID dovrebbero essere unici all'interno di una pagina, questo metodo restituisce un singolo elemento.
+    </p>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div id="punteggio"&gt;0&lt;/div&gt;
+&lt;div id="vite"&gt;3&lt;/div&gt;
+&lt;canvas id="gameCanvas" width="600" height="600"&gt;&lt;/canvas&gt;
+
+// JavaScript
+const punteggioElement = document.getElementById('punteggio');
+const viteElement = document.getElementById('vite');
+const canvas = document.getElementById('gameCanvas');
+
+// Verifica se l'elemento è stato trovato
+if (canvas) {
+    // L'elemento esiste, puoi utilizzarlo
+    const ctx = canvas.getContext('2d');
+} else {
+    // L'elemento non esiste
+    console.error('Elemento canvas non trovato!');
+}</code></pre>
+    </div>
+    
+    <h3>2. Selezione per Nome di Tag</h3>
+    <p>
+        Il metodo <code>getElementsByTagName()</code> seleziona tutti gli elementi con un determinato tag HTML e restituisce una collezione di elementi (simile a un array).
+    </p>
+    <div class="example">
+        <pre><code>// HTML
+&lt;button class="btn-controllo"&gt;Su&lt;/button&gt;
+&lt;button class="btn-controllo"&gt;Giù&lt;/button&gt;
+&lt;button class="btn-controllo"&gt;Sinistra&lt;/button&gt;
+&lt;button class="btn-controllo"&gt;Destra&lt;/button&gt;
+
+// JavaScript
+const buttons = document.getElementsByTagName('button');
+
+// Itera su tutti i pulsanti
+for (let i = 0; i < buttons.length; i++) {
+    console.log(buttons[i].textContent); // Mostra il testo del pulsante
+    buttons[i].style.backgroundColor = '#3498db'; // Cambia il colore di sfondo
+}</code></pre>
+    </div>
+    
+    <h3>3. Selezione per Nome di Classe</h3>
+    <p>
+        Il metodo <code>getElementsByClassName()</code> seleziona tutti gli elementi con una determinata classe CSS e restituisce una collezione di elementi.
+    </p>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div class="ostacolo" data-tipo="auto"&gt;&lt;/div&gt;
+&lt;div class="ostacolo" data-tipo="camion"&gt;&lt;/div&gt;
+&lt;div class="ostacolo" data-tipo="tronco"&gt;&lt;/div&gt;
+
+// JavaScript
+const ostacoli = document.getElementsByClassName('ostacolo');
+
+// Itera su tutti gli ostacoli
+for (let i = 0; i < ostacoli.length; i++) {
+    const tipo = ostacoli[i].getAttribute('data-tipo');
+    console.log(`Ostacolo di tipo: ${tipo}`);
+}</code></pre>
+    </div>
+    
+    <h3>4. Selezione con Selettori CSS (querySelector e querySelectorAll)</h3>
+    <p>
+        I metodi <code>querySelector()</code> e <code>querySelectorAll()</code> permettono di selezionare elementi utilizzando selettori CSS, offrendo una grande flessibilità.
+    </p>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div id="controlli"&gt;
+    &lt;button class="btn-direzione" data-direzione="su"&gt;Su&lt;/button&gt;
+    &lt;button class="btn-direzione" data-direzione="giu"&gt;Giù&lt;/button&gt;
+    &lt;button class="btn-direzione" data-direzione="sinistra"&gt;Sinistra&lt;/button&gt;
+    &lt;button class="btn-direzione" data-direzione="destra"&gt;Destra&lt;/button&gt;
+&lt;/div&gt;
+
+// JavaScript
+// Seleziona il primo elemento che corrisponde al selettore
+const btnSu = document.querySelector('.btn-direzione[data-direzione="su"]');
+
+// Seleziona tutti gli elementi che corrispondono al selettore
+const btnDirezione = document.querySelectorAll('.btn-direzione');
+
+// Itera su tutti i pulsanti di direzione
+btnDirezione.forEach(btn => {
+    const direzione = btn.getAttribute('data-direzione');
+    btn.addEventListener('click', () => {
+        console.log(`Movimento verso: ${direzione}`);
+    });
+});</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> <code>querySelector()</code> restituisce il primo elemento che corrisponde al selettore, mentre <code>querySelectorAll()</code> restituisce tutti gli elementi corrispondenti come una NodeList. A differenza delle collezioni restituite da <code>getElementsByTagName()</code> e <code>getElementsByClassName()</code>, una NodeList è un oggetto statico che non si aggiorna automaticamente quando il DOM cambia.
+    </div>
+    
+    <h2>Manipolazione degli Elementi</h2>
+    <p>
+        Una volta selezionati gli elementi, possiamo manipolarli in vari modi. Vediamo le principali tecniche che utilizzeremo nel nostro gioco:
+    </p>
+    
+    <h3>1. Modifica del Contenuto</h3>
+    <p>
+        Possiamo modificare il contenuto di un elemento utilizzando le proprietà <code>textContent</code>, <code>innerHTML</code> o <code>innerText</code>.
+    </p>
+    <div class="example">
+        <pre><code>// Aggiornamento del punteggio
+function aggiornaPunteggio(punti) {
+    const punteggioElement = document.getElementById('punteggio');
+    punteggioElement.textContent = `Punteggio: ${punti}`;
+}
+
+// Aggiornamento delle vite con icone
+function aggiornaVite(vite) {
+    const viteElement = document.getElementById('vite');
+    // Usa innerHTML per inserire HTML (in questo caso, icone per le vite)
+    viteElement.innerHTML = `Vite: ${'❤️'.repeat(vite)}`;
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> <code>textContent</code> è generalmente più sicuro e performante di <code>innerHTML</code> quando si deve modificare solo il testo, poiché non analizza il contenuto come HTML e quindi previene potenziali attacchi di cross-site scripting (XSS). Usa <code>innerHTML</code> solo quando hai effettivamente bisogno di inserire HTML.
+    </div>
+    
+    <h3>2. Modifica degli Attributi</h3>
+    <p>
+        Possiamo modificare gli attributi di un elemento utilizzando i metodi <code>getAttribute()</code>, <code>setAttribute()</code>, <code>hasAttribute()</code> e <code>removeAttribute()</code>.
+    </p>
+    <div class="example">
+        <pre><code>// Modifica dell'attributo src di un'immagine
+function cambiaImmagineRana(stato) {
+    const imgRana = document.getElementById('img-rana');
+    
+    if (stato === 'normale') {
+        imgRana.setAttribute('src', 'img/rana.png');
+    } else if (stato === 'salto') {
+        imgRana.setAttribute('src', 'img/rana_salto.png');
+    } else if (stato === 'morta') {
+        imgRana.setAttribute('src', 'img/rana_morta.png');
+    }
+    
+    // Aggiungi un attributo alt per l'accessibilità
+    imgRana.setAttribute('alt', `Rana in stato ${stato}`);
+}
+
+// Verifica e rimozione di attributi
+function toggleDisabilitaPulsante(id, disabilita) {
+    const pulsante = document.getElementById(id);
+    
+    if (disabilita) {
+        pulsante.setAttribute('disabled', 'disabled');
+    } else if (pulsante.hasAttribute('disabled')) {
+        pulsante.removeAttribute('disabled');
+    }
+}</code></pre>
+    </div>
+    
+    <h3>3. Modifica degli Stili</h3>
+    <p>
+        Possiamo modificare lo stile di un elemento utilizzando la proprietà <code>style</code> o manipolando le classi CSS.
+    </p>
+    <div class="example">
+        <pre><code>// Modifica diretta degli stili
+function evidenziaElemento(id) {
+    const elemento = document.getElementById(id);
+    elemento.style.backgroundColor = '#ffff99';
+    elemento.style.border = '2px solid #ff9900';
+    elemento.style.boxShadow = '0 0 5px rgba(255, 153, 0, 0.5)';
+}
+
+// Manipolazione delle classi CSS
+function toggleClassePausa() {
+    const gameContainer = document.getElementById('game-container');
+    
+    // Verifica se l'elemento ha già la classe
+    if (gameContainer.classList.contains('pausa')) {
+        // Rimuovi la classe
+        gameContainer.classList.remove('pausa');
+    } else {
+        // Aggiungi la classe
+        gameContainer.classList.add('pausa');
+    }
+    
+    // Alternativa: toggle aggiunge la classe se non è presente, altrimenti la rimuove
+    // gameContainer.classList.toggle('pausa');
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> È generalmente preferibile manipolare le classi CSS anziché modificare direttamente gli stili inline, poiché questo permette di separare meglio la logica (JavaScript) dalla presentazione (CSS) e rende il codice più manutenibile.
+    </div>
+    
+    <h3>4. Creazione e Aggiunta di Elementi</h3>
+    <p>
+        Possiamo creare nuovi elementi e aggiungerli al DOM utilizzando metodi come <code>createElement()</code>, <code>appendChild()</code>, <code>insertBefore()</code> e altri.
+    </p>
+    <div class="example">
+        <pre><code>// Creazione di un messaggio di game over
+function mostraGameOver(punteggio) {
+    // Crea un nuovo elemento div
+    const gameOverDiv = document.createElement('div');
+    gameOverDiv.id = 'game-over';
+    gameOverDiv.className = 'overlay';
+    
+    // Crea e aggiungi un titolo
+    const titolo = document.createElement('h2');
+    titolo.textContent = 'GAME OVER';
+    gameOverDiv.appendChild(titolo);
+    
+    // Crea e aggiungi il punteggio
+    const punteggioP = document.createElement('p');
+    punteggioP.textContent = `Punteggio finale: ${punteggio}`;
+    gameOverDiv.appendChild(punteggioP);
+    
+    // Crea e aggiungi un pulsante per ricominciare
+    const restartBtn = document.createElement('button');
+    restartBtn.textContent = 'Gioca ancora';
+    restartBtn.addEventListener('click', resetGioco);
+    gameOverDiv.appendChild(restartBtn);
+    
+    // Aggiungi l'elemento al documento
+    document.body.appendChild(gameOverDiv);
+}
+
+// Creazione di un elemento con innerHTML
+function aggiungiOstacoloUI(tipo, id) {
+    const listaOstacoli = document.getElementById('lista-ostacoli');
+    
+    // Crea un nuovo elemento li con innerHTML
+    const nuovoOstacolo = document.createElement('li');
+    nuovoOstacolo.id = `ostacolo-${id}`;
+    nuovoOstacolo.innerHTML = `<span class="tipo-${tipo}">${tipo}</span> <button class="btn-rimuovi">X</button>`;
+    
+    // Aggiungi un event listener al pulsante di rimozione
+    const btnRimuovi = nuovoOstacolo.querySelector('.btn-rimuovi');
+    btnRimuovi.addEventListener('click', () => {
+        nuovoOstacolo.remove(); // Rimuove l'elemento dal DOM
+    });
+    
+    // Aggiungi l'elemento alla lista
+    listaOstacoli.appendChild(nuovoOstacolo);
+}</code></pre>
+    </div>
+    
+    <h3>5. Rimozione di Elementi</h3>
+    <p>
+        Possiamo rimuovere elementi dal DOM utilizzando metodi come <code>removeChild()</code> o il metodo <code>remove()</code> più recente.
+    </p>
+    <div class="example">
+        <pre><code>// Rimozione di un elemento con removeChild
+function rimuoviElemento(id) {
+    const elemento = document.getElementById(id);
+    if (elemento && elemento.parentNode) {
+        elemento.parentNode.removeChild(elemento);
+    }
+}
+
+// Rimozione di un elemento con remove (metodo più recente)
+function rimuoviElementoModerno(id) {
+    const elemento = document.getElementById(id);
+    if (elemento) {
+        elemento.remove();
+    }
+}
+
+// Rimozione di tutti i figli di un elemento
+function svuotaContenitore(id) {
+    const contenitore = document.getElementById(id);
+    
+    // Metodo 1: Usa innerHTML
+    // contenitore.innerHTML = '';
+    
+    // Metodo 2: Rimuovi ogni figlio in un ciclo
+    while (contenitore.firstChild) {
+        contenitore.removeChild(contenitore.firstChild);
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Applicazione al Gioco Frogger</h2>
+    <p>
+        Ora vediamo come applicare queste tecniche di selezione e manipolazione degli elementi al nostro gioco Frogger. Ecco alcuni esempi pratici:
+    </p>
+    
+    <h3>1. Interfaccia di Gioco</h3>
+    <div class="example">
+        <pre><code>// Inizializzazione dell'interfaccia di gioco
+function inizializzaUI() {
+    // Seleziona gli elementi dell'interfaccia
+    const punteggioElement = document.getElementById('punteggio');
+    const viteElement = document.getElementById('vite');
+    const livelloElement = document.getElementById('livello');
+    const tempoElement = document.getElementById('tempo');
+    
+    // Inizializza i valori
+    punteggioElement.textContent = '0';
+    viteElement.innerHTML = '❤️❤️❤️';
+    livelloElement.textContent = '1';
+    tempoElement.textContent = '60';
+    
+    // Aggiungi event listener ai pulsanti
+    document.getElementById('btn-inizia').addEventListener('click', iniziaGioco);
+    document.getElementById('btn-pausa').addEventListener('click', togglePausa);
+    document.getElementById('btn-reset').addEventListener('click', resetGioco);
+    
+    // Nascondi l'overlay di gioco
+    document.getElementById('overlay').classList.add('hidden');
+}
+
+// Aggiornamento del punteggio
+function aggiornaPunteggio(punti) {
+    const punteggioElement = document.getElementById('punteggio');
+    const punteggioAttuale = parseInt(punteggioElement.textContent);
+    const nuovoPunteggio = punteggioAttuale + punti;
+    
+    punteggioElement.textContent = nuovoPunteggio;
+    
+    // Effetto visivo per l'aggiornamento del punteggio
+    punteggioElement.classList.add('aggiornato');
+    setTimeout(() => {
+        punteggioElement.classList.remove('aggiornato');
+    }, 300);
+    
+    return nuovoPunteggio;
+}
+
+// Aggiornamento delle vite
+function aggiornaVite(delta) {
+    const viteElement = document.getElementById('vite');
+    const viteAttuali = viteElement.innerHTML.length / 2; // Ogni cuore è un carattere emoji (2 byte)
+    const nuoveVite = Math.max(0, viteAttuali + delta);
+    
+    viteElement.innerHTML = '❤️'.repeat(nuoveVite);
+    
+    // Cambia il colore in base al numero di vite rimanenti
+    if (nuoveVite <= 1) {
+        viteElement.style.color = 'red';
+    } else {
+        viteElement.style.color = '';
+    }
+    
+    // Verifica game over
+    if (nuoveVite === 0) {
+        gameOver();
+    }
+    
+    return nuoveVite;
+}
+
+// Aggiornamento del timer
+function aggiornaTimer(secondi) {
+    const tempoElement = document.getElementById('tempo');
+    const tempoAttuale = parseInt(tempoElement.textContent);
+    const nuovoTempo = Math.max(0, tempoAttuale - secondi);
+    
+    tempoElement.textContent = nuovoTempo;
+    
+    // Cambia il colore quando il tempo sta per scadere
+    if (nuovoTempo <= 10) {
+        tempoElement.style.color = 'red';
+    } else {
+        tempoElement.style.color = '';
+    }
+    
+    // Verifica se il tempo è scaduto
+    if (nuovoTempo === 0) {
+        perdiVita();
+        resetTimer();
+    }
+    
+    return nuovoTempo;
+}</code></pre>
+    </div>
+    
+    <h3>2. Gestione degli Stati di Gioco</h3>
+    <div class="example">
+        <pre><code>// Funzione per mostrare il game over
+function gameOver() {
+    // Cambia lo stato del gioco
+    statoGioco = 'gameOver';
+    
+    // Mostra l'overlay di game over
+    const overlay = document.getElementById('overlay');
+    overlay.classList.remove('hidden');
+    
+    // Aggiorna il contenuto dell'overlay
+    const statoGiocoElement = document.getElementById('stato-gioco');
+    statoGiocoElement.innerHTML = `
+        <h2>GAME OVER</h2>
+        <p>Punteggio finale: ${document.getElementById('punteggio').textContent}</p>
+        <button id="btn-rigioca">Gioca ancora</button>
+    `;
+    
+    // Aggiungi event listener al pulsante per rigiocare
+    document.getElementById('btn-rigioca').addEventListener('click', resetGioco);
+    
+    // Nascondi il pulsante di pausa e mostra quello di reset
+    document.getElementById('btn-pausa').style.display = 'none';
+    document.getElementById('btn-reset').style.display = 'inline-block';
+}
+
+// Funzione per mostrare il completamento del livello
+function livelloCompletato() {
+    // Cambia lo stato del gioco
+    statoGioco = 'livelloCompletato';
+    
+    // Mostra l'overlay di transizione del livello
+    const transizione = document.getElementById('level-transition');
+    transizione.classList.remove('hidden');
+    
+    // Aggiorna il contenuto della transizione
+    transizione.innerHTML = `
+        <h2>LIVELLO COMPLETATO!</h2>
+        <p>Punteggio: ${document.getElementById('punteggio').textContent}</p>
+        <p>Bonus tempo: +${document.getElementById('tempo').textContent} punti</p>
+        <p>Preparati per il livello ${parseInt(document.getElementById('livello').textContent) + 1}</p>
+    `;
+    
+    // Aggiorna il punteggio con il bonus tempo
+    const bonusTempo = parseInt(document.getElementById('tempo').textContent);
+    aggiornaPunteggio(bonusTempo);
+    
+    // Nascondi la transizione dopo un ritardo e avvia il prossimo livello
+    setTimeout(() => {
+        transizione.classList.add('hidden');
+        avanzaLivello();
+    }, 3000);
+}</code></pre>
+    </div>
+    
+    <h3>3. Creazione Dinamica degli Elementi di Gioco</h3>
+    <div class="example">
+        <pre><code>// Funzione per creare un ostacolo
+function creaOstacolo(tipo, x, y, larghezza, altezza, velocita, direzione) {
+    // Crea un nuovo elemento div per l'ostacolo
+    const ostacolo = document.createElement('div');
+    ostacolo.className = `ostacolo ${tipo}`;
+    ostacolo.style.left = `${x}px`;
+    ostacolo.style.top = `${y}px`;
+    ostacolo.style.width = `${larghezza}px`;
+    ostacolo.style.height = `${altezza}px`;
+    
+    // Aggiungi attributi data per memorizzare le proprietà dell'ostacolo
+    ostacolo.dataset.tipo = tipo;
+    ostacolo.dataset.velocita = velocita;
+    ostacolo.dataset.direzione = direzione;
+    
+    // Aggiungi l'ostacolo al contenitore di gioco
+    document.getElementById('ostacoli-container').appendChild(ostacolo);
+    
+    return ostacolo;
+}
+
+// Funzione per aggiornare la posizione degli ostacoli
+function aggiornaOstacoli() {
+    // Seleziona tutti gli ostacoli
+    const ostacoli = document.querySelectorAll('.ostacolo');
+    
+    // Aggiorna la posizione di ogni ostacolo
+    ostacoli.forEach(ostacolo => {
+        // Ottieni le proprietà dell'ostacolo
+        const velocita = parseFloat(ostacolo.dataset.velocita);
+        const direzione = parseInt(ostacolo.dataset.direzione);
+        
+        // Calcola la nuova posizione
+        let x = parseFloat(ostacolo.style.left);
+        x += velocita * direzione;
+        
+        // Gestisci il wrapping (quando l'ostacolo esce dallo schermo)
+        const larghezza = parseFloat(ostacolo.style.width);
+        const larghezzaCanvas = 600; // Larghezza del canvas di gioco
+        
+        if (direzione > 0 && x > larghezzaCanvas) {
+            // L'ostacolo è uscito a destra, riposizionalo a sinistra
+            x = -larghezza;
+        } else if (direzione < 0 && x < -larghezza) {
+            // L'ostacolo è uscito a sinistra, riposizionalo a destra
+            x = larghezzaCanvas;
+        }
+        
+        // Aggiorna la posizione dell'ostacolo
+        ostacolo.style.left = `${x}px`;
+    });
+}</code></pre>
+    </div>
+    
+    <h2>Considerazioni sulle Prestazioni</h2>
+    <p>
+        Quando si manipola il DOM, è importante considerare le prestazioni, specialmente in un gioco che richiede aggiornamenti frequenti. Ecco alcuni suggerimenti per ottimizzare le prestazioni:
+    </p>
+    
+    <ul>
+        <li><strong>Minimizza le manipolazioni del DOM:</strong> Ogni volta che modifichi il DOM, il browser deve ricalcolare layout, stili e renderizzare nuovamente la pagina. Cerca di raggruppare le modifiche e minimizzare il numero di operazioni sul DOM.</li>
+        <li><strong>Usa DocumentFragment:</strong> Quando devi aggiungere molti elementi, usa un DocumentFragment per preparare la struttura off-screen e poi aggiungerla al DOM in un'unica operazione.</li>
+        <li><strong>Memorizza i riferimenti agli elementi:</strong> Se devi accedere ripetutamente allo stesso elemento, memorizza il riferimento in una variabile anziché selezionarlo ogni volta.</li>
+        <li><strong>Delega gli eventi:</strong> Invece di aggiungere event listener a molti elementi simili, aggiungi un singolo listener a un elemento genitore e usa l'event delegation.</li>
+        <li><strong>Usa requestAnimationFrame:</strong> Per le animazioni e gli aggiornamenti visivi, usa <code>requestAnimationFrame</code> anziché <code>setTimeout</code> o <code>setInterval</code> per ottenere animazioni più fluide e sincronizzate con il refresh del browser.</li>
+    </ul>
+    
+    <div class="example">
+        <h3>Esempio: Ottimizzazione con DocumentFragment</h3>
+        <pre><code>// Funzione per creare molti ostacoli in modo efficiente
+function creaMoltiOstacoli(tipi, righe, colonne) {
+    // Crea un DocumentFragment per preparare gli elementi off-screen
+    const fragment = document.createDocumentFragment();
+    
+    // Crea gli ostacoli e aggiungili al fragment
+    for (let r = 0; r < righe; r++) {
+        const tipo = tipi[r % tipi.length];
+        const y = 100 + r * 50;
+        const direzione = r % 2 === 0 ? 1 : -1;
+        const velocita = 1 + Math.random() * 2;
+        
+        for (let

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operatori e Espressioni | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Operatori e Espressioni</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Gli operatori in JavaScript sono simboli speciali che eseguono operazioni su operandi (valori e variabili). Le espressioni sono combinazioni di valori, variabili e operatori che vengono valutate per produrre un risultato. In questa lezione, esploreremo i diversi tipi di operatori disponibili in JavaScript e come utilizzarli per creare espressioni efficaci nel nostro gioco Frogger.
+    </p>
+    
+    <h2>Tipi di Operatori</h2>
+    <p>
+        JavaScript offre diversi tipi di operatori per eseguire varie operazioni. Ecco i principali tipi di operatori che utilizzeremo nel nostro gioco:
+    </p>
+    
+    <h3>1. Operatori Aritmetici</h3>
+    <p>
+        Gli operatori aritmetici eseguono operazioni matematiche su valori numerici.
+    </p>
+    <table>
+        <tr>
+            <th>Operatore</th>
+            <th>Descrizione</th>
+            <th>Esempio</th>
+            <th>Risultato</th>
+        </tr>
+        <tr>
+            <td>+</td>
+            <td>Addizione</td>
+            <td><code>let nuovaPosizione = ranaX + 30;</code></td>
+            <td>Somma <code>ranaX</code> e <code>30</code></td>
+        </tr>
+        <tr>
+            <td>-</td>
+            <td>Sottrazione</td>
+            <td><code>let viteRimanenti = vite - 1;</code></td>
+            <td>Sottrae <code>1</code> da <code>vite</code></td>
+        </tr>
+        <tr>
+            <td>*</td>
+            <td>Moltiplicazione</td>
+            <td><code>let area = larghezza * altezza;</code></td>
+            <td>Moltiplica <code>larghezza</code> per <code>altezza</code></td>
+        </tr>
+        <tr>
+            <td>/</td>
+            <td>Divisione</td>
+            <td><code>let velocitaMedia = distanzaTotale / tempo;</code></td>
+            <td>Divide <code>distanzaTotale</code> per <code>tempo</code></td>
+        </tr>
+        <tr>
+            <td>%</td>
+            <td>Modulo (resto)</td>
+            <td><code>let resto = posizione % larghezzaGriglia;</code></td>
+            <td>Resto della divisione di <code>posizione</code> per <code>larghezzaGriglia</code></td>
+        </tr>
+        <tr>
+            <td>++</td>
+            <td>Incremento</td>
+            <td><code>punteggio++;</code></td>
+            <td>Incrementa <code>punteggio</code> di 1</td>
+        </tr>
+        <tr>
+            <td>--</td>
+            <td>Decremento</td>
+            <td><code>vite--;</code></td>
+            <td>Decrementa <code>vite</code> di 1</td>
+        </tr>
+    </table>
+    
+    <div class="example">
+        <h3>Esempio: Movimento della Rana</h3>
+        <pre><code>// Movimento verso destra
+ranaX += 30; // Equivalente a: ranaX = ranaX + 30;
+
+// Movimento verso sinistra
+ranaX -= 30; // Equivalente a: ranaX = ranaX - 30;
+
+// Incremento del punteggio
+punteggio++; // Equivalente a: punteggio = punteggio + 1;</code></pre>
+    </div>
+    
+    <h3>2. Operatori di Assegnazione</h3>
+    <p>
+        Gli operatori di assegnazione assegnano valori alle variabili.
+    </p>
+    <table>
+        <tr>
+            <th>Operatore</th>
+            <th>Descrizione</th>
+            <th>Esempio</th>
+            <th>Equivalente a</th>
+        </tr>
+        <tr>
+            <td>=</td>
+            <td>Assegnazione</td>
+            <td><code>ranaX = 300;</code></td>
+            <td>Assegna <code>300</code> a <code>ranaX</code></td>
+        </tr>
+        <tr>
+            <td>+=</td>
+            <td>Addizione e assegnazione</td>
+            <td><code>punteggio += 10;</code></td>
+            <td><code>punteggio = punteggio + 10;</code></td>
+        </tr>
+        <tr>
+            <td>-=</td>
+            <td>Sottrazione e assegnazione</td>
+            <td><code>vite -= 1;</code></td>
+            <td><code>vite = vite - 1;</code></td>
+        </tr>
+        <tr>
+            <td>*=</td>
+            <td>Moltiplicazione e assegnazione</td>
+            <td><code>velocita *= 1.5;</code></td>
+            <td><code>velocita = velocita * 1.5;</code></td>
+        </tr>
+        <tr>
+            <td>/=</td>
+            <td>Divisione e assegnazione</td>
+            <td><code>velocita /= 2;</code></td>
+            <td><code>velocita = velocita / 2;</code></td>
+        </tr>
+    </table>
+    
+    <h3>3. Operatori di Confronto</h3>
+    <p>
+        Gli operatori di confronto confrontano due valori e restituiscono un valore booleano (true o false).
+    </p>
+    <table>
+        <tr>
+            <th>Operatore</th>
+            <th>Descrizione</th>
+            <th>Esempio</th>
+            <th>Risultato</th>
+        </tr>
+        <tr>
+            <td>==</td>
+            <td>Uguale a (con conversione di tipo)</td>
+            <td><code>punteggio == "100"</code></td>
+            <td><code>true</code> se <code>punteggio</code> è <code>100</code>, anche se i tipi sono diversi</td>
+        </tr>
+        <tr>
+            <td>===</td>
+            <td>Strettamente uguale a (senza conversione di tipo)</td>
+            <td><code>punteggio === 100</code></td>
+            <td><code>true</code> solo se <code>punteggio</code> è <code>100</code> e di tipo number</td>
+        </tr>
+        <tr>
+            <td>!=</td>
+            <td>Diverso da (con conversione di tipo)</td>
+            <td><code>vite != 0</code></td>
+            <td><code>true</code> se <code>vite</code> non è <code>0</code></td>
+        </tr>
+        <tr>
+            <td>!==</td>
+            <td>Strettamente diverso da (senza conversione di tipo)</td>
+            <td><code>vite !== "0"</code></td>
+            <td><code>true</code> se <code>vite</code> non è <code>"0"</code> o non è di tipo string</td>
+        </tr>
+        <tr>
+            <td>></td>
+            <td>Maggiore di</td>
+            <td><code>punteggio > 100</code></td>
+            <td><code>true</code> se <code>punteggio</code> è maggiore di <code>100</code></td>
+        </tr>
+        <tr>
+            <td><</td>
+            <td>Minore di</td>
+            <td><code>vite < 3</code></td>
+            <td><code>true</code> se <code>vite</code> è minore di <code>3</code></td>
+        </tr>
+        <tr>
+            <td>>=</td>
+            <td>Maggiore o uguale a</td>
+            <td><code>ranaX >= larghezzaCanvas</code></td>
+            <td><code>true</code> se <code>ranaX</code> è maggiore o uguale a <code>larghezzaCanvas</code></td>
+        </tr>
+        <tr>
+            <td><=</td>
+            <td>Minore o uguale a</td>
+            <td><code>ranaY <= 0</code></td>
+            <td><code>true</code> se <code>ranaY</code> è minore o uguale a <code>0</code></td>
+        </tr>
+    </table>
+    
+    <div class="note">
+        <strong>Nota:</strong> In JavaScript, è generalmente consigliato utilizzare gli operatori di uguaglianza stretta (<code>===</code> e <code>!==</code>) invece di quelli di uguaglianza con conversione di tipo (<code>==</code> e <code>!=</code>), per evitare comportamenti inaspettati dovuti alla conversione automatica dei tipi.
+    </div>
+    
+    <div class="example">
+        <h3>Esempio: Controllo delle Collisioni</h3>
+        <pre><code>// Verifica se la rana ha raggiunto il bordo superiore del canvas
+if (ranaY <= 0) {
+    // La rana ha completato il livello
+    punteggio += 100;
+    resetRana();
+}
+
+// Verifica se la rana è uscita dai bordi laterali
+if (ranaX < 0 || ranaX >= larghezzaCanvas) {
+    // La rana è uscita dal campo di gioco
+    perdiVita();
+    resetRana();
+}</code></pre>
+    </div>
+    
+    <h3>4. Operatori Logici</h3>
+    <p>
+        Gli operatori logici eseguono operazioni logiche su valori booleani.
+    </p>
+    <table>
+        <tr>
+            <th>Operatore</th>
+            <th>Descrizione</th>
+            <th>Esempio</th>
+            <th>Risultato</th>
+        </tr>
+        <tr>
+            <td>&&</td>
+            <td>AND logico</td>
+            <td><code>inGioco && vite > 0</code></td>
+            <td><code>true</code> solo se entrambe le condizioni sono vere</td>
+        </tr>
+        <tr>
+            <td>||</td>
+            <td>OR logico</td>
+            <td><code>gameOver || inPausa</code></td>
+            <td><code>true</code> se almeno una delle condizioni è vera</td>
+        </tr>
+        <tr>
+            <td>!</td>
+            <td>NOT logico</td>
+            <td><code>!inGioco</code></td>
+            <td><code>true</code> se <code>inGioco</code> è <code>false</code></td>
+        </tr>
+    </table>
+    
+    <div class="example">
+        <h3>Esempio: Controllo dello Stato del Gioco</h3>
+        <pre><code>// Verifica se il gioco è attivo e il giocatore ha ancora vite
+if (inGioco && vite > 0) {
+    // Continua il gioco
+    aggiornaGioco();
+}
+
+// Verifica se il gioco è terminato o in pausa
+if (gameOver || inPausa) {
+    // Non aggiornare lo stato del gioco
+    return;
+}
+
+// Verifica se il gioco non è in corso
+if (!inGioco) {
+    // Mostra il menu principale
+    mostraMenu();
+}</code></pre>
+    </div>
+    
+    <h2>Precedenza degli Operatori</h2>
+    <p>
+        La precedenza degli operatori determina l'ordine in cui le operazioni vengono eseguite in un'espressione. Gli operatori con precedenza più alta vengono eseguiti prima di quelli con precedenza più bassa.
+    </p>
+    <p>
+        Ecco una semplificazione della precedenza degli operatori in JavaScript (dall'alto verso il basso, dalla precedenza più alta alla più bassa):
+    </p>
+    <ol>
+        <li>Operatori di raggruppamento: <code>()</code></li>
+        <li>Accesso alle proprietà e chiamate di funzione: <code>.</code>, <code>[]</code>, <code>()</code></li>
+        <li>Operatori di incremento/decremento: <code>++</code>, <code>--</code></li>
+        <li>Operatori unari: <code>!</code>, <code>+</code> (unario), <code>-</code> (unario)</li>
+        <li>Operatori aritmetici moltiplicativi: <code>*</code>, <code>/</code>, <code>%</code></li>
+        <li>Operatori aritmetici additivi: <code>+</code>, <code>-</code></li>
+        <li>Operatori di confronto: <code><</code>, <code><=</code>, <code>></code>, <code>>=</code></li>
+        <li>Operatori di uguaglianza: <code>==</code>, <code>!=</code>, <code>===</code>, <code>!==</code></li>
+        <li>Operatori logici AND: <code>&&</code></li>
+        <li>Operatori logici OR: <code>||</code></li>
+        <li>Operatori di assegnazione: <code>=</code>, <code>+=</code>, <code>-=</code>, ecc.</li>
+    </ol>
+    
+    <div class="example">
+        <h3>Esempio: Precedenza degli Operatori</h3>
+        <pre><code>// Esempio 1: Senza parentesi
+let risultato1 = 2 + 3 * 4; // 3 * 4 viene eseguito prima, quindi risultato1 = 2 + 12 = 14
+
+// Esempio 2: Con parentesi per modificare la precedenza
+let risultato2 = (2 + 3) * 4; // 2 + 3 viene eseguito prima, quindi risultato2 = 5 * 4 = 20
+
+// Esempio 3: Operatori logici e di confronto
+let condizione = ranaX > 0 && ranaX < larghezzaCanvas || vite === 0;
+// Equivalente a: (ranaX > 0 && ranaX < larghezzaCanvas) || vite === 0</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Consiglio:</strong> Quando hai dubbi sulla precedenza degli operatori, usa le parentesi per rendere esplicito l'ordine delle operazioni. Questo rende il codice più leggibile e previene errori logici.
+    </div>
+    
+    <h2>Espressioni in JavaScript</h2>
+    <p>
+        Un'espressione è una combinazione di valori, variabili e operatori che viene valutata per produrre un valore. In JavaScript, le espressioni possono essere di diversi tipi:
+    </p>
+    <ul>
+        <li><strong>Espressioni aritmetiche:</strong> Producono un valore numerico (es. <code>2 + 3 * 4</code>).</li>
+        <li><strong>Espressioni di stringa:</strong> Producono una stringa (es. <code>"Punteggio: " + punteggio</code>).</li>
+        <li><strong>Espressioni logiche:</strong> Producono un valore booleano (es. <code>ranaX > 0 && ranaY < altezzaCanvas</code>).</li>
+        <li><strong>Espressioni primarie:</strong> Variabili, letterali e alcune parole chiave (es. <code>this</code>, <code>true</code>, <code>false</code>).</li>
+        <li><strong>Espressioni di assegnazione:</strong> Assegnano un valore a una variabile (es. <code>punteggio = 100</code>).</li>
+    </ul>
+    
+    <div class="example">
+        <h3>Esempio: Utilizzo di Espressioni nel Gioco Frogger</h3>
+        <pre><code>// Espressione aritmetica per calcolare la nuova posizione
+ranaX = ranaX + (direzioneX * velocita);
+
+// Espressione di stringa per visualizzare il punteggio
+let testoPunteggio = "Punteggio: " + punteggio;
+
+// Espressione logica per verificare una collisione
+let collisione = (ranaX < autoX + autoLarghezza) && 
+                (ranaX + ranaLarghezza > autoX) && 
+                (ranaY < autoY + autoAltezza) && 
+                (ranaY + ranaAltezza > autoY);
+
+// Espressione condizionale (operatore ternario)
+let messaggioStato = vite > 0 ? "In gioco" : "Game Over";</code></pre>
+    </div>
+    
+    <h2>Operatore Ternario</h2>
+    <p>
+        L'operatore ternario è un operatore condizionale che prende tre operandi. È un modo conciso per scrivere un'istruzione if-else semplice.
+    </p>
+    <p>
+        Sintassi: <code>condizione ? espressione1 : espressione2</code>
+    </p>
+    <p>
+        Se la condizione è vera, l'operatore restituisce il valore di espressione1; altrimenti, restituisce il valore di espressione2.
+    </p>
+    
+    <div class="example">
+        <h3>Esempio: Utilizzo dell'Operatore Ternario</h3>
+        <pre><code>// Determinare il colore in base allo stato del gioco
+let coloreStato = inGioco ? "green" : "red";
+
+// Determinare il messaggio in base al punteggio
+let messaggio = punteggio > recordPunteggio ? "Nuovo record!" : "Buon gioco!";
+
+// Determinare la velocità in base al livello
+let velocitaGioco = livello > 5 ? velocitaBase * 1.5 : velocitaBase;</code></pre>
+    </div>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti esercizi per mettere in pratica ciò che hai imparato:
+    </p>
+    <ol>
+        <li>Scrivi un'espressione che verifichi se la rana è all'interno dei confini del canvas.</li>
+        <li>Crea una funzione che calcoli la distanza tra la rana e un ostacolo utilizzando operatori aritmetici.</li>
+        <li>Utilizza l'operatore ternario per determinare se mostrare "Vittoria" o "Continua" in base al punteggio.</li>
+        <li>Scrivi un'espressione logica che verifichi se la rana è in collisione con almeno uno degli ostacoli in un array.</li>
+    </ol>
+    
+    <div class="navigation">
+        <a href="04_variabili.html">Lezione Precedente: Variabili e Tipi di Dati</a>
+        <a href="06_controllo.html">Prossima Lezione: Strutture di Controllo</a>
+    </div>
+</body>
+</html>

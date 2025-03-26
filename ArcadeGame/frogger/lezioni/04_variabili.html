@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variabili e Tipi di Dati | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Variabili e Tipi di Dati</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Le variabili sono uno dei concetti fondamentali in qualsiasi linguaggio di programmazione, incluso JavaScript. Esse ci permettono di memorizzare e manipolare dati all'interno del nostro programma. In questa lezione, esploreremo come dichiarare e utilizzare variabili in JavaScript, nonché i diversi tipi di dati che possono essere memorizzati in esse.
+    </p>
+    
+    <h2>Cos'è una Variabile?</h2>
+    <p>
+        Una variabile in JavaScript è un contenitore per memorizzare valori di dati. Puoi immaginare una variabile come una scatola etichettata: l'etichetta è il nome della variabile, e ciò che è contenuto nella scatola è il valore della variabile.
+    </p>
+    <p>
+        In JavaScript, le variabili sono dinamicamente tipizzate, il che significa che una variabile può contenere diversi tipi di dati durante l'esecuzione del programma e non è necessario dichiarare esplicitamente il tipo di dati che conterrà.
+    </p>
+    
+    <h2>Dichiarazione di Variabili</h2>
+    <p>
+        In JavaScript moderno (ES6+), ci sono tre modi principali per dichiarare variabili:
+    </p>
+    
+    <h3>1. Usando <code>let</code></h3>
+    <p>
+        <code>let</code> è il modo moderno per dichiarare variabili che possono cambiare valore nel tempo.
+    </p>
+    <div class="example">
+        <pre><code>let punteggio = 0;
+punteggio = 10; // Il valore può essere cambiato
+
+let nomeGiocatore = "Giocatore1";
+let inGioco = true;</code></pre>
+    </div>
+    
+    <h3>2. Usando <code>const</code></h3>
+    <p>
+        <code>const</code> è usato per dichiarare variabili il cui valore non cambierà (costanti).
+    </p>
+    <div class="example">
+        <pre><code>const VITE_INIZIALI = 3;
+// VITE_INIZIALI = 4; // Questo causerebbe un errore
+
+const LARGHEZZA_CANVAS = 600;
+const ALTEZZA_CANVAS = 600;</code></pre>
+    </div>
+    
+    <h3>3. Usando <code>var</code> (modo tradizionale)</h3>
+    <p>
+        <code>var</code> è il modo tradizionale per dichiarare variabili in JavaScript, ma ha alcune peculiarità riguardo allo scope che possono causare confusione. Nei progetti moderni, è generalmente consigliato utilizzare <code>let</code> e <code>const</code> invece di <code>var</code>.
+    </p>
+    <div class="example">
+        <pre><code>var vecchioPunteggio = 0;
+vecchioPunteggio = 20; // Il valore può essere cambiato</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> La principale differenza tra <code>let</code> e <code>var</code> riguarda lo scope. Le variabili dichiarate con <code>var</code> hanno scope di funzione, mentre quelle dichiarate con <code>let</code> hanno scope di blocco. Questo significa che una variabile <code>let</code> dichiarata all'interno di un blocco (come un ciclo <code>for</code> o un'istruzione <code>if</code>) è accessibile solo all'interno di quel blocco.
+    </div>
+    
+    <h2>Tipi di Dati in JavaScript</h2>
+    <p>
+        JavaScript ha diversi tipi di dati che possono essere memorizzati in variabili. I tipi di dati principali sono:
+    </p>
+    
+    <table>
+        <tr>
+            <th>Tipo</th>
+            <th>Descrizione</th>
+            <th>Esempio</th>
+        </tr>
+        <tr>
+            <td>Number</td>
+            <td>Rappresenta numeri interi e decimali</td>
+            <td><code>let velocita = 5;</code><br><code>let posizione = 10.5;</code></td>
+        </tr>
+        <tr>
+            <td>String</td>
+            <td>Rappresenta testo</td>
+            <td><code>let messaggio = "Game Over";</code><br><code>let nome = 'Frogger';</code></td>
+        </tr>
+        <tr>
+            <td>Boolean</td>
+            <td>Rappresenta valori vero/falso</td>
+            <td><code>let inGioco = true;</code><br><code>let collisione = false;</code></td>
+        </tr>
+        <tr>
+            <td>Undefined</td>
+            <td>Rappresenta una variabile dichiarata ma non inizializzata</td>
+            <td><code>let prossimoPunteggio;</code></td>
+        </tr>
+        <tr>
+            <td>Null</td>
+            <td>Rappresenta l'assenza intenzionale di un valore</td>
+            <td><code>let giocatore = null;</code></td>
+        </tr>
+        <tr>
+            <td>Object</td>
+            <td>Rappresenta una collezione di dati correlati</td>
+            <td><code>let rana = {x: 300, y: 550, larghezza: 30, altezza: 30};</code></td>
+        </tr>
+        <tr>
+            <td>Array</td>
+            <td>Rappresenta una lista ordinata di valori</td>
+            <td><code>let ostacoli = [auto1, auto2, tronco1, tronco2];</code></td>
+        </tr>
+    </table>
+    
+    <h2>Utilizzo delle Variabili nel Gioco Frogger</h2>
+    <p>
+        Nel nostro gioco Frogger, utilizzeremo variabili per memorizzare diversi tipi di informazioni, come:
+    </p>
+    <ul>
+        <li>La posizione della rana (giocatore)</li>
+        <li>Le posizioni degli ostacoli (auto, tronchi, ecc.)</li>
+        <li>Il punteggio del giocatore</li>
+        <li>Il numero di vite rimanenti</li>
+        <li>Lo stato del gioco (in corso, in pausa, game over)</li>
+    </ul>
+    
+    <div class="example">
+        <h3>Esempio: Variabili per il Giocatore</h3>
+        <pre><code>// Posizione iniziale della rana
+let ranaX = 300; // Centro orizzontale del canvas
+let ranaY = 550; // Parte inferiore del canvas
+
+// Dimensioni della rana
+const RANA_LARGHEZZA = 30;
+const RANA_ALTEZZA = 30;
+
+// Stato del giocatore
+let vite = 3;
+let punteggio = 0;
+let inGioco = false;</code></pre>
+    </div>
+    
+    <div class="example">
+        <h3>Esempio: Variabili per gli Ostacoli</h3>
+        <pre><code>// Array di ostacoli (auto)
+let auto = [
+    {x: 0, y: 450, larghezza: 50, altezza: 30, velocita: 2},
+    {x: 150, y: 450, larghezza: 50, altezza: 30, velocita: 2},
+    {x: 300, y: 400, larghezza: 50, altezza: 30, velocita: -3},
+    {x: 450, y: 400, larghezza: 50, altezza: 30, velocita: -3},
+    {x: 100, y: 350, larghezza: 50, altezza: 30, velocita: 1.5}
+];
+
+// Array di piattaforme (tronchi)
+let tronchi = [
+    {x: 0, y: 250, larghezza: 100, altezza: 30, velocita: 1},
+    {x: 200, y: 250, larghezza: 100, altezza: 30, velocita: 1},
+    {x: 400, y: 200, larghezza: 100, altezza: 30, velocita: -1.5},
+    {x: 100, y: 150, larghezza: 100, altezza: 30, velocita: 2}
+];</code></pre>
+    </div>
+    
+    <h2>Scope delle Variabili</h2>
+    <p>
+        Lo scope di una variabile determina dove quella variabile può essere accessibile nel codice. In JavaScript, ci sono principalmente due tipi di scope:
+    </p>
+    <ul>
+        <li><strong>Scope Globale:</strong> Le variabili dichiarate fuori da qualsiasi funzione o blocco sono accessibili ovunque nel codice.</li>
+        <li><strong>Scope Locale:</strong> Le variabili dichiarate all'interno di una funzione o un blocco sono accessibili solo all'interno di quella funzione o blocco.</li>
+    </ul>
+    
+    <div class="example">
+        <h3>Esempio: Scope delle Variabili</h3>
+        <pre><code>// Variabile globale
+let punteggio = 0;
+
+function aggiornaPunteggio() {
+    // Variabile locale
+    let puntiGuadagnati = 10;
+    
+    // Possiamo accedere alla variabile globale
+    punteggio += puntiGuadagnati;
+    
+    if (punteggio > 100) {
+        // Variabile con scope di blocco
+        let messaggio = "Nuovo record!";
+        console.log(messaggio);
+    }
+    
+    // Questo causerebbe un errore perché 'messaggio' è fuori scope
+    // console.log(messaggio);
+}
+
+// Possiamo accedere alla variabile globale
+console.log(punteggio);
+
+// Questo causerebbe un errore perché 'puntiGuadagnati' è fuori scope
+// console.log(puntiGuadagnati);</code></pre>
+    </div>
+    
+    <h2>Best Practices per l'Uso delle Variabili</h2>
+    <ul>
+        <li><strong>Usa nomi descrittivi:</strong> I nomi delle variabili dovrebbero descrivere chiaramente ciò che contengono.</li>
+        <li><strong>Usa camelCase:</strong> In JavaScript, la convenzione è di usare camelCase per i nomi delle variabili (es. <code>nomeGiocatore</code>, <code>punteggioTotale</code>).</li>
+        <li><strong>Usa UPPERCASE per le costanti:</strong> Le costanti sono spesso scritte in maiuscolo con underscore (es. <code>MAX_VITE</code>, <code>VELOCITA_GIOCO</code>).</li>
+        <li><strong>Preferisci <code>const</code> quando possibile:</strong> Se una variabile non deve cambiare valore, usa <code>const</code> per renderlo esplicito.</li>
+        <li><strong>Evita variabili globali:</strong> Limita l'uso di variabili globali per evitare conflitti e rendere il codice più modulare.</li>
+    </ul>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti esercizi per mettere in pratica ciò che hai imparato:
+    </p>
+    <ol>
+        <li>Dichiara variabili per memorizzare la posizione e le dimensioni della rana nel gioco Frogger.</li>
+        <li>Crea un array di oggetti per rappresentare le auto che si muovono sulla strada.</li>
+        <li>Dichiara variabili per tenere traccia del punteggio e delle vite del giocatore.</li>
+        <li>Scrivi una funzione che aggiorna la posizione della rana in base all'input dell'utente.</li>
+    </ol>
+    
+    <div class="navigation">
+        <a href="03_struttura.html">Lezione Precedente: Struttura Base del Progetto</a>
+        <a href="05_operatori.html">Prossima Lezione: Operatori e Espressioni</a>
+    </div>
+</body>
+</html>

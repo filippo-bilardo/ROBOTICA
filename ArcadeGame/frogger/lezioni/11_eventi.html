@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione degli Eventi | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+        .demo {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestione degli Eventi in JavaScript</h1>
+    
+    <h2>Introduzione agli Eventi</h2>
+    <p>
+        Gli eventi sono azioni o occorrenze che si verificano nel sistema e che il programma può rilevare e gestire. In JavaScript, gli eventi sono fondamentali per creare applicazioni interattive, permettendo al codice di rispondere alle azioni dell'utente (come clic del mouse, pressione di tasti) o a cambiamenti nel browser (come il caricamento della pagina).
+    </p>
+    <p>
+        Nel nostro gioco Frogger, la gestione degli eventi sarà cruciale per controllare la rana, rilevare le interazioni dell'utente con l'interfaccia e gestire il ciclo di vita del gioco.
+    </p>
+    
+    <h2>Tipi di Eventi</h2>
+    <p>
+        JavaScript supporta numerosi tipi di eventi. Ecco i principali che utilizzeremo nel nostro gioco Frogger:
+    </p>
+    
+    <h3>1. Eventi da Tastiera</h3>
+    <div class="example">
+        <pre><code>// Eventi da tastiera per controllare la rana
+document.addEventListener('keydown', gestisciKeyDown);
+document.addEventListener('keyup', gestisciKeyUp);
+
+function gestisciKeyDown(evento) {
+    // Previeni il comportamento predefinito per i tasti freccia
+    // (evita lo scorrimento della pagina)
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evento.key)) {
+        evento.preventDefault();
+    }
+    
+    // Gestisci solo se il gioco è attivo
+    if (statoGioco === 'attivo') {
+        switch (evento.key) {
+            case 'ArrowUp':
+                muoviRana('su');
+                break;
+            case 'ArrowDown':
+                muoviRana('giu');
+                break;
+            case 'ArrowLeft':
+                muoviRana('sinistra');
+                break;
+            case 'ArrowRight':
+                muoviRana('destra');
+                break;
+        }
+    }
+    
+    // Gestione della pausa con il tasto P
+    if (evento.key === 'p' || evento.key === 'P') {
+        togglePausa();
+    }
+    
+    // Riavvio del gioco con il tasto R
+    if ((evento.key === 'r' || evento.key === 'R') && statoGioco === 'gameOver') {
+        iniziaGioco();
+    }
+}
+
+function gestisciKeyUp(evento) {
+    // Puoi utilizzare questo evento per gestire il rilascio dei tasti
+    // Ad esempio, per fermare un'animazione di salto continuo
+    if (evento.key === 'ArrowUp' && statoGioco === 'attivo') {
+        rana.inSalto = false;
+    }
+}</code></pre>
+    </div>
+    
+    <h3>2. Eventi del Mouse</h3>
+    <div class="example">
+        <pre><code>// Eventi del mouse per l'interfaccia utente
+document.getElementById('btn-inizia').addEventListener('click', iniziaGioco);
+document.getElementById('btn-pausa').addEventListener('click', togglePausa);
+document.getElementById('btn-reset').addEventListener('click', resetGioco);
+
+// Controlli touch per dispositivi mobili
+const controlliTouch = document.getElementById('controlli-touch');
+controlliTouch.querySelector('#btn-su').addEventListener('click', () => muoviRana('su'));
+controlliTouch.querySelector('#btn-giu').addEventListener('click', () => muoviRana('giu'));
+controlliTouch.querySelector('#btn-sinistra').addEventListener('click', () => muoviRana('sinistra'));
+controlliTouch.querySelector('#btn-destra').addEventListener('click', () => muoviRana('destra'));
+
+// Gestione del hover per mostrare informazioni
+document.getElementById('info-icon').addEventListener('mouseover', mostraInfo);
+document.getElementById('info-icon').addEventListener('mouseout', nascondiInfo);
+
+function mostraInfo() {
+    document.getElementById('info-tooltip').style.display = 'block';
+}
+
+function nascondiInfo() {
+    document.getElementById('info-tooltip').style.display = 'none';
+}</code></pre>
+    </div>
+    
+    <h3>3. Eventi del Ciclo di Vita della Pagina</h3>
+    <div class="example">
+        <pre><code>// Evento di caricamento della pagina
+window.addEventListener('load', inizializzaGioco);
+
+// Evento di ridimensionamento della finestra
+window.addEventListener('resize', ridimensionaCanvas);
+
+// Evento di visibilità della pagina (utile per mettere in pausa il gioco quando la scheda non è attiva)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && statoGioco === 'attivo') {
+        // La pagina non è visibile, metti in pausa il gioco
+        pausaGioco();
+    }
+});
+
+function inizializzaGioco() {
+    // Inizializza il canvas e il contesto
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    
+    // Configura le dimensioni del canvas
+    ridimensionaCanvas();
+    
+    // Carica le immagini e le risorse
+    caricaRisorse(() => {
+        // Mostra la schermata iniziale
+        mostraSchermataIniziale();
+    });
+}
+
+function ridimensionaCanvas() {
+    // Adatta il canvas alla dimensione della finestra
+    const container = document.getElementById('game-container');
+    const larghezzaContainer = container.clientWidth;
+    
+    // Mantieni le proporzioni del canvas
+    const scala = Math.min(1, larghezzaContainer / LARGHEZZA_CANVAS);
+    
+    canvas.style.width = (LARGHEZZA_CANVAS * scala) + 'px';
+    canvas.style.height = (ALTEZZA_CANVAS * scala) + 'px';
+}</code></pre>
+    </div>
+    
+    <h3>4. Eventi Touch per Dispositivi Mobili</h3>
+    <div class="example">
+        <pre><code>// Gestione degli eventi touch per dispositivi mobili
+canvas.addEventListener('touchstart', gestisciTouchStart);
+canvas.addEventListener('touchmove', gestisciTouchMove);
+canvas.addEventListener('touchend', gestisciTouchEnd);
+
+let touchStartX = 0;
+let touchStartY = 0;
+const SOGLIA_SWIPE = 30; // Distanza minima per considerare un movimento come swipe
+
+function gestisciTouchStart(evento) {
+    // Previeni il comportamento predefinito (come lo zoom o lo scorrimento della pagina)
+    evento.preventDefault();
+    
+    // Memorizza la posizione iniziale del tocco
+    const touch = evento.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}
+
+function gestisciTouchMove(evento) {
+    // Previeni il comportamento predefinito
+    evento.preventDefault();
+}
+
+function gestisciTouchEnd(evento) {
+    // Previeni il comportamento predefinito
+    evento.preventDefault();
+    
+    // Calcola la distanza e la direzione dello swipe
+    const touch = evento.changedTouches[0];
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // Determina la direzione dello swipe solo se la distanza è sufficiente
+    if (Math.abs(diffX) > SOGLIA_SWIPE || Math.abs(diffY) > SOGLIA_SWIPE) {
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Swipe orizzontale
+            if (diffX > 0) {
+                muoviRana('destra');
+            } else {
+                muoviRana('sinistra');
+            }
+        } else {
+            // Swipe verticale
+            if (diffY > 0) {
+                muoviRana('giu');
+            } else {
+                muoviRana('su');
+            }
+        }
+    } else {
+        // Tocco semplice (tap) - può essere usato per altre azioni
+        // Ad esempio, per mettere in pausa il gioco
+        togglePausa();
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Modello di Eventi in JavaScript</h2>
+    <p>
+        JavaScript utilizza un modello di eventi basato su tre fasi: cattura, target e bubbling. Comprendere questo modello è importante per gestire correttamente gli eventi nel nostro gioco.
+    </p>
+    
+    <h3>1. Fasi degli Eventi</h3>
+    <div class="example">
+        <pre><code>/*
+Le tre fasi degli eventi in JavaScript:
+
+1. Fase di Cattura (Capture Phase):
+   L'evento parte dal nodo radice (document) e scende verso l'elemento target.
+
+2. Fase Target (Target Phase):
+   L'evento raggiunge l'elemento target.
+
+3. Fase di Bubbling (Bubbling Phase):
+   L'evento risale dall'elemento target verso il nodo radice.
+*/
+
+// Esempio di gestione delle fasi degli eventi
+document.getElementById('game-container').addEventListener('click', function(evento) {
+    console.log('Click sul container (fase di bubbling)');
+}, false); // false = bubbling phase (default)
+
+document.getElementById('gameCanvas').addEventListener('click', function(evento) {
+    console.log('Click sul canvas (fase di bubbling)');
+    
+    // Ferma la propagazione dell'evento
+    // evento.stopPropagation();
+}, false);
+
+// Utilizzo della fase di cattura
+document.getElementById('game-container').addEventListener('click', function(evento) {
+    console.log('Click sul container (fase di cattura)');
+}, true); // true = capture phase</code></pre>
+    </div>
+    
+    <h3>2. Prevenzione del Comportamento Predefinito</h3>
+    <div class="example">
+        <pre><code>// Prevenzione del comportamento predefinito dei tasti freccia
+document.addEventListener('keydown', function(evento) {
+    // Previeni lo scorrimento della pagina quando si usano i tasti freccia
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(evento.key)) {
+        evento.preventDefault();
+    }
+});
+
+// Prevenzione del comportamento predefinito del click destro sul canvas
+canvas.addEventListener('contextmenu', function(evento) {
+    // Previeni l'apertura del menu contestuale
+    evento.preventDefault();
+    
+    // Puoi implementare un tuo menu personalizzato
+    mostraMenuPersonalizzato(evento.clientX, evento.clientY);
+});</code></pre>
+    </div>
+    
+    <h2>Event Delegation</h2>
+    <p>
+        L'event delegation è una tecnica che sfrutta il bubbling degli eventi per gestire gli eventi di più elementi con un singolo listener. Questa tecnica è particolarmente utile quando si hanno molti elementi simili o quando gli elementi vengono creati dinamicamente.
+    </p>
+    
+    <div class="example">
+        <pre><code>// Esempio di event delegation per i pulsanti dell'interfaccia
+document.getElementById('ui-buttons').addEventListener('click', function(evento) {
+    // Verifica quale pulsante è stato cliccato
+    if (evento.target.matches('.btn-direzione')) {
+        // Estrai la direzione dal data attribute
+        const direzione = evento.target.dataset.direzione;
+        muoviRana(direzione);
+    } else if (evento.target.matches('#btn-pausa')) {
+        togglePausa();
+    } else if (evento.target.matches('#btn-reset')) {
+        resetGioco();
+    }
+});
+
+// HTML corrispondente
+/*
+<div id="ui-buttons">
+    <button class="btn-direzione" data-direzione="su">↑</button>
+    <button class="btn-direzione" data-direzione="giu">↓</button>
+    <button class="btn-direzione" data-direzione="sinistra">←</button>
+    <button class="btn-direzione" data-direzione="destra">→</button>
+    <button id="btn-pausa">Pausa</button>
+    <button id="btn-reset">Reset</button>
+</div>
+*/</code></pre>
+    </div>
+    
+    <h2>Eventi Personalizzati</h2>
+    <p>
+        JavaScript permette di creare e gestire eventi personalizzati, che possono essere utili per comunicare tra diverse parti dell'applicazione. Nel nostro gioco Frogger, possiamo utilizzare eventi personalizzati per segnalare cambiamenti di stato o per implementare un sistema di notifiche.
+    </p>
+    
+    <div class="example">
+        <pre><code>// Creazione di un evento personalizzato
+function creaEventoGameOver(punteggio) {
+    return new CustomEvent('gameOver', {
+        detail: {
+            punteggio: punteggio,
+            timestamp: new Date().getTime()
+        },
+        bubbles: true,
+        cancelable: true
+    });
+}
+
+// Dispatch dell'evento personalizzato
+function terminaGioco() {
+    const eventoGameOver = creaEventoGameOver(punteggio);
+    document.dispatchEvent(eventoGameOver);
+}
+
+// Ascolto dell'evento personalizzato
+document.addEventListener('gameOver', function(evento) {
+    console.log(`Game Over! Punteggio: ${evento.detail.punteggio}`);
+    mostraSchermataGameOver(evento.detail.punteggio);
+    salvaRecord(evento.detail.punteggio);
+});
+
+// Altri esempi di eventi personalizzati
+const eventiGioco = {
+    livelloCompletato: 'frogger:livelloCompletato',
+    vitaPersa: 'frogger:vitaPersa',
+    bonusRaccolto: 'frogger:bonusRaccolto'
+};
+
+// Dispatch di un evento di livello completato
+function completaLivello(livello, tempoParziale) {
+    const evento = new CustomEvent(eventiGioco.livelloCompletato, {
+        detail: {
+            livello: livello,
+            tempoParziale: tempoParziale,
+            puntiBonus: calcolaPuntiBonus(tempoParziale)
+        }
+    });
+    document.dispatchEvent(evento);
+}
+
+// Ascolto dell'evento di livello completato
+document.addEventListener(eventiGioco.livelloCompletato, function(evento) {
+    const { livello, puntiBonus } = evento.detail;
+    console.log(`Livello ${livello} completato! Bonus: ${puntiBonus} punti`);
+    aggiornaPunteggio(puntiBonus);
+    mostraAnimazioneLivelloCompletato(livello);
+    setTimeout(() => iniziaLivello(livello + 1), 2000);
+});</code></pre>
+    </div>
+    
+    <h2>Gestione degli Eventi nel Loop di Gioco</h2>
+    <p>
+        Nel nostro gioco Frogger, dobbiamo integrare la gestione degli eventi con il loop di gioco per creare un'esperienza interattiva fluida. Ecco come possiamo farlo:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Stato degli input
+const input = {
+    su: false,
+    giu: false,
+    sinistra: false,
+    destra: false,
+    pausa: false
+};
+
+// Gestione degli eventi da tastiera
+document.addEventListener('keydown', function(evento) {
+    switch (evento.key) {
+        case 'ArrowUp':
+            input.su = true;
+            break;
+        case 'ArrowDown':
+            input.giu = true;
+            break;
+        case 'ArrowLeft':
+            input.sinistra = true;
+            break;
+        case 'ArrowRight':
+            input.destra = true;
+            break;
+        case 'p':
+        case 'P':
+            // Toggle della pausa
+            input.pausa = !input.pausa;
+            if (input.pausa) {
+                pausaGioco();
+            } else {
+                riprendiGioco();
+            }
+            break;
+    }
+});
+
+document.addEventListener('keyup', function(evento) {
+    switch (evento.key) {
+        case 'ArrowUp':
+            input.su = false;
+            break;
+        case 'ArrowDown':
+            input.giu = false;
+            break;
+        case 'ArrowLeft':
+            input.sinistra = false;
+            break;
+        case 'ArrowRight':
+            input.destra = false;
+            break;
+    }
+});
+
+// Utilizzo dello stato degli input nel loop di gioco
+function aggiornaGioco(deltaTime) {
+    // Aggiorna la posizione della rana in base agli input
+    if (input.su) {
+        rana.y -= rana.velocita * deltaTime;
+    }
+    if (input.giu) {
+        rana.y += rana.velocita * deltaTime;
+    }
+    if (input.sinistra) {
+        rana.x -= rana.velocita * deltaTime;
+    }
+    if (input.destra) {
+        rana.x += rana.velocita * deltaTime;
+    }
+    
+    // Limita la posizione della rana all'interno del canvas
+    rana.x = Math.max(0, Math.min(rana.x, larghezzaCanvas - rana.larghezza));
+    rana.y = Math.max(0, Math.min(rana.y, altezzaCanvas - rana.altezza));
+    
+    // Aggiorna gli altri elementi del gioco
+    aggiornaOstacoli(deltaTime);
+    verificaCollisioni();
+    aggiornaTimer(deltaTime);
+}
+
+// Loop principale del gioco
+let ultimoTimestamp = 0;
+
+function gameLoop(timestamp) {
+    // Calcola il tempo trascorso dall'ultimo frame
+    const deltaTime = (timestamp - ultimoTimestamp) / 1000; // Converti in secondi
+    ultimoTimestamp = timestamp;
+    
+    // Aggiorna il gioco solo se non è in pausa
+    if (!input.pausa && statoGioco === 'attivo') {
+        aggiornaGioco(deltaTime);
+    }
+    
+    // Disegna lo stato corrente del gioco
+    disegnaGioco();
+    
+    // Continua il loop
+    requestAnimationFrame(gameLoop);
+}</code></pre>
+    </div>
+    
+    <h2>Gestione degli Eventi per Dispositivi Mobili</h2>
+    <p>
+        Per rendere il nostro gioco Frogger accessibile su dispositivi mobili, dobbiamo gestire gli eventi touch in modo appropriato. Ecco alcune tecniche specifiche per i dispositivi mobili:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Rilevamento del tipo di dispositivo
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Configurazione dell'interfaccia in base al dispositivo
+function configuraDipositivo() {
+    const controlliTouch = document.getElementById('controlli-touch');
+    
+    if (isMobile) {
+        // Mostra i controlli touch su dispositivi mobili
+        controlliTouch.style.display = 'flex';
+        
+        // Configura gli eventi touch
+        configuraEventiTouch();
+    } else {
+        // Nascondi i controlli touch su desktop
+        controlliTouch.style.display = 'none';
+        
+        // Configura gli eventi da tastiera
+        configuraEventiTastiera();
+    }
+}
+
+// Gestione degli eventi touch per il gioco
+function configuraEventiTouch() {
+    // Disabilita lo zoom della pagina su dispositivi mobili
+    document.addEventListener('touchmove', function(evento) {
+        if (evento.touches.length > 1) {
+            evento.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Configura i pulsanti di direzione
+    document.getElementById('btn-su').addEventListener('touchstart', function() {
+        input.su = true;
+    });
+    document.getElementById('btn-su').addEventListener('touchend', function() {
+        input.su = false;
+    });
+    
+    document.getElementById('btn-giu').addEventListener('touchstart', function() {
+        input.giu = true;
+    });
+    document.getElementById('btn-giu').addEventListener('touchend', function() {
+        input.giu = false;
+    });
+    
+    document.getElementById('btn-sinistra').addEventListener('touchstart', function() {
+        input.sinistra = true;
+    });
+    document.getElementById('btn-sinistra').addEventListener('touchend', function() {
+        input.sinistra = false;
+    });
+    
+    document.getElementById('btn-destra').addEventListener('touchstart', function() {
+        input.destra = true;
+    });
+    document.getElementById('btn-destra').addEventListener('touchend', function() {
+        input.destra = false;
+    });
+    
+    // Configura il pulsante di pausa
+    document.getElementById('btn-pausa').addEventListener('touchstart', function() {
+        togglePausa();
+    });
+}</code></pre>
+    </div>
+    
+    <h2>Esempio Pratico: Sistema di Controllo Completo per Frogger</h2>
+    <p>
+        Mettiamo insieme tutto ciò che abbiamo imparato per creare un sistema di controllo completo per il nostro gioco Frogger:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Sistema di controllo per il gioco Frogger
+class ControlloGioco {
+    constructor(gioco) {
+        this.gioco = gioco;
+        this.input = {
+            su: false,
+            giu: false,
+            sinistra: false,
+            destra: false,
+            pausa: false,
+            azione: false
+        };
+        
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.configuraControlli();
+    }
+    
+    configuraControlli() {
+        // Configura i controlli appropriati in base al dispositivo
+        if (this.isMobile) {
+            this.configuraControlliTouch();
+        }
+        
+        // Configura sempre i controlli da tastiera (per supportare anche tastiere esterne su mobile)
+        this.configuraControlliTastiera();
+        
+        // Configura i pulsanti dell'interfaccia
+        this.configuraControlliUI();
+        
+        // Configura gli eventi del ciclo di vita della pagina
+        this.configuraEventiPagina();
+    }
+    
+    configuraControlliTastiera() {
+        // Gestione degli eventi keydown
+        document.addEventListener('keydown', (evento) => {
+            // Previeni il comportamento predefinito per i tasti di gioco
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'p', 'P'].includes(evento.key)) {
+                evento.preventDefault();
+            }
+            
+            // Aggiorna lo stato degli input
+            switch (evento.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    this.input.su = true;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    this.input.giu = true;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    this.input.sinistra = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    this.input.destra = true;
+                    break;
+                case ' ':
+                    this.input.azione = true;
+                    break;
+                case 'p':
+                case 'P':
+                    this.togglePausa();
+                    break;
+                case 'r':
+                case 'R':
+                    if (this.gioco.statoGioco === 'gameOver') {
+                        this.gioco.resetGioco();
+                    }
+                    break;
+            }
+        });
+        
+        // Gestione degli eventi keyup
+        document.addEventListener('keyup', (evento) => {
+            switch (evento.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    this.input.su = false;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    this.input.giu = false;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    this.input.sinistra = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    this.input.destra = false;
+                    break;
+                case ' ':
+                    this.input.azione = false;
+                    break;
+            }
+        });
+    }
+    
+    configuraControlliTouch() {
+        const canvas = this.gioco.canvas;
+        
+        // Variabili per il tracking degli swipe
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const SOGLIA_SWIPE = 30;
+        
+        // Gestione degli eventi touch sul canvas
+        canvas.addEventListener('touchstart', (evento) => {
+            evento

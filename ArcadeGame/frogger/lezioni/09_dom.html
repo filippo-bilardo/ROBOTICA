@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manipolazione del DOM | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+        .demo {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Manipolazione del DOM in JavaScript</h1>
+    
+    <h2>Introduzione al DOM</h2>
+    <p>
+        Il DOM (Document Object Model) è un'interfaccia di programmazione che rappresenta la struttura di un documento HTML o XML come un albero di oggetti. Ogni elemento, attributo e testo nel documento è rappresentato come un nodo nell'albero DOM. JavaScript può interagire con il DOM per accedere e modificare dinamicamente il contenuto, la struttura e lo stile di una pagina web.
+    </p>
+    <p>
+        Nel contesto del nostro gioco Frogger, la manipolazione del DOM sarà fondamentale per creare l'interfaccia utente, aggiornare il punteggio, gestire le vite e interagire con gli elementi del gioco al di fuori del canvas.
+    </p>
+    
+    <h2>Accesso agli Elementi del DOM</h2>
+    <p>
+        JavaScript offre diversi metodi per accedere agli elementi del DOM. Ecco i principali che utilizzeremo nel nostro gioco:
+    </p>
+    
+    <h3>1. Accesso tramite ID</h3>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div id="punteggio"&gt;0&lt;/div&gt;
+&lt;div id="vite"&gt;3&lt;/div&gt;
+&lt;canvas id="gameCanvas" width="600" height="600"&gt;&lt;/canvas&gt;
+
+// JavaScript
+const punteggioElement = document.getElementById('punteggio');
+const viteElement = document.getElementById('vite');
+const canvas = document.getElementById('gameCanvas');
+
+// Accesso al contesto 2D del canvas
+const ctx = canvas.getContext('2d');</code></pre>
+    </div>
+    
+    <h3>2. Accesso tramite Selettori CSS</h3>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div class="info-gioco"&gt;
+    &lt;span class="livello"&gt;Livello: 1&lt;/span&gt;
+    &lt;span class="tempo"&gt;Tempo: 60&lt;/span&gt;
+&lt;/div&gt;
+&lt;button class="btn-pausa"&gt;Pausa&lt;/button&gt;
+
+// JavaScript
+// Seleziona il primo elemento che corrisponde al selettore
+const livelloElement = document.querySelector('.livello');
+const pausaButton = document.querySelector('.btn-pausa');
+
+// Seleziona tutti gli elementi che corrispondono al selettore
+const infoElements = document.querySelectorAll('.info-gioco span');
+
+// Itera su tutti gli elementi selezionati
+infoElements.forEach(element => {
+    console.log(element.textContent);
+});</code></pre>
+    </div>
+    
+    <h3>3. Accesso tramite Relazioni tra Nodi</h3>
+    <div class="example">
+        <pre><code>// HTML
+&lt;div id="container"&gt;
+    &lt;div id="game-info"&gt;
+        &lt;div id="punteggio"&gt;0&lt;/div&gt;
+        &lt;div id="vite"&gt;3&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+&lt;/div&gt;
+
+// JavaScript
+const container = document.getElementById('container');
+
+// Accesso ai nodi figli
+const figli = container.children;
+console.log(`Il container ha ${figli.length} figli diretti`);
+
+// Accesso al primo e all'ultimo figlio
+const primoFiglio = container.firstElementChild;
+const ultimoFiglio = container.lastElementChild;
+
+// Accesso al genitore di un elemento
+const punteggio = document.getElementById('punteggio');
+const gameInfo = punteggio.parentElement;
+
+// Accesso ai fratelli (siblings)
+const vite = document.getElementById('vite');
+const fratelloPrecedente = vite.previousElementSibling; // punteggio
+const fratelloSuccessivo = punteggio.nextElementSibling; // vite</code></pre>
+    </div>
+    
+    <h2>Modifica del Contenuto degli Elementi</h2>
+    <p>
+        Una volta selezionati gli elementi del DOM, possiamo modificarne il contenuto in diversi modi:
+    </p>
+    
+    <h3>1. Modifica del Testo</h3>
+    <div class="example">
+        <pre><code>// Aggiornamento del punteggio
+function aggiornaPunteggio(punti) {
+    const punteggioElement = document.getElementById('punteggio');
+    punteggioElement.textContent = `Punteggio: ${punti}`;
+}
+
+// Aggiornamento delle vite
+function aggiornaVite(vite) {
+    const viteElement = document.getElementById('vite');
+    viteElement.textContent = `Vite: ${vite}`;
+    
+    // Cambia il colore in base al numero di vite rimanenti
+    if (vite <= 1) {
+        viteElement.style.color = 'red';
+    } else {
+        viteElement.style.color = 'black';
+    }
+}</code></pre>
+    </div>
+    
+    <h3>2. Modifica dell'HTML</h3>
+    <div class="example">
+        <pre><code>// Aggiornamento del pannello di stato del gioco
+function aggiornaPannelloStato(stato) {
+    const pannelloStato = document.getElementById('stato-gioco');
+    
+    switch (stato) {
+        case 'inizio':
+            pannelloStato.innerHTML = `
+                <h2>Benvenuto a Frogger!</h2>
+                <p>Usa le frecce direzionali per muovere la rana.</p>
+                <button id="btn-inizia">Inizia Gioco</button>
+            `;
+            // Aggiungi event listener al nuovo bottone
+            document.getElementById('btn-inizia').addEventListener('click', iniziaGioco);
+            break;
+            
+        case 'pausa':
+            pannelloStato.innerHTML = `
+                <h2>Gioco in Pausa</h2>
+                <p>Premi P per continuare</p>
+            `;
+            break;
+            
+        case 'gameOver':
+            pannelloStato.innerHTML = `
+                <h2>Game Over!</h2>
+                <p>Punteggio finale: ${punteggio}</p>
+                <button id="btn-riprova">Riprova</button>
+            `;
+            document.getElementById('btn-riprova').addEventListener('click', resetGioco);
+            break;
+    }
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> Quando si utilizza <code>innerHTML</code>, è importante fare attenzione a possibili vulnerabilità di sicurezza come gli attacchi XSS (Cross-Site Scripting). Nel contesto del nostro gioco, dove controlliamo direttamente il contenuto, questo non è un problema, ma in applicazioni che accettano input dall'utente, è consigliabile utilizzare metodi più sicuri o sanitizzare l'input.
+    </div>
+    
+    <h2>Creazione e Manipolazione di Elementi</h2>
+    <p>
+        JavaScript permette di creare nuovi elementi e aggiungerli al DOM dinamicamente:
+    </p>
+    
+    <h3>1. Creazione di Elementi</h3>
+    <div class="example">
+        <pre><code>// Creazione di un elemento per visualizzare un messaggio di bonus
+function mostraBonus(tipo, valore) {
+    // Crea un nuovo elemento div
+    const bonusElement = document.createElement('div');
+    
+    // Imposta attributi e contenuto
+    bonusElement.className = 'bonus-message';
+    bonusElement.textContent = `${tipo}: +${valore} punti!`;
+    
+    // Imposta stili inline
+    bonusElement.style.position = 'absolute';
+    bonusElement.style.top = '100px';
+    bonusElement.style.left = '50%';
+    bonusElement.style.transform = 'translateX(-50%)';
+    bonusElement.style.backgroundColor = 'gold';
+    bonusElement.style.padding = '10px';
+    bonusElement.style.borderRadius = '5px';
+    bonusElement.style.fontWeight = 'bold';
+    bonusElement.style.zIndex = '100';
+    
+    // Aggiungi l'elemento al body
+    document.body.appendChild(bonusElement);
+    
+    // Rimuovi l'elemento dopo 2 secondi
+    setTimeout(() => {
+        bonusElement.remove();
+    }, 2000);
+}</code></pre>
+    </div>
+    
+    <h3>2. Manipolazione della Struttura del DOM</h3>
+    <div class="example">
+        <pre><code>// Funzione per creare e visualizzare le destinazioni della rana
+function creaDestinazioni(numero) {
+    const destinazioniContainer = document.getElementById('destinazioni');
+    
+    // Rimuovi eventuali destinazioni esistenti
+    destinazioniContainer.innerHTML = '';
+    
+    // Crea le nuove destinazioni
+    for (let i = 0; i < numero; i++) {
+        const destinazione = document.createElement('div');
+        destinazione.className = 'destinazione';
+        destinazione.dataset.index = i;
+        
+        // Aggiungi un'immagine di ninfea
+        const ninfea = document.createElement('img');
+        ninfea.src = 'images/ninfea.png';
+        ninfea.alt = 'Ninfea';
+        destinazione.appendChild(ninfea);
+        
+        // Aggiungi la destinazione al container
+        destinazioniContainer.appendChild(destinazione);
+    }
+}
+
+// Funzione per segnare una destinazione come raggiunta
+function segnaDestinazioneRaggiunta(indice) {
+    const destinazioni = document.querySelectorAll('.destinazione');
+    
+    if (indice >= 0 && indice < destinazioni.length) {
+        const destinazione = destinazioni[indice];
+        
+        // Crea un'immagine della rana
+        const ranaImg = document.createElement('img');
+        ranaImg.src = 'images/rana.png';
+        ranaImg.alt = 'Rana';
+        ranaImg.className = 'rana-arrivata';
+        
+        // Rimuovi eventuali figli esistenti e aggiungi la rana
+        destinazione.innerHTML = '';
+        destinazione.appendChild(ranaImg);
+        
+        // Aggiungi una classe per lo stile
+        destinazione.classList.add('raggiunta');
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Gestione degli Attributi e delle Classi</h2>
+    <p>
+        JavaScript offre metodi specifici per manipolare attributi e classi degli elementi DOM:
+    </p>
+    
+    <h3>1. Gestione degli Attributi</h3>
+    <div class="example">
+        <pre><code>// Funzione per aggiornare l'immagine della rana in base alla direzione
+function aggiornaImmagineRana(direzione) {
+    const ranaImg = document.getElementById('rana-img');
+    
+    // Imposta l'attributo src in base alla direzione
+    switch (direzione) {
+        case 'su':
+            ranaImg.setAttribute('src', 'images/rana_su.png');
+            break;
+        case 'giu':
+            ranaImg.setAttribute('src', 'images/rana_giu.png');
+            break;
+        case 'sinistra':
+            ranaImg.setAttribute('src', 'images/rana_sinistra.png');
+            break;
+        case 'destra':
+            ranaImg.setAttribute('src', 'images/rana_destra.png');
+            break;
+    }
+    
+    // Verifica se un attributo esiste
+    if (ranaImg.hasAttribute('data-direzione')) {
+        // Aggiorna l'attributo esistente
+        ranaImg.setAttribute('data-direzione', direzione);
+    } else {
+        // Aggiungi un nuovo attributo
+        ranaImg.dataset.direzione = direzione;
+    }
+    
+    // Rimuovi un attributo
+    if (ranaImg.hasAttribute('data-animazione')) {
+        ranaImg.removeAttribute('data-animazione');
+    }
+}</code></pre>
+    </div>
+    
+    <h3>2. Gestione delle Classi</h3>
+    <div class="example">
+        <pre><code>// Funzione per aggiornare lo stato visivo del gioco
+function aggiornaStatoVisivo(stato) {
+    const gameContainer = document.getElementById('game-container');
+    
+    // Rimuovi tutte le classi di stato precedenti
+    gameContainer.classList.remove('stato-gioco', 'stato-pausa', 'stato-gameover');
+    
+    // Aggiungi la classe appropriata in base allo stato
+    switch (stato) {
+        case 'gioco':
+            gameContainer.classList.add('stato-gioco');
+            break;
+        case 'pausa':
+            gameContainer.classList.add('stato-pausa');
+            break;
+        case 'gameover':
+            gameContainer.classList.add('stato-gameover');
+            break;
+    }
+    
+    // Verifica se una classe esiste
+    const haClasseAttivo = gameContainer.classList.contains('attivo');
+    
+    if (!haClasseAttivo && stato === 'gioco') {
+        gameContainer.classList.add('attivo');
+    } else if (haClasseAttivo && stato !== 'gioco') {
+        gameContainer.classList.remove('attivo');
+    }
+    
+    // Alterna una classe (toggle)
+    if (stato === 'pausa') {
+        document.getElementById('overlay').classList.toggle('visibile');
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Gestione degli Stili</h2>
+    <p>
+        JavaScript permette di manipolare direttamente gli stili CSS degli elementi DOM:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Funzione per animare la transizione tra livelli
+function animazioneNuovoLivello(livello) {
+    const overlay = document.getElementById('level-transition');
+    
+    // Imposta il testo del livello
+    overlay.textContent = `Livello ${livello}`;
+    
+    // Imposta gli stili per l'animazione
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0';
+    overlay.style.fontSize = '48px';
+    overlay.style.color = '#fff';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.transition = 'opacity 0.5s ease-in-out';
+    overlay.style.zIndex = '1000';
+    
+    // Avvia l'animazione
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 500);
+        }, 1500);
+    }, 100);
+}
+
+// Funzione per aggiornare la barra del tempo
+function aggiornaBarra(percentuale) {
+    const barra = document.getElementById('barra-tempo');
+    
+    // Aggiorna la larghezza della barra
+    barra.style.width = `${percentuale}%`;
+    
+    // Cambia il colore in base alla percentuale
+    if (percentuale > 60) {
+        barra.style.backgroundColor = '#4CAF50'; // Verde
+    } else if (percentuale > 30) {
+        barra.style.backgroundColor = '#FFC107'; // Giallo
+    } else {
+        barra.style.backgroundColor = '#F44336'; // Rosso
+    }
+}</code></pre>
+    </div>
+    
+    <h2>Eventi del DOM</h2>
+    <p>
+        Gli eventi del DOM permettono di rispondere alle interazioni dell'utente e ad altri cambiamenti nella pagina. Nel nostro gioco Frogger, utilizzeremo principalmente gli eventi da tastiera per controllare la rana, ma anche altri eventi per gestire l'interfaccia utente.
+    </p>
+    
+    <h3>1. Aggiunta di Event Listener</h3>
+    <div class="example">
+        <pre><code>// Gestione degli input da tastiera
+function configuraTastiereControlli() {
+    document.addEventListener('keydown', (evento) => {
+        // Previeni il comportamento predefinito per i tasti freccia
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evento.key)) {
+            evento.preventDefault();
+        }
+        
+        // Gestisci l'input solo se il gioco è attivo
+        if (statoGioco === 'gioco') {
+            switch (evento.key) {
+                case 'ArrowUp':
+                    muoviRana('su');
+                    break;
+                case 'ArrowDown':
+                    muoviRana('giu');
+                    break;
+                case 'ArrowLeft':
+                    muoviRana('sinistra');
+                    break;
+                case 'ArrowRight':
+                    muoviRana('destra');
+                    break;
+            }
+        }
+        
+        // Gestione della pausa con il tasto P
+        if (evento.key === 'p' || evento.key === 'P') {
+            togglePausa();
+        }
+    });
+}
+
+// Gestione dei pulsanti dell'interfaccia
+function configuraControlliUI() {
+    // Pulsante di pausa
+    document.getElementById('btn-pausa').addEventListener('click', togglePausa);
+    
+    // Pulsante di reset
+    document.getElementById('btn-reset').addEventListener('click', resetGioco);
+    
+    // Pulsanti direzionali per dispositivi touch
+    document.getElementById('btn-su').addEventListener('click', () => muoviRana('su'));
+    document.getElementById('btn-giu').addEventListener('click', () => muoviRana('giu'));
+    document.getElementById('btn-sinistra').addEventListener('click', () => muoviRana('sinistra'));
+    document.getElementById('btn-destra').addEventListener('click', () => muoviRana('destra'));
+}</code></pre>
+    </div>
+    
+    <h3>2. Rimozione di Event Listener</h3>
+    <div class="example">
+        <pre><code>// Funzione per gestire la fine del gioco
+function fineGioco() {
+    // Rimuovi gli event listener per evitare interazioni indesiderate
+    const gestoreKeydown = (evento) => {
+        // Implementazione dell'handler
+    };
+    
+    document.removeEventListener('keydown', gestoreKeydown);
+    
+    // Mostra la schermata di game over
+    mostraGameOver();
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> Per rimuovere correttamente un event listener, è necessario passare la stessa funzione che è stata utilizzata per aggiungerlo. Per questo motivo, è spesso utile memorizzare i riferimenti alle funzioni handler in variabili o proprietà.
+    </div>
+    
+    <h2>Esempio Pratico: Interfaccia del Gioco Frogger</h2>
+    <p>
+        Vediamo come utilizzare le tecniche di manipolazione del DOM per creare l'interfaccia del nostro gioco Frogger:
+    </p>
+    
+    <div class="example">
+        <pre><code>// HTML di base per l'interfaccia del gioco
+&lt;div id="game-container"&gt;
+    &lt;div id="game-header"&gt;
+        &lt;div id="punteggio"&gt;Punteggio: 0&lt;/div&gt;
+        &lt;div id="livello"&gt;Livello: 1&lt;/div&gt;
+        &lt;div id="vite"&gt;Vite: 3&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="tempo-container"&gt;
+        &lt;div id="barra-tempo"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;canvas id="gameCanvas" width="600" height="600"&gt;&lt;/canvas&gt;
+    
+    &lt;div id="controlli-touch"&gt;
+        &lt;button id="btn-su"&gt;↑&lt;/button&gt;
+        &lt;button id="btn-giu"&gt;↓&lt;/button&gt;
+        &lt;button id="btn-sinistra"&gt;←&lt;/button&gt;
+        &lt;button id="btn-destra"&gt;→&lt;/button&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="game-footer"&gt;
+        &lt;button id="btn-pausa"&gt;Pausa&lt;/button&gt;
+        &lt;button id="btn-reset"&gt;Ricomincia&lt;/button&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="overlay" class="hidden"&gt;
+        &lt;div id="stato-gioco"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div id="level-transition" class="hidden"&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+// JavaScript per inizializzare l'interfaccia
+function inizializzaInterfaccia() {
+    // Riferimenti agli elementi DOM
+    const gameContainer = document.getElementById('game-container');
+    const punteggioElement = document.getElementById('punteggio');
+    const livelloElement = document.getElementById('livello');
+    const viteElement = document.getElementById('vite');
+    const barraTempo = document.getElementById('barra-tempo');
+    const canvas = document.getElementById('gameCanvas');
+    const overlay = document.getElementById('overlay');
+    const statoGioco = document.getElementById('stato-gioco');
+    
+    // Inizializza il contesto del canvas
+    const ctx = canvas.getContext('2d');
+    
+    // Configura gli event listener
+    configuraTastiereControlli();
+    configuraControlliUI();
+    
+    // Mostra la schermata iniziale
+    mostraSchermataIniziale();
+    
+    return {
+        ctx,
+        aggiornaPunteggio: (punti) => {
+            punteggioElement.textContent = `Punteggio: ${punti}`;
+        },
+        aggiornaLivello: (livello) => {
+            livelloElement.textContent = `Livello: ${livello}`;
+            animazioneNuovoLivello(livello);
+        },
+        aggiornaVite: (vite) => {
+            viteElement.textContent = `Vite: ${vite}`;
+            if (vite <= 1) {
+                viteElement.style.color = 'red';
+            } else {
+                viteElement.style.color = 'black';
+            }
+        },
+        aggiornaTempo: (percentuale) => {
+            barraTempo.style.width = `${percentuale}%`;
+            if (percentuale > 60) {
+                barraTempo.style.backgroundColor = '#4CAF50';
+            } else if (percentuale > 30) {
+                barraTempo.style.backgroundColor = '#FFC107';
+            } else {
+                barraTempo.style.backgroundColor = '#F44336';
+            }
+        },
+        mostraOverlay: (visibile, contenuto) => {
+            overlay.classList.toggle('hidden', !visibile);
+            if (contenuto) {
+                statoGioco.innerHTML = contenuto;
+            }
+        }
+    };
+}
+
+// Funzione per mostrare la schermata iniziale
+function mostraSchermataIniziale() {
+    const statoGioco = document.getElementById('stato-gioco');
+    const overlay = document.getElementById('overlay');
+    
+    // Mostra l'overlay
+    overlay.classList.remove('hidden');
+    
+    // Imposta il contenuto della schermata iniziale
+    statoGioco.innerHTML = `
+        <h1>Frogger</h1>
+        <p>Aiuta la rana ad attraversare la strada e il fiume per raggiungere le ninfee!</p>
+        <p>Usa le frecce direzionali per muovere la rana.</p>
+        <button id="btn-inizia">Inizia Gioco</button>
+    `;
+    
+    // Aggiungi event listener al pulsante di inizio
+    document.getElementById('btn-inizia').addEventListener('click', () => {
+        overlay.classList.add('hidden');
+        iniziaGioco();
+    });
+}</code></pre>
+    </div>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti esercizi per mettere in pratica ciò che hai imparato:
+    </p>
+    <ol>
+        <li>Crea una funzione <code>mostraMessaggio</code> che accetta un messaggio e un tipo ("successo", "errore", "info") e mostra un messaggio temporaneo nella parte superiore dello schermo con lo stile appropriato.</li>
+        <li>Implementa una funzione <code>aggiornaClassifica</code> che accetta un array di punteggi e nomi e aggi

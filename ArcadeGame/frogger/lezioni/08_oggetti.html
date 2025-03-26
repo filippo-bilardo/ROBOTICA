@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oggetti e Array in JavaScript | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Oggetti e Array in JavaScript</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Gli oggetti e gli array sono strutture dati fondamentali in JavaScript che ci permettono di organizzare e manipolare dati complessi. Nel nostro gioco Frogger, utilizzeremo queste strutture per rappresentare elementi come la rana, gli ostacoli, i veicoli e molto altro. In questa lezione, esploreremo come creare e utilizzare oggetti e array in JavaScript e come applicarli nel contesto del nostro gioco.
+    </p>
+    
+    <h2>Oggetti in JavaScript</h2>
+    <p>
+        Un oggetto in JavaScript è una collezione di coppie chiave-valore, dove ogni chiave è una stringa (o un simbolo) e ogni valore può essere di qualsiasi tipo di dato, inclusi altri oggetti o funzioni.
+    </p>
+    
+    <h3>Creazione di Oggetti</h3>
+    <p>
+        Ci sono diversi modi per creare oggetti in JavaScript:
+    </p>
+    
+    <h4>1. Notazione Letterale</h4>
+    <div class="example">
+        <pre><code>// Creazione di un oggetto rana usando la notazione letterale
+const rana = {
+    x: 300,
+    y: 550,
+    larghezza: 30,
+    altezza: 30,
+    velocita: 5,
+    vite: 3,
+    colore: "green",
+    inSalto: false
+};</code></pre>
+    </div>
+    
+    <h4>2. Costruttore Object</h4>
+    <div class="example">
+        <pre><code>// Creazione di un oggetto veicolo usando il costruttore Object
+const veicolo = new Object();
+veicolo.x = 0;
+veicolo.y = 200;
+veicolo.larghezza = 60;
+veicolo.altezza = 40;
+veicolo.velocita = 3;
+veicolo.tipo = "auto";
+veicolo.colore = "red";</code></pre>
+    </div>
+    
+    <h4>3. Funzioni Costruttore</h4>
+    <div class="example">
+        <pre><code>// Definizione di una funzione costruttore per gli ostacoli
+function Ostacolo(x, y, larghezza, altezza, velocita, tipo) {
+    this.x = x;
+    this.y = y;
+    this.larghezza = larghezza;
+    this.altezza = altezza;
+    this.velocita = velocita;
+    this.tipo = tipo;
+    this.attivo = true;
+}
+
+// Creazione di un nuovo ostacolo usando la funzione costruttore
+const tronco = new Ostacolo(100, 250, 80, 30, 2, "tronco");</code></pre>
+    </div>
+    
+    <h4>4. Classi (ES6+)</h4>
+    <div class="example">
+        <pre><code>// Definizione di una classe per i bonus
+class Bonus {
+    constructor(x, y, tipo, valore) {
+        this.x = x;
+        this.y = y;
+        this.larghezza = 25;
+        this.altezza = 25;
+        this.tipo = tipo;
+        this.valore = valore;
+        this.raccolto = false;
+    }
+    
+    // Metodo per verificare se il bonus è stato raccolto dalla rana
+    verificaRaccolta(ranaX, ranaY, ranaLarghezza, ranaAltezza) {
+        if (this.raccolto) return false;
+        
+        if (this.x < ranaX + ranaLarghezza &&
+            this.x + this.larghezza > ranaX &&
+            this.y < ranaY + ranaAltezza &&
+            this.y + this.altezza > ranaY) {
+            this.raccolto = true;
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+// Creazione di un nuovo bonus usando la classe
+const moneta = new Bonus(200, 300, "moneta", 100);</code></pre>
+    </div>
+    
+    <h3>Accesso alle Proprietà degli Oggetti</h3>
+    <p>
+        Ci sono due modi principali per accedere alle proprietà di un oggetto:
+    </p>
+    
+    <h4>1. Notazione a Punto</h4>
+    <div class="example">
+        <pre><code>// Accesso alle proprietà della rana usando la notazione a punto
+console.log("Posizione della rana: (" + rana.x + ", " + rana.y + ")");
+rana.x += rana.velocita; // Sposta la rana orizzontalmente
+console.log("Nuova posizione X della rana: " + rana.x);</code></pre>
+    </div>
+    
+    <h4>2. Notazione a Parentesi</h4>
+    <div class="example">
+        <pre><code>// Accesso alle proprietà del veicolo usando la notazione a parentesi
+console.log("Tipo di veicolo: " + veicolo["tipo"]);
+
+// Utile quando il nome della proprietà è memorizzato in una variabile
+const proprieta = "velocita";
+console.log("Velocità del veicolo: " + veicolo[proprieta]);
+
+// Modifica di una proprietà
+veicolo["velocita"] = 5;
+console.log("Nuova velocità del veicolo: " + veicolo.velocita);</code></pre>
+    </div>
+    
+    <h3>Metodi degli Oggetti</h3>
+    <p>
+        I metodi sono funzioni che sono proprietà di un oggetto. Possono accedere e modificare le proprietà dell'oggetto utilizzando la parola chiave <code>this</code>.
+    </p>
+    
+    <div class="example">
+        <pre><code>// Aggiunta di metodi all'oggetto rana
+rana.muovi = function(direzione) {
+    switch (direzione) {
+        case "su":
+            this.y -= this.velocita;
+            break;
+        case "giu":
+            this.y += this.velocita;
+            break;
+        case "sinistra":
+            this.x -= this.velocita;
+            break;
+        case "destra":
+            this.x += this.velocita;
+            break;
+    }
+    console.log(`Rana spostata a (${this.x}, ${this.y})`);
+};
+
+rana.salta = function() {
+    if (!this.inSalto) {
+        this.inSalto = true;
+        console.log("La rana sta saltando!");
+        
+        // Dopo 500ms, termina il salto
+        setTimeout(() => {
+            this.inSalto = false;
+            console.log("La rana ha completato il salto.");
+        }, 500);
+    }
+};
+
+// Utilizzo dei metodi
+rana.muovi("su");
+rana.salta();</code></pre>
+    </div>
+    
+    <h3>Iterazione sulle Proprietà di un Oggetto</h3>
+    <p>
+        Ci sono diversi modi per iterare sulle proprietà di un oggetto:
+    </p>
+    
+    <div class="example">
+        <pre><code>// Utilizzo di for...in per iterare sulle proprietà di un oggetto
+console.log("Proprietà della rana:");
+for (const proprieta in rana) {
+    if (typeof rana[proprieta] !== "function") { // Esclude i metodi
+        console.log(`${proprieta}: ${rana[proprieta]}`);
+    }
+}
+
+// Utilizzo di Object.keys() per ottenere un array delle chiavi
+const chiavi = Object.keys(veicolo);
+console.log("Chiavi dell'oggetto veicolo:", chiavi);
+
+// Utilizzo di Object.values() per ottenere un array dei valori
+const valori = Object.values(veicolo);
+console.log("Valori dell'oggetto veicolo:", valori);
+
+// Utilizzo di Object.entries() per ottenere coppie chiave-valore
+const entries = Object.entries(veicolo);
+console.log("Entries dell'oggetto veicolo:");
+for (const [chiave, valore] of entries) {
+    console.log(`${chiave}: ${valore}`);
+}</code></pre>
+    </div>
+    
+    <h2>Array in JavaScript</h2>
+    <p>
+        Gli array sono collezioni ordinate di elementi, dove ogni elemento può essere di qualsiasi tipo. In JavaScript, gli array sono oggetti speciali con proprietà e metodi specifici per la manipolazione di liste di dati.
+    </p>
+    
+    <h3>Creazione di Array</h3>
+    <div class="example">
+        <pre><code>// Creazione di un array di ostacoli usando la notazione letterale
+const ostacoli = [
+    { x: 100, y: 150, larghezza: 60, altezza: 30, velocita: 2, tipo: "auto" },
+    { x: 300, y: 150, larghezza: 60, altezza: 30, velocita: 2, tipo: "auto" },
+    { x: 50, y: 200, larghezza: 100, altezza: 30, velocita: 1, tipo: "camion" },
+    { x: 250, y: 250, larghezza: 80, altezza: 30, velocita: 3, tipo: "tronco" },
+    { x: 400, y: 250, larghezza: 80, altezza: 30, velocita: 3, tipo: "tronco" }
+];
+
+// Creazione di un array usando il costruttore Array
+const vite = new Array(3); // Crea un array con 3 elementi vuoti
+
+// Creazione di un array con valori iniziali
+const livelli = new Array("facile", "medio", "difficile");
+
+// Array di posizioni iniziali per le rane
+const posizioniIniziali = [
+    { x: 200, y: 550 },
+    { x: 300, y: 550 },
+    { x: 400, y: 550 }
+];</code></pre>
+    </div>
+    
+    <h3>Accesso agli Elementi di un Array</h3>
+    <div class="example">
+        <pre><code>// Accesso agli elementi di un array usando l'indice (base 0)
+const primoOstacolo = ostacoli[0];
+console.log(`Primo ostacolo: tipo ${primoOstacolo.tipo} a posizione (${primoOstacolo.x}, ${primoOstacolo.y})`);
+
+// Modifica di un elemento
+ostacoli[1].velocita = 4;
+console.log(`Velocità del secondo ostacolo aggiornata a: ${ostacoli[1].velocita}`);
+
+// Accesso all'ultimo elemento
+const ultimoOstacolo = ostacoli[ostacoli.length - 1];
+console.log(`Ultimo ostacolo: tipo ${ultimoOstacolo.tipo}`);</code></pre>
+    </div>
+    
+    <h3>Metodi Comuni degli Array</h3>
+    <p>
+        JavaScript fornisce numerosi metodi per manipolare gli array. Ecco alcuni dei più utili per il nostro gioco Frogger:
+    </p>
+    
+    <h4>1. Aggiunta e Rimozione di Elementi</h4>
+    <div class="example">
+        <pre><code>// Aggiunta di un nuovo ostacolo alla fine dell'array
+ostacoli.push({ x: 150, y: 300, larghezza: 70, altezza: 30, velocita: 2, tipo: "tartaruga" });
+console.log(`Numero di ostacoli dopo push: ${ostacoli.length}`);
+
+// Rimozione dell'ultimo ostacolo
+const ostacoloRimosso = ostacoli.pop();
+console.log(`Ostacolo rimosso: tipo ${ostacoloRimosso.tipo}`);
+console.log(`Numero di ostacoli dopo pop: ${ostacoli.length}`);
+
+// Aggiunta di un nuovo ostacolo all'inizio dell'array
+ostacoli.unshift({ x: 0, y: 100, larghezza: 50, altezza: 30, velocita: 4, tipo: "moto" });
+console.log(`Numero di ostacoli dopo unshift: ${ostacoli.length}`);
+
+// Rimozione del primo ostacolo
+const primoOstacoloRimosso = ostacoli.shift();
+console.log(`Primo ostacolo rimosso: tipo ${primoOstacoloRimosso.tipo}`);
+console.log(`Numero di ostacoli dopo shift: ${ostacoli.length}`);</code></pre>
+    </div>
+    
+    <h4>2. Iterazione sugli Elementi</h4>
+    <div class="example">
+        <pre><code>// Utilizzo di for...of per iterare sugli elementi di un array
+console.log("Elenco degli ostacoli:");
+for (const ostacolo of ostacoli) {
+    console.log(`Tipo: ${ostacolo.tipo}, Posizione: (${ostacolo.x}, ${ostacolo.y}), Velocità: ${ostacolo.velocita}`);
+}
+
+// Utilizzo di forEach
+console.log("\nAggiornamento delle posizioni degli ostacoli:");
+ostacoli.forEach((ostacolo, indice) => {
+    ostacolo.x += ostacolo.velocita;
+    console.log(`Ostacolo ${indice}: nuova posizione X = ${ostacolo.x}`);
+});</code></pre>
+    </div>
+    
+    <h4>3. Filtraggio e Trasformazione</h4>
+    <div class="example">
+        <pre><code>// Utilizzo di filter per trovare ostacoli di un certo tipo
+const tronchi = ostacoli.filter(ostacolo => ostacolo.tipo === "tronco");
+console.log(`Numero di tronchi trovati: ${tronchi.length}`);
+
+// Utilizzo di map per creare un nuovo array con proprietà modificate
+const ostacoliVeloci = ostacoli.map(ostacolo => {
+    return {
+        ...ostacolo, // Copia tutte le proprietà esistenti
+        velocita: ostacolo.velocita * 1.5 // Aumenta la velocità del 50%
+    };
+});
+console.log("Ostacoli con velocità aumentata:");
+ostacoliVeloci.forEach(ostacolo => {
+    console.log(`Tipo: ${ostacolo.tipo}, Velocità: ${ostacolo.velocita}`);
+});
+
+// Utilizzo di find per trovare il primo ostacolo che soddisfa una condizione
+const ostacoloVeloce = ostacoli.find(ostacolo => ostacolo.velocita > 2);
+console.log(`Primo ostacolo veloce trovato: tipo ${ostacoloVeloce.tipo}, velocità ${ostacoloVeloce.velocita}`);</code></pre>
+    </div>
+    
+    <h4>4. Ordinamento</h4>
+    <div class="example">
+        <pre><code>// Ordinamento degli ostacoli per velocità (dal più lento al più veloce)
+ostacoli.sort((a, b) => a.velocita - b.velocita);
+console.log("Ostacoli ordinati per velocità:");
+ostacoli.forEach(ostacolo => {
+    console.log(`Tipo: ${ostacolo.tipo}, Velocità: ${ostacolo.velocita}`);
+});
+
+// Ordinamento degli ostacoli per tipo (ordine alfabetico)
+ostacoli.sort((a, b) => a.tipo.localeCompare(b.tipo));
+console.log("\nOstacoli ordinati per tipo:");
+ostacoli.forEach(ostacolo => {
+    console.log(`Tipo: ${ostacolo.tipo}, Velocità: ${ostacolo.velocita}`);
+});</code></pre>
+    </div>
+    
+    <h2>Utilizzo di Oggetti e Array nel Gioco Frogger</h2>
+    <p>
+        Nel nostro gioco Frogger, utilizzeremo oggetti e array per rappresentare e gestire i vari elementi del gioco. Ecco alcuni esempi pratici:
+    </p>
+    
+    <h3>Esempio: Gestione degli Ostacoli</h3>
+    <div class="example">
+        <pre><code>// Definizione della classe Ostacolo
+class Ostacolo {
+    constructor(x, y, larghezza, altezza, velocita, tipo, direzione = 1) {
+        this.x = x;
+        this.y = y;
+        this.larghezza = larghezza;
+        this.altezza = altezza;
+        this.velocita = velocita;
+        this.tipo = tipo;
+        this.direzione = direzione; // 1 per destra, -1 per sinistra
+    }
+    
+    // Metodo per aggiornare la posizione dell'ostacolo
+    aggiorna() {
+        this.x += this.velocita * this.direzione;
+        
+        // Se l'ostacolo esce dallo schermo, lo riposiziona dall'altro lato
+        if (this.direzione > 0 && this.x > larghezzaCanvas) {
+            this.x = -this.larghezza;
+        } else if (this.direzione < 0 && this.x + this.larghezza < 0) {
+            this.x = larghezzaCanvas;
+        }
+    }
+    
+    // Metodo per disegnare l'ostacolo sul canvas
+    disegna(ctx) {
+        // Imposta il colore in base al tipo di ostacolo
+        switch (this.tipo) {
+            case "auto":
+                ctx.fillStyle = "red";
+                break;
+            case "camion":
+                ctx.fillStyle = "blue";
+                break;
+            case "tronco":
+                ctx.fillStyle = "brown";
+                break;
+            case "tartaruga":
+                ctx.fillStyle = "green";
+                break;
+            default:
+                ctx.fillStyle = "gray";
+        }
+        
+        ctx.fillRect(this.x, this.y, this.larghezza, this.altezza);
+    }
+    
+    // Metodo per verificare la collisione con la rana
+    collisioneCon(rana) {
+        return (
+            this.x < rana.x + rana.larghezza &&
+            this.x + this.larghezza > rana.x &&
+            this.y < rana.y + rana.altezza &&
+            this.y + this.altezza > rana.y
+        );
+    }
+}
+
+// Creazione di un array di ostacoli per il gioco
+function creaOstacoli() {
+    const ostacoli = [];
+    
+    // Riga 1: auto che si muovono verso destra
+    for (let i = 0; i < 3; i++) {
+        ostacoli.push(new Ostacolo(i * 200, 400, 60, 30, 2, "auto", 1));
+    }
+    
+    // Riga 2: camion che si muovono verso sinistra
+    for (let i = 0; i < 2; i++) {
+        ostacoli.push(new Ostacolo(i * 250 + 100, 350, 100, 30, 1.5, "camion", -1));
+    }
+    
+    // Riga 3: tronchi che si muovono verso destra
+    for (let i = 0; i < 3; i++) {
+        ostacoli.push(new Ostacolo(i * 220, 250, 80, 30, 1, "tronco", 1));
+    }
+    
+    // Riga 4: tartarughe che si muovono verso sinistra
+    for (let i = 0; i < 4; i++) {
+        ostacoli.push(new Ostacolo(i * 150, 200, 50, 30, 1.2, "tartaruga", -1));
+    }
+    
+    return ostacoli;
+}
+
+// Utilizzo degli ostacoli nel loop di gioco
+function gameLoop() {
+    // Pulisci il canvas
+    ctx.clearRect(0, 0, larghezzaCanvas, altezzaCanvas);
+    
+    // Aggiorna e disegna tutti gli ostacoli
+    for (const ostacolo of ostacoli) {
+        ostacolo.aggiorna();
+        ostacolo.disegna(ctx);
+        
+        // Verifica collisione con la rana
+        if (ostacolo.collisioneCon(rana)) {
+            if (ostacolo.tipo === "tronco" || ostacolo.tipo === "tartaruga") {
+                // La rana può stare su tronchi e tartarughe
+                rana.x += ostacolo.velocita * ostacolo.direzione;
+            } else {
+                // Collisione con veicoli: la rana perde una vita
+                perdiVita();
+            }
+        }
+    }
+    
+    // Disegna la rana
+    rana.disegna(ctx);
+    
+    // Continua il loop di gioco
+    requestAnimationFrame(gameLoop);
+}</code></pre>
+    </div>
+    
+    <h3>Esempio: Gestione dei Livelli</h3>
+    <div class="example">
+        <pre><code>// Definizione dei livelli di gioco come array di oggetti
+const livelli = [
+    {
+        numero: 1,
+        nome: "Principiante",
+        velocitaBase: 1,
+        tempoLimite: 60, // secondi
+        puntiBonus: 1000,
+        configurazione: {
+            righeStrada: 3,
+            righeFiume: 2,
+            densitaOstacoli: 0.7
+        }
+    },
+    {
+        numero: 2,
+        nome: "Intermedio",
+        velocitaBase: 1.5,
+        tempoLimite: 50,
+        puntiBonus: 2000,
+        configurazione: {
+            righeStrada: 4,
+            righeFiume: 3,
+            densitaOstacoli: 0.8
+        }
+    },
+    {
+        numero: 3,
+        nome: "Avanzato",
+        velocitaBase: 2,
+        tempoLimite: 40,
+        puntiBonus: 3000,
+        configurazione: {
+            righeStrada: 5,
+            righeFiume: 4,
+            densitaOstacoli: 0.9
+        }
+    }
+];
+
+// Funzione per inizializzare un livello
+function inizializzaLivello(numeroLivello) {
+    // Trova il livello corrispondente
+    const livelloCorrente = livelli.find(livello => livello.numero === numeroLivello);
+    
+    if (!livelloCorrente) {
+        console.error(`Livello ${numeroLivello} non trovato!`);
+        return;
+    }
+    
+    console.log(`Inizializzazione del livello ${numeroLivello}: ${livelloCorrente.nome}`);
+    
+    // Imposta il tempo rimanente
+    tempoRimanente = livelloCorrente.tempoLimite;
+    
+    // Crea gli ostacoli in base alla configurazione del livello
+    ostacoli = [];
+    
+    // Crea le righe della strada
+    for (let i = 0; i < livelloCorrente.configurazione.righeStrada; i++) {
+        const y = 300 + i * 50;
+        const direzione = i % 2 === 0 ? 1 : -1;
+        const tipo = i % 3 === 0 ? "camion" : "auto";
+        const velocita = livelloCorrente.velocitaBase * (1 + i * 0.2);
+        
+        // Calcola il numero di ostacoli in base alla densità
+        const numOstacoli = Math.floor(larghezzaCanvas / 200 * livelloCorrente.configurazione.densitaOstacoli);
+        
+        for (let j = 0; j < numOstacoli; j++) {
+            const larghezza = tipo === "camion" ? 100 : 60;
+            const x = j * (larghezzaCanvas / numOstacoli) + Math.random() * 50;
+            
+            ostacoli.push(new Ostacolo(x, y, larghezza, 30, velocita, tipo, direzione));
+        }
+    }
+    
+    // Crea le righe del fiume
+    for (let i = 0; i < livelloCorrente.configurazione.righeFiume; i++) {
+        const y = 100 + i * 50;
+        const direzione = i % 2 === 0 ? 1 : -1;
+        const tipo = i % 2 === 0 ? "tronco" : "tartaruga";
+        const velocita = livelloCorrente.velocitaBase * (0.8 + i * 0.1);
+        
+        // Calcola il numero di ostacoli in base alla densità
+        const numOstacoli = Math.floor(larghezzaCanvas / 200 * livelloCorrente.configurazione.densitaOstacoli);
+        
+        for (let j = 0; j < numOstacoli; j++) {
+            const larghezza = tipo === "tronco" ? 80 : 50;
+            const x = j * (larghezzaCanvas / numOstacoli) + Math.random() * 30;
+            
+            ostacoli.push(new Ostacolo(x, y, larghezza, 30, velocita, tipo, direzione));
+        }
+    }
+    
+    // Posiziona la rana al punto di partenza
+    rana.x = larghezzaCanvas / 2 - rana.larghezza / 2;
+    rana.y = altezzaCanvas - rana.altezza - 10;
+    
+    console.log(`Creati ${ostacoli.length} ostacoli per il livello ${numeroLivello}`);
+}</code></pre>
+    </div>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti

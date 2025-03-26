@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Struttura Base del Progetto | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .file-structure {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Struttura Base del Progetto</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Una buona organizzazione del progetto è fondamentale per lo sviluppo di qualsiasi applicazione, incluso il nostro gioco Frogger. In questa lezione, esploreremo in dettaglio la struttura del progetto che abbiamo introdotto nella lezione precedente e creeremo i file di base necessari per iniziare a sviluppare il gioco.
+    </p>
+    
+    <h2>Panoramica della Struttura del Progetto</h2>
+    <p>
+        Ecco la struttura completa del nostro progetto Frogger:
+    </p>
+    <div class="file-structure">
+frogger/
+├── index.html        # Pagina principale del gioco
+├── css/
+│   └── style.css    # Fogli di stile
+├── js/
+│   ├── game.js      # Logica principale del gioco
+│   ├── player.js    # Classe per il giocatore (rana)
+│   ├── obstacle.js  # Classe per gli ostacoli
+│   └── utils.js     # Funzioni di utilità
+└── assets/
+    ├── images/      # Immagini del gioco
+    └── sounds/      # Effetti sonori</div>
+    
+    <h2>Spiegazione dei File e delle Cartelle</h2>
+    
+    <h3>1. File HTML (index.html)</h3>
+    <p>
+        Il file <code>index.html</code> è il punto di ingresso del nostro gioco. Contiene la struttura HTML di base, i collegamenti ai file CSS e l'inclusione dei file JavaScript.
+    </p>
+    <div class="example">
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Frogger - Gioco JavaScript&lt;/title&gt;
+    &lt;link rel="stylesheet" href="css/style.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Frogger&lt;/h1&gt;
+    &lt;div id="game-container"&gt;
+        &lt;canvas id="game-canvas" width="600" height="600"&gt;&lt;/canvas&gt;
+    &lt;/div&gt;
+    &lt;div id="game-info"&gt;
+        &lt;p&gt;Punteggio: &lt;span id="score"&gt;0&lt;/span&gt;&lt;/p&gt;
+        &lt;p&gt;Vite: &lt;span id="lives"&gt;3&lt;/span&gt;&lt;/p&gt;
+        &lt;button id="start-button"&gt;Inizia Gioco&lt;/button&gt;
+    &lt;/div&gt;
+    
+    &lt;script src="js/utils.js"&gt;&lt;/script&gt;
+    &lt;script src="js/player.js"&gt;&lt;/script&gt;
+    &lt;script src="js/obstacle.js"&gt;&lt;/script&gt;
+    &lt;script src="js/game.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+    </div>
+    <p>
+        Nota che abbiamo aggiunto un elemento <code>&lt;canvas&gt;</code> all'interno del contenitore del gioco. Canvas è un elemento HTML5 che ci permette di disegnare grafica e animazioni utilizzando JavaScript. Sarà la base del nostro gioco Frogger.
+    </p>
+    
+    <h3>2. Cartella CSS (css/style.css)</h3>
+    <p>
+        Il file <code>style.css</code> contiene tutti gli stili necessari per il nostro gioco. Ecco una versione più completa rispetto a quella vista nella lezione precedente:
+    </p>
+    <div class="example">
+        <pre><code>body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+#game-container {
+    width: 600px;
+    height: 600px;
+    margin: 0 auto;
+    position: relative;
+}
+
+#game-canvas {
+    background-color: #000;
+    display: block;
+    border: 2px solid #333;
+}
+
+#game-info {
+    margin-top: 20px;
+    font-size: 18px;
+}
+
+#start-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+#start-button:hover {
+    background-color: #3498db;
+}</code></pre>
+    </div>
+    
+    <h3>3. Cartella JavaScript (js/)</h3>
+    <p>
+        La cartella <code>js</code> contiene tutti i file JavaScript necessari per il nostro gioco. Abbiamo suddiviso il codice in più file per una migliore organizzazione e manutenibilità.
+    </p>
+    
+    <h4>3.1. utils.js</h4>
+    <p>
+        Questo file contiene funzioni di utilità che possono essere utilizzate in tutto il progetto.
+    </p>
+    <div class="example">
+        <pre><code>/**
+ * Funzioni di utilità per il gioco

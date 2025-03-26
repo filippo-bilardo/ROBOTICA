@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funzioni in JavaScript | Corso Frogger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .navigation {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .navigation a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+        }
+        .navigation a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        .example {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-left: 4px solid #f0ad4e;
+            margin: 20px 0;
+        }
+        .flowchart {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Funzioni in JavaScript</h1>
+    
+    <h2>Introduzione</h2>
+    <p>
+        Le funzioni sono blocchi di codice riutilizzabili che eseguono un compito specifico. Sono fondamentali nella programmazione perché permettono di organizzare il codice in unità logiche, evitare la ripetizione e migliorare la leggibilità e la manutenibilità del codice. In questa lezione, esploreremo come definire e utilizzare le funzioni in JavaScript e come applicarle nel nostro gioco Frogger.
+    </p>
+    
+    <h2>Dichiarazione di Funzioni</h2>
+    <p>
+        In JavaScript, ci sono diversi modi per dichiarare una funzione. Vediamo i principali metodi che utilizzeremo nel nostro gioco.
+    </p>
+    
+    <h3>1. Dichiarazione di Funzione</h3>
+    <p>
+        La sintassi più comune per dichiarare una funzione è la seguente:
+    </p>
+    <div class="example">
+        <pre><code>function nomeFunzione(parametro1, parametro2, ...) {
+    // Corpo della funzione
+    // Istruzioni da eseguire
+    return risultato; // Opzionale
+}</code></pre>
+    </div>
+    
+    <p>Ecco un esempio pratico per il nostro gioco Frogger:</p>
+    <div class="example">
+        <pre><code>// Funzione per verificare la collisione tra due oggetti
+function verificaCollisione(obj1X, obj1Y, obj1Larghezza, obj1Altezza, obj2X, obj2Y, obj2Larghezza, obj2Altezza) {
+    // Verifica se gli oggetti si sovrappongono
+    if (obj1X < obj2X + obj2Larghezza &&
+        obj1X + obj1Larghezza > obj2X &&
+        obj1Y < obj2Y + obj2Altezza &&
+        obj1Y + obj1Altezza > obj2Y) {
+        // Collisione rilevata
+        return true;
+    }
+    // Nessuna collisione
+    return false;
+}</code></pre>
+    </div>
+    
+    <h3>2. Espressione di Funzione</h3>
+    <p>
+        Un'altra modalità per dichiarare una funzione è attraverso un'espressione di funzione, dove la funzione viene assegnata a una variabile:
+    </p>
+    <div class="example">
+        <pre><code>const nomeFunzione = function(parametro1, parametro2, ...) {
+    // Corpo della funzione
+    // Istruzioni da eseguire
+    return risultato; // Opzionale
+};</code></pre>
+    </div>
+    
+    <p>Esempio per il nostro gioco:</p>
+    <div class="example">
+        <pre><code>// Funzione per aggiornare il punteggio
+const aggiornaPunteggio = function(punti) {
+    punteggio += punti;
+    document.getElementById('punteggio').textContent = 'Punteggio: ' + punteggio;
+    
+    // Verifica se è stato raggiunto un nuovo livello
+    if (punteggio >= livelloSuccessivo) {
+        aumentaLivello();
+    }
+};</code></pre>
+    </div>
+    
+    <h3>3. Funzioni Freccia (Arrow Functions)</h3>
+    <p>
+        Le funzioni freccia sono una sintassi più concisa introdotta in ES6 (ECMAScript 2015):
+    </p>
+    <div class="example">
+        <pre><code>const nomeFunzione = (parametro1, parametro2, ...) => {
+    // Corpo della funzione
+    // Istruzioni da eseguire
+    return risultato; // Opzionale
+};</code></pre>
+    </div>
+    
+    <p>Per funzioni semplici con una sola espressione, la sintassi può essere ancora più concisa:</p>
+    <div class="example">
+        <pre><code>const nomeFunzione = (parametro1, parametro2, ...) => espressione;</code></pre>
+    </div>
+    
+    <p>Esempio per il nostro gioco:</p>
+    <div class="example">
+        <pre><code>// Funzione per calcolare la distanza tra due punti
+const calcolaDistanza = (x1, y1, x2, y2) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+// Versione più concisa per funzioni semplici
+const èFuoriSchermo = (x, y) => x < 0 || x > larghezzaCanvas || y < 0 || y > altezzaCanvas;</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> Le funzioni freccia hanno alcune differenze importanti rispetto alle funzioni tradizionali, in particolare nel modo in cui gestiscono il valore di <code>this</code>. Nelle funzioni freccia, <code>this</code> mantiene il valore del contesto in cui la funzione è stata definita, mentre nelle funzioni tradizionali <code>this</code> dipende da come la funzione viene chiamata.
+    </div>
+    
+    <h2>Parametri e Argomenti</h2>
+    <p>
+        I parametri sono variabili elencate nella definizione della funzione, mentre gli argomenti sono i valori effettivamente passati alla funzione quando viene chiamata.
+    </p>
+    
+    <h3>1. Parametri di Default</h3>
+    <p>
+        JavaScript permette di specificare valori predefiniti per i parametri, che vengono utilizzati se non viene fornito un argomento corrispondente:
+    </p>
+    <div class="example">
+        <pre><code>function inizializzaGioco(difficolta = 'normale', viteIniziali = 3) {
+    console.log(`Inizializzazione gioco con difficoltà: ${difficolta} e ${viteIniziali} vite`);
+    // Altre istruzioni di inizializzazione
+}
+
+// Chiamata con tutti i parametri
+inizializzaGioco('facile', 5); // Output: "Inizializzazione gioco con difficoltà: facile e 5 vite"
+
+// Chiamata con parametri parziali
+inizializzaGioco('difficile'); // Output: "Inizializzazione gioco con difficoltà: difficile e 3 vite"
+
+// Chiamata senza parametri
+inizializzaGioco(); // Output: "Inizializzazione gioco con difficoltà: normale e 3 vite"</code></pre>
+    </div>
+    
+    <h3>2. Parametri Rest</h3>
+    <p>
+        I parametri rest permettono di rappresentare un numero indefinito di argomenti come un array:
+    </p>
+    <div class="example">
+        <pre><code>function creaOstacoli(...posizioni) {
+    console.log(`Creazione di ${posizioni.length} ostacoli`);
+    
+    for (const pos of posizioni) {
+        const ostacolo = {
+            x: pos.x,
+            y: pos.y,
+            larghezza: 50,
+            altezza: 30,
+            velocita: 2
+        };
+        ostacoli.push(ostacolo);
+        console.log(`Ostacolo creato a (${pos.x}, ${pos.y})`);
+    }
+}
+
+// Chiamata con più argomenti
+creaOstacoli(
+    {x: 100, y: 150},
+    {x: 300, y: 200},
+    {x: 500, y: 250}
+); // Crea 3 ostacoli alle posizioni specificate</code></pre>
+    </div>
+    
+    <h2>Valori di Ritorno</h2>
+    <p>
+        Le funzioni possono restituire un valore utilizzando l'istruzione <code>return</code>. Se non viene specificato un valore di ritorno, la funzione restituisce <code>undefined</code>.
+    </p>
+    <div class="example">
+        <pre><code>// Funzione che restituisce un valore booleano
+function èLivelloCompletato() {
+    // Verifica se tutte le rane hanno raggiunto la destinazione
+    return raneArrivate >= raneNecessarie;
+}
+
+// Funzione che restituisce un oggetto
+function creaRana(x, y) {
+    return {
+        x: x,
+        y: y,
+        larghezza: 30,
+        altezza: 30,
+        vite: 3,
+        inSalto: false
+    };
+}
+
+// Utilizzo dei valori di ritorno
+if (èLivelloCompletato()) {
+    console.log("Livello completato! Passaggio al livello successivo.");
+    passaAlLivelloSuccessivo();
+}
+
+const nuovaRana = creaRana(300, 550);
+console.log(`Nuova rana creata a (${nuovaRana.x}, ${nuovaRana.y}) con ${nuovaRana.vite} vite`);</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> L'istruzione <code>return</code> termina immediatamente l'esecuzione della funzione e restituisce il valore specificato. Qualsiasi codice dopo l'istruzione <code>return</code> non verrà eseguito.
+    </div>
+    
+    <h2>Scope delle Variabili</h2>
+    <p>
+        Lo scope di una variabile determina dove la variabile è accessibile nel codice. In JavaScript, ci sono principalmente tre tipi di scope:
+    </p>
+    
+    <h3>1. Scope Globale</h3>
+    <p>
+        Le variabili dichiarate fuori da qualsiasi funzione o blocco hanno scope globale e sono accessibili da qualsiasi parte del codice.
+    </p>
+    <div class="example">
+        <pre><code>// Variabili globali per il gioco Frogger
+let punteggio = 0;
+let vite = 3;
+let livello = 1;
+
+function aggiornaPunteggio(punti) {
+    punteggio += punti; // Accesso a una variabile globale
+    console.log(`Punteggio aggiornato: ${punteggio}`);
+}
+
+function perdiVita() {
+    vite--; // Accesso a una variabile globale
+    console.log(`Vita persa! Vite rimanenti: ${vite}`);
+}</code></pre>
+    </div>
+    
+    <h3>2. Scope di Funzione</h3>
+    <p>
+        Le variabili dichiarate all'interno di una funzione sono accessibili solo all'interno di quella funzione.
+    </p>
+    <div class="example">
+        <pre><code>function muoviRana(direzione) {
+    // Variabili locali alla funzione
+    let spostamentoX = 0;
+    let spostamentoY = 0;
+    
+    // Determina lo spostamento in base alla direzione
+    switch (direzione) {
+        case "su":
+            spostamentoY = -30;
+            break;
+        case "giu":
+            spostamentoY = 30;
+            break;
+        case "sinistra":
+            spostamentoX = -30;
+            break;
+        case "destra":
+            spostamentoX = 30;
+            break;
+    }
+    
+    // Aggiorna la posizione della rana
+    ranaX += spostamentoX;
+    ranaY += spostamentoY;
+    
+    console.log(`Rana spostata a (${ranaX}, ${ranaY})`);
+    
+    // spostamentoX e spostamentoY non sono accessibili fuori da questa funzione
+}</code></pre>
+    </div>
+    
+    <h3>3. Scope di Blocco</h3>
+    <p>
+        Le variabili dichiarate con <code>let</code> e <code>const</code> all'interno di un blocco (delimitato da parentesi graffe) sono accessibili solo all'interno di quel blocco.
+    </p>
+    <div class="example">
+        <pre><code>function aggiornaOstacoli() {
+    for (let i = 0; i < ostacoli.length; i++) {
+        // i è accessibile solo all'interno di questo ciclo
+        ostacoli[i].x += ostacoli[i].velocita;
+        
+        // Verifica se l'ostacolo è uscito dallo schermo
+        if (ostacoli[i].x > larghezzaCanvas) {
+            // Questa variabile è accessibile solo all'interno di questo blocco if
+            const nuovaPosizione = -ostacoli[i].larghezza;
+            ostacoli[i].x = nuovaPosizione;
+        }
+    }
+    // i e nuovaPosizione non sono accessibili qui
+}</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> È generalmente consigliabile limitare lo scope delle variabili il più possibile per evitare conflitti di nomi e rendere il codice più manutenibile. Preferisci l'uso di <code>let</code> e <code>const</code> rispetto a <code>var</code>, poiché hanno uno scope di blocco più prevedibile.
+    </div>
+    
+    <h2>Funzioni Anonime e Callback</h2>
+    <p>
+        Le funzioni anonime sono funzioni senza nome, spesso utilizzate come callback (funzioni passate come argomenti ad altre funzioni).
+    </p>
+    <div class="example">
+        <pre><code>// Utilizzo di una funzione anonima come callback per un timer
+setTimeout(function() {
+    console.log("Il gioco inizierà tra poco...");
+    iniziaGioco();
+}, 3000); // Esegue la funzione dopo 3 secondi
+
+// Utilizzo di una funzione freccia come callback per un evento
+document.addEventListener('keydown', (evento) => {
+    // Gestisce l'evento di pressione dei tasti
+    gestisciInput(evento.key);
+});</code></pre>
+    </div>
+    
+    <h2>Funzioni Ricorsive</h2>
+    <p>
+        Una funzione ricorsiva è una funzione che chiama se stessa. Questo può essere utile per risolvere problemi che possono essere suddivisi in sottoproblemi simili.
+    </p>
+    <div class="example">
+        <pre><code>// Funzione ricorsiva per creare un labirinto
+function creaLabirinto(x, y, larghezza, altezza, profondita) {
+    // Caso base: se la profondità è 0 o l'area è troppo piccola, termina
+    if (profondita <= 0 || larghezza < 30 || altezza < 30) {
+        return;
+    }
+    
+    // Crea un muro divisorio
+    const divisioneOrizzontale = larghezza < altezza;
+    
+    if (divisioneOrizzontale) {
+        // Divisione orizzontale
+        const muroY = y + Math.floor(Math.random() * (altezza - 20)) + 10;
+        const aperturaX = x + Math.floor(Math.random() * (larghezza - 20));
+        
+        // Crea il muro con un'apertura
+        for (let i = 0; i < larghezza; i++) {
+            if (i < aperturaX || i > aperturaX + 20) {
+                muri.push({x: x + i, y: muroY, tipo: 'orizzontale'});
+            }
+        }
+        
+        // Ricorsione per le due sezioni create
+        creaLabirinto(x, y, larghezza, muroY - y, profondita - 1); // Sezione superiore
+        creaLabirinto(x, muroY, larghezza, altezza - (muroY - y), profondita - 1); // Sezione inferiore
+    } else {
+        // Divisione verticale
+        const muroX = x + Math.floor(Math.random() * (larghezza - 20)) + 10;
+        const aperturaY = y + Math.floor(Math.random() * (altezza - 20));
+        
+        // Crea il muro con un'apertura
+        for (let i = 0; i < altezza; i++) {
+            if (i < aperturaY || i > aperturaY + 20) {
+                muri.push({x: muroX, y: y + i, tipo: 'verticale'});
+            }
+        }
+        
+        // Ricorsione per le due sezioni create
+        creaLabirinto(x, y, muroX - x, altezza, profondita - 1); // Sezione sinistra
+        creaLabirinto(muroX, y, larghezza - (muroX - x), altezza, profondita - 1); // Sezione destra
+    }
+}
+
+// Utilizzo della funzione ricorsiva
+creaLabirinto(0, 0, larghezzaCanvas, altezzaCanvas, 4);</code></pre>
+    </div>
+    
+    <div class="note">
+        <strong>Nota:</strong> Quando si utilizzano funzioni ricorsive, è importante definire un caso base che termini la ricorsione, altrimenti si rischia di causare un errore di stack overflow.
+    </div>
+    
+    <h2>Funzioni nel Gioco Frogger</h2>
+    <p>
+        Nel nostro gioco Frogger, utilizzeremo funzioni per organizzare il codice in modo logico e modulare. Ecco alcune delle principali funzioni che implementeremo:
+    </p>
+    
+    <h3>Esempio: Struttura Principale del Gioco</h3>
+    <div class="example">
+        <pre><code>// Inizializzazione del gioco
+function inizializzaGioco() {
+    // Inizializza variabili e oggetti del gioco
+    punteggio = 0;
+    vite = 3;
+    livello = 1;
+    inGioco = true;
+    
+    // Inizializza la rana
+    inizializzaRana();
+    
+    // Inizializza gli ostacoli
+    inizializzaOstacoli();
+    
+    // Inizializza l'interfaccia utente
+    aggiornaUI();
+    
+    console.log("Gioco inizializzato!");
+}
+
+// Loop principale del gioco
+function gameLoop() {
+    // Verifica se il gioco è attivo
+    if (!inGioco) {
+        return;
+    }
+    
+    // Aggiorna gli elementi del gioco
+    aggiornaOstacoli();
+    verificaCollisioni();
+    verificaCompletamento();
+    
+    // Disegna gli elementi del gioco
+    disegnaGioco();
+    
+    // Richiama il loop per il prossimo frame
+    requestAnimationFrame(gameLoop);
+}
+
+// Gestione degli input
+function gestisciInput(tasto) {
+    // Verifica se il gioco è attivo
+    if (!inGioco) {
+        if (tasto === "Enter") {
+            inizializzaGioco();
+            gameLoop();
+        }
+        return;
+    }
+    
+    // Gestisci i tasti di movimento
+    switch (tasto) {
+        case "ArrowUp":
+            muoviRana("su");
+            break;
+        case "ArrowDown":
+            muoviRana("giu");
+            break;
+        case "ArrowLeft":
+            muoviRana("sinistra");
+            break;
+        case "ArrowRight":
+            muoviRana("destra");
+            break;
+        case "p":
+        case "P":
+            togglePausa();
+            break;
+    }
+}
+
+// Avvia il gioco quando la pagina è caricata
+window.onload = function() {
+    // Configura il canvas
+    configuraTela();
+    
+    // Aggiungi gli event listener
+    document.addEventListener("keydown", function(evento) {
+        gestisciInput(evento.key);
+    });
+    
+    // Mostra la schermata iniziale
+    mostraSchermataIniziale();
+    
+    console.log("Frogger pronto per iniziare!");
+};</code></pre>
+    </div>
+    
+    <h2>Esercizi Pratici</h2>
+    <p>
+        Prova a completare i seguenti esercizi per mettere in pratica ciò che hai imparato:
+    </p>
+    <ol>
+        <li>Scrivi una funzione <code>disegnaRana</code> che accetta le coordinate x e y e disegna la rana sul canvas.</li>
+        <li>Crea una funzione <code>generaOstacoliCasuali</code> che genera un numero specificato di ostacoli con posizioni e velocità casuali.</li>
+        <li>Implementa una funzione <code>salvaRecord</code> che salva il punteggio più alto utilizzando <code>localStorage</code>.</li>
+        <li>Scrivi una funzione ricorsiva <code>creaLivello</code> che genera un livello di gioco con una complessità basata sul livello attuale.</li>
+    </ol>
+    
+    <div class="navigation">
+        <a href="06_controllo.html">Lezione Precedente: Strutture di Controllo</a>
+        <a href="08_oggetti.html">Prossima Lezione: Oggetti e Array</a>
+    </div>
+</body>
+</html>
