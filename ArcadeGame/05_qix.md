@@ -28,6 +28,9 @@ Qix è un classico gioco arcade sviluppato da Taito e rilasciato nel 1981. Il gi
 - Progressione di difficoltà con livelli sempre più impegnativi
 - Timer che impedisce al giocatore di rimanere fermo troppo a lungo
 
+- [gioco online](<https://www.retrogames.cz/play_866-NES.php>)
+- [gioco online](<https://gam.onl/arcade/super-qix.html#super-qix>)
+
 ## Implementazione in JavaScript
 
 La versione HTML/JavaScript di Qix implementa tutte le caratteristiche classiche del gioco originale. Ecco una spiegazione delle principali componenti del codice:

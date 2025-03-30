@@ -1,619 +1,444 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Qix Clone</title>
+    <title>Qix Clone</title>
     <style>
         body {
+            margin: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #111;
-            font-family: 'Courier New', Courier, monospace;
-            color: #eee;
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
         }
-        canvas {
-            border: 2px solid #0f0;
-            background-color: #000;
+        
+        #gameCanvas {
+            border: 2px solid gold;
+            background-color: black;
+            margin-top: 10px;
         }
-        #info {
-            margin-top: 15px;
-            font-size: 1.2em;
+        
+        h1 {
+            color: gold;
+            text-shadow: 2px 2px 4px #000;
         }
-        #controls {
-             margin-top: 10px;
-             font-size: 0.9em;
-             color: #aaa;
+        
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 20px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: gold;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        #scoreDisplay {
+            font-size: 24px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Simple Qix Clone</h1>
+    <h1>Qix Clone</h1>
+    <div id="scoreDisplay">Score: 0</div>
+    <div class="controls">
+        <button id="startButton">Start Game</button>
+        <button id="pauseButton">Pause</button>
+    </div>
     <canvas id="gameCanvas" width="600" height="400"></canvas>
-    <div id="info">
-        Vite: <span id="lives">3</span> | Area: <span id="area">0</span>% | Livello: <span id="level">1</span>
+    <div class="instructions">
+        <p><strong>Controls:</strong> Arrow keys to move. Space to start claiming territory.</p>
+        <p><strong>Goal:</strong> Claim at least 75% of the play area while avoiding the Qix enemies.</p>
     </div>
-     <div id="controls">
-        Frecce: Muovi | Shift + Frecce: Disegna | R: Riavvia
-    </div>
-    <div id="message" style="margin-top: 10px; color: yellow; font-weight: bold;"></div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const infoLives = document.getElementById('lives');
-        const infoArea = document.getElementById('area');
-        const infoLevel = document.getElementById('level');
-        const messageDiv = document.getElementById('message');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
 
-        // --- Costanti di Gioco ---
-        const PLAYER_SIZE = 10;
-        const PLAYER_COLOR = '#0f0';
-        const DRAW_COLOR_SLOW = '#0ff'; // Ciano
-        const DRAW_COLOR_FAST = '#f0f'; // Magenta
-        const BORDER_THICKNESS = 5; // Spessore bordo visibile
-        const QIX_COLOR = 'red';
-        const QIX_SIZE = 15;
-        const SPARX_COLOR = 'yellow';
-        const SPARX_SIZE = 8;
-        const FILLED_COLOR = 'blue';
-        const TARGET_AREA_PERCENT = 75;
-
-        // --- Stato del Gioco ---
-        let player, qix, sparx = [], drawingPath, currentLines;
-        let lives, scoreArea, level, totalArea;
-        let isDrawing, isDrawingFast, currentDirection, isGameOver;
-        let gameLoopTimeout;
-
-        // --- Funzioni Helper ---
-        function clamp(value, min, max) {
-            return Math.min(Math.max(value, min), max);
-        }
-
-        function resetLine(x, y, horizontal = true) {
-             return { x1: x, y1: y, x2: x, y2: y, horizontal: horizontal };
-        }
-
-        function initGame() {
-            clearTimeout(gameLoopTimeout); // Ferma il loop precedente se esiste
-            isGameOver = false;
-            lives = 3;
-            scoreArea = 0;
-            level = 1;
-            isDrawing = false;
-            isDrawingFast = false;
-            drawingPath = [];
-            messageDiv.textContent = "";
-
-            // Area giocabile interna ai bordi visibili
-            const innerWidth = canvas.width - 2 * BORDER_THICKNESS;
-            const innerHeight = canvas.height - 2 * BORDER_THICKNESS;
-            totalArea = innerWidth * innerHeight;
-
-            // Linee rappresentano le aree riempite (rettangoli per semplicità)
-            // Inizialmente solo il bordo esterno
-             currentLines = [
-                 // Rappresentiamo le aree *non* riempite (inizia come un grande rettangolo)
-                 { x: BORDER_THICKNESS, y: BORDER_THICKNESS, w: innerWidth, h: innerHeight }
-             ];
-
-            // Posiziona giocatore all'inizio
-            player = {
-                x: BORDER_THICKNESS,
-                y: BORDER_THICKNESS,
-                speed: 3,
-                onEdge: true // Indica se il giocatore è sul bordo
-            };
-
-            // Posiziona Qix (semplificato come un punto che si muove)
-            qix = {
-                x: canvas.width / 2,
-                y: canvas.height / 2,
-                vx: (Math.random() - 0.5) * 4,
-                vy: (Math.random() - 0.5) * 4,
-                speed: 2 + level // Aumenta velocità con livello
-            };
-
-             // Posiziona Sparx (semplificato come punti sul bordo)
-             sparx = [];
-             spawnSparx(1); // Inizia con uno Sparx
-
-
-            currentDirection = null; // Nessuna direzione iniziale
-
-            updateInfo();
-            gameLoop();
-        }
-
-        function spawnSparx(count) {
-             sparx = []; // Rimuovi vecchi sparx
-            for (let i = 0; i < count; i++) {
-                 sparx.push({
-                     x: BORDER_THICKNESS + Math.random() * (canvas.width - 2 * BORDER_THICKNESS),
-                     y: BORDER_THICKNESS, // Inizia sul bordo superiore
-                     speed: 1.5 + level * 0.5,
-                     edgePos: 0, // Posizione lungo il perimetro
-                     perimeter: 2 * (canvas.width - 2*BORDER_THICKNESS) + 2 * (canvas.height - 2*BORDER_THICKNESS)
-                 });
-            }
-        }
-
-
-        function updateInfo() {
-            infoLives.textContent = lives;
-             // Calcola area riempita sommando le aree *non* nel primo rettangolo 'currentLines[0]'
-             // Questo è MOLTO semplificato e non corretto per forme complesse
-             let filledAreaCalc = totalArea;
-             if (currentLines.length > 0) {
-                 filledAreaCalc -= currentLines[0].w * currentLines[0].h; // Sottrae l'area non riempita principale
-             }
-
-
-            let percentage = totalArea > 0 ? Math.floor((filledAreaCalc / totalArea) * 100) : 0;
-            scoreArea = Math.max(0, percentage); // Assicurati non sia negativo
-            infoArea.textContent = scoreArea;
-            infoLevel.textContent = level;
-
-            if (scoreArea >= TARGET_AREA_PERCENT) {
-                levelComplete();
-            }
-        }
-
-        function gameOver() {
-            isGameOver = true;
-            messageDiv.textContent = "GAME OVER! Premi R per riprovare.";
-             clearTimeout(gameLoopTimeout); // Stoppa il game loop
-        }
-
-        function loseLife() {
-            lives--;
-            updateInfo();
-            if (lives <= 0) {
-                gameOver();
-            } else {
-                // Reset posizione giocatore, cancella linea in corso
-                player.x = BORDER_THICKNESS;
-                player.y = BORDER_THICKNESS;
-                player.onEdge = true;
-                isDrawing = false;
-                drawingPath = [];
-                currentDirection = null;
-                messageDiv.textContent = "Vita persa!";
-                setTimeout(() => { messageDiv.textContent = ""; }, 1500);
-            }
-        }
-
-         function levelComplete() {
-             isGameOver = true; // Pausa temporanea
-             messageDiv.textContent = `Livello ${level} Completato! Area: ${scoreArea}%`;
-             clearTimeout(gameLoopTimeout);
-             setTimeout(() => {
-                 level++;
-                 // Rendi più difficile
-                 spawnSparx(level); // Aggiungi uno sparx per livello
-                 initGame(); // Riavvia per il nuovo livello (resetta area per ora)
-                // Nota: in un gioco reale, manterresti l'area e aumenteresti solo difficoltà
-             }, 3000);
-         }
-
-        // --- Logica di Movimento e Disegno ---
-
-        function movePlayer() {
-            if (!currentDirection || isGameOver) return;
-
-            let dx = 0;
-            let dy = 0;
-            let currentSpeed = (isDrawing && isDrawingFast) ? player.speed * 2 : player.speed;
-
-            switch (currentDirection) {
-                case 'ArrowUp':    dy = -currentSpeed; break;
-                case 'ArrowDown':  dy = currentSpeed;  break;
-                case 'ArrowLeft':  dx = -currentSpeed; break;
-                case 'ArrowRight': dx = currentSpeed;  break;
-            }
-
-             let nextX = player.x + dx;
-             let nextY = player.y + dy;
-
-            // Logica movimento sul BORDO
-            if (!isDrawing) {
-                player.onEdge = true; // Sei sempre sul bordo se non disegni
-                // Movimento vincolato ai bordi esterni
-                if (player.y === BORDER_THICKNESS && dx !== 0) { // Bordo alto
-                    player.x = clamp(nextX, BORDER_THICKNESS, canvas.width - BORDER_THICKNESS - PLAYER_SIZE);
-                } else if (player.y === canvas.height - BORDER_THICKNESS - PLAYER_SIZE && dx !== 0) { // Bordo basso
-                     player.x = clamp(nextX, BORDER_THICKNESS, canvas.width - BORDER_THICKNESS - PLAYER_SIZE);
-                } else if (player.x === BORDER_THICKNESS && dy !== 0) { // Bordo sinistro
-                     player.y = clamp(nextY, BORDER_THICKNESS, canvas.height - BORDER_THICKNESS - PLAYER_SIZE);
-                } else if (player.x === canvas.width - BORDER_THICKNESS - PLAYER_SIZE && dy !== 0) { // Bordo destro
-                     player.y = clamp(nextY, BORDER_THICKNESS, canvas.height - BORDER_THICKNESS - PLAYER_SIZE);
-                }
-                 // Gestione angoli (permette di cambiare direzione)
-                 else if (player.y === BORDER_THICKNESS && dy < 0) player.y = BORDER_THICKNESS; // Non superare bordo alto
-                 else if (player.y === canvas.height - BORDER_THICKNESS - PLAYER_SIZE && dy > 0) player.y = canvas.height - BORDER_THICKNESS - PLAYER_SIZE; // Non superare bordo basso
-                 else if (player.x === BORDER_THICKNESS && dx < 0) player.x = BORDER_THICKNESS; // Non superare bordo sx
-                 else if (player.x === canvas.width - BORDER_THICKNESS - PLAYER_SIZE && dx > 0) player.x = canvas.width - BORDER_THICKNESS - PLAYER_SIZE; // Non superare bordo dx
-                 // Se arrivi a un angolo, permetti cambio asse
-                  else if ( (player.x === BORDER_THICKNESS || player.x === canvas.width - BORDER_THICKNESS - PLAYER_SIZE) && dx === 0) { // Su bordo laterale, muovi vert
-                       player.y = clamp(nextY, BORDER_THICKNESS, canvas.height - BORDER_THICKNESS - PLAYER_SIZE);
-                  } else if ( (player.y === BORDER_THICKNESS || player.y === canvas.height - BORDER_THICKNESS - PLAYER_SIZE) && dy === 0) { // Su bordo orizzontale, muovi oriz
-                       player.x = clamp(nextX, BORDER_THICKNESS, canvas.width - BORDER_THICKNESS - PLAYER_SIZE);
-                  }
-
-            }
-            // Logica movimento INTERNO (Disegno)
-            else {
-                 // Stai disegnando, muoviti liberamente ma resta dentro i bordi
-                player.onEdge = false; // Non sei più sul bordo sicuro
-                let lastPoint = drawingPath[drawingPath.length - 1];
-
-                // Semplificazione: permetti solo linee rette Orizzontali o Verticali durante il disegno
-                if (drawingPath.length > 1) {
-                     let prevPoint = drawingPath[drawingPath.length - 2];
-                     // Se la direzione precedente era orizzontale, puoi muoverti solo orizzontalmente ora
-                     if (prevPoint.y === lastPoint.y && dy !== 0) return; // Ignora movimento verticale
-                     // Se la direzione precedente era verticale, puoi muoverti solo verticalmente ora
-                     if (prevPoint.x === lastPoint.x && dx !== 0) return; // Ignora movimento orizzontale
-                }
-
-                player.x = clamp(nextX, BORDER_THICKNESS, canvas.width - BORDER_THICKNESS - PLAYER_SIZE);
-                player.y = clamp(nextY, BORDER_THICKNESS, canvas.height - BORDER_THICKNESS - PLAYER_SIZE);
-
-                // Aggiungi punto al tracciato
-                // Evita punti duplicati se il giocatore non si muove effettivamente
-                if (player.x !== lastPoint.x || player.y !== lastPoint.y) {
-                   drawingPath.push({ x: player.x, y: player.y });
-                }
-
-                 // Controlla se il giocatore ha raggiunto un bordo *mentre disegnava*
-                 const onHorizontalEdge = player.y === BORDER_THICKNESS || player.y === canvas.height - BORDER_THICKNESS - PLAYER_SIZE;
-                 const onVerticalEdge = player.x === BORDER_THICKNESS || player.x === canvas.width - BORDER_THICKNESS - PLAYER_SIZE;
-
-                 if (onHorizontalEdge || onVerticalEdge) {
-                     completeDrawing();
-                 }
-            }
-        }
-
-         function moveQix() {
-            if (isGameOver) return;
-
-             // Movimento semplice: rimbalza sui bordi dell'area *non riempita* (il primo rettangolo in currentLines)
-             const bounds = currentLines.length > 0 ? currentLines[0] : {x: 0, y: 0, w: canvas.width, h: canvas.height}; // Usa canvas intero se non ci sono aree
-
-             qix.x += qix.vx;
-             qix.y += qix.vy;
-
-             // Rimbalzo sui bordi dell'area disponibile
-             if (qix.x < bounds.x || qix.x + QIX_SIZE > bounds.x + bounds.w) {
-                 qix.vx *= -1;
-                 qix.x = clamp(qix.x, bounds.x, bounds.x + bounds.w - QIX_SIZE); // Previeni uscita
-                 // Cambia leggermente direzione Y per varietà
-                 qix.vy += (Math.random() - 0.5) * 0.5;
-             }
-             if (qix.y < bounds.y || qix.y + QIX_SIZE > bounds.y + bounds.h) {
-                 qix.vy *= -1;
-                 qix.y = clamp(qix.y, bounds.y, bounds.y + bounds.h - QIX_SIZE); // Previeni uscita
-                 // Cambia leggermente direzione X per varietà
-                 qix.vx += (Math.random() - 0.5) * 0.5;
-             }
-
-             // Limita velocità massima
-             const speedMagnitude = Math.sqrt(qix.vx * qix.vx + qix.vy * qix.vy);
-             if (speedMagnitude > qix.speed * 1.5) { // Limita velocità max
-                 qix.vx = (qix.vx / speedMagnitude) * qix.speed;
-                 qix.vy = (qix.vy / speedMagnitude) * qix.speed;
-             }
-              if (speedMagnitude < qix.speed * 0.5) { // Assicura velocità min
-                  qix.vx = (qix.vx / speedMagnitude || (Math.random()-0.5)) * qix.speed;
-                  qix.vy = (qix.vy / speedMagnitude || (Math.random()-0.5)) * qix.speed;
-             }
-
-         }
-
-         function moveSparx() {
-             if (isGameOver) return;
-             const w = canvas.width - 2 * BORDER_THICKNESS;
-             const h = canvas.height - 2 * BORDER_THICKNESS;
-             const perimeter = 2 * w + 2 * h;
-
-             sparx.forEach(s => {
-                 s.edgePos = (s.edgePos + s.speed) % perimeter;
-
-                 // Calcola posizione (x, y) basata su edgePos
-                 if (s.edgePos < w) { // Bordo alto
-                     s.x = BORDER_THICKNESS + s.edgePos;
-                     s.y = BORDER_THICKNESS;
-                 } else if (s.edgePos < w + h) { // Bordo destro
-                     s.x = canvas.width - BORDER_THICKNESS - SPARX_SIZE;
-                     s.y = BORDER_THICKNESS + (s.edgePos - w);
-                 } else if (s.edgePos < w + h + w) { // Bordo basso
-                     s.x = canvas.width - BORDER_THICKNESS - SPARX_SIZE - (s.edgePos - w - h);
-                     s.y = canvas.height - BORDER_THICKNESS - SPARX_SIZE;
-                 } else { // Bordo sinistro
-                     s.x = BORDER_THICKNESS;
-                     s.y = canvas.height - BORDER_THICKNESS - SPARX_SIZE - (s.edgePos - w - h - w);
-                 }
-                 // Clamp per sicurezza (arrotondamenti)
-                  s.x = clamp(s.x, BORDER_THICKNESS, canvas.width - BORDER_THICKNESS - SPARX_SIZE);
-                  s.y = clamp(s.y, BORDER_THICKNESS, canvas.height - BORDER_THICKNESS - SPARX_SIZE);
-             });
-         }
-
-
-        function checkCollisions() {
-            if (isGameOver) return;
-
-            // 1. Collisione Qix con linea in disegno
-            if (isDrawing && drawingPath.length > 1) {
-                for (let i = 0; i < drawingPath.length - 1; i++) {
-                    const p1 = drawingPath[i];
-                    const p2 = drawingPath[i + 1];
-
-                    // Collisione molto semplificata: bounding box della linea vs qix
-                    const lineRect = {
-                        x: Math.min(p1.x, p2.x),
-                        y: Math.min(p1.y, p2.y),
-                        w: Math.abs(p1.x - p2.x) + PLAYER_SIZE, // Usa player size come spessore
-                        h: Math.abs(p1.y - p2.y) + PLAYER_SIZE
-                    };
-
-                    if (qix.x < lineRect.x + lineRect.w &&
-                        qix.x + QIX_SIZE > lineRect.x &&
-                        qix.y < lineRect.y + lineRect.h &&
-                        qix.y + QIX_SIZE > lineRect.y)
-                    {
-                        // COLLISIONE!
-                        console.log("Qix hit drawing line!");
-                        loseLife();
-                        return; // Esci subito dalla funzione collisioni
-                    }
-                }
-            }
-
-             // 2. Collisione Sparx con giocatore (solo se il giocatore è sul bordo)
-            if (player.onEdge) {
-                sparx.forEach(s => {
-                    if (player.x < s.x + SPARX_SIZE &&
-                        player.x + PLAYER_SIZE > s.x &&
-                        player.y < s.y + SPARX_SIZE &&
-                        player.y + PLAYER_SIZE > s.y)
-                    {
-                        // COLLISIONE!
-                        console.log("Sparx hit player!");
-                        loseLife();
-                        return; // Esci
-                    }
+        // Game state
+        let gameRunning = false;
+        let gamePaused = false;
+        let score = 0;
+        let percentageClaimed = 0;
+        
+        // Player
+        const player = {
+            x: 20,
+            y: 20,
+            size: 5,
+            speed: 3,
+            dx: 0,
+            dy: 0,
+            isDrawing: false,
+            path: []
+        };
+        
+        // Qix (enemy) - can have multiple
+        const qixes = [];
+        const spawnQixes = () => {
+            qixes.length = 0;
+            for (let i = 0; i < 2; i++) {
+                qixes.push({
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: Math.random() * (canvas.height - 40) + 20,
+                    size: 20,
+                    speed: Math.random() * 1 + 0.5,
+                    dx: Math.random() > 0.5 ? 1 : -1,
+                    dy: Math.random() > 0.5 ? 1 : -1,
+                    color: ['red', 'orange', 'yellow'][Math.floor(Math.random() * 3)]
                 });
             }
-        }
-
-        function completeDrawing() {
-            if (!isDrawing || drawingPath.length < 2) {
-                 // Non stavi disegnando o linea troppo corta
-                 isDrawing = false;
-                 drawingPath = [];
-                 player.onEdge = true; // Ritorna sul bordo sicuro
-                 currentDirection = null; // Ferma movimento
-                 return;
-            }
-            isDrawing = false;
-            player.onEdge = true; // Sei arrivato a destinazione (bordo)
-
-            // --- Logica di Riempimento Area (MOLTO SEMPLIFICATA) ---
-            // Questa è la parte difficile di Qix. Qui simuliamo solo
-            // riempiendo un rettangolo basato sui punti di inizio/fine linea.
-            const startPoint = drawingPath[0];
-            const endPoint = drawingPath[drawingPath.length - 1];
-
-             // Identifica l'area non riempita corrente (la più grande)
-             // In questa versione semplificata, è sempre currentLines[0]
-             const mainArea = currentLines[0];
-             if (!mainArea) return; // Sicurezza
-
-            // Crea i due nuovi rettangoli potenziali divisi dalla linea
-            // Assumiamo linee solo orizzontali o verticali che tagliano l'area principale
-            let rect1, rect2;
-            const drawnLineWasHorizontal = Math.abs(startPoint.x - endPoint.x) > Math.abs(startPoint.y - endPoint.y);
-
-            if (drawnLineWasHorizontal) {
-                 // Linea orizzontale, divide l'area verticalmente
-                 const splitY = startPoint.y; // Y della linea disegnata
-                 rect1 = { x: mainArea.x, y: mainArea.y, w: mainArea.w, h: splitY - mainArea.y };
-                 rect2 = { x: mainArea.x, y: splitY, w: mainArea.w, h: mainArea.h - (splitY - mainArea.y)};
-            } else {
-                 // Linea verticale, divide l'area orizzontalmente
-                 const splitX = startPoint.x; // X della linea disegnata
-                 rect1 = { x: mainArea.x, y: mainArea.y, w: splitX - mainArea.x, h: mainArea.h };
-                 rect2 = { x: splitX, y: mainArea.y, w: mainArea.w - (splitX - mainArea.x), h: mainArea.h };
-            }
-
-             // Calcola le aree (assicurati w, h siano > 0)
-             rect1.w = Math.max(0, rect1.w); rect1.h = Math.max(0, rect1.h);
-             rect2.w = Math.max(0, rect2.w); rect2.h = Math.max(0, rect2.h);
-             const area1 = rect1.w * rect1.h;
-             const area2 = rect2.w * rect2.h;
-
-            // Sostituisci l'area vecchia (mainArea) con quella *più grande* delle due nuove
-            // L'area più piccola è considerata "riempita" (non la disegneremo più come area vuota)
-            if (area1 >= area2) {
-                currentLines[0] = rect1; // Mantieni rect1 come area non riempita
-            } else {
-                currentLines[0] = rect2; // Mantieni rect2 come area non riempita
-            }
-
-            // Pulisci il percorso di disegno
-            drawingPath = [];
-            currentDirection = null; // Ferma il movimento dopo il completamento
-
-            updateInfo(); // Aggiorna la percentuale di area
-            console.log("Drawing complete, new area:", currentLines[0]);
-        }
-
-
-        // --- Funzioni di Disegno ---
-
-        function draw() {
-            if (!ctx) return;
-
-            // 1. Sfondo nero
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Disegna Aree "Riempite" (in questa versione è l'opposto: disegna l'area NON riempita)
-             ctx.strokeStyle = '#555'; // Colore per il bordo dell'area NON riempita
-             ctx.lineWidth = 2;
-             if (currentLines.length > 0 && currentLines[0]) {
-                 const area = currentLines[0];
-                  // Disegniamo un rettangolo che rappresenta l'area ancora giocabile
-                 ctx.strokeRect(area.x, area.y, area.w, area.h);
-             }
-
-            // 3. Disegna Bordo Esterno Visibile
-            ctx.strokeStyle = PLAYER_COLOR; // Usa colore giocatore per bordo
-            ctx.lineWidth = BORDER_THICKNESS * 2; // Lo spessore è centrato, quindi serve doppio
-            ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-
-            // 4. Disegna Linea in corso
-            if (isDrawing && drawingPath.length > 0) {
-                ctx.beginPath();
-                ctx.moveTo(drawingPath[0].x + PLAYER_SIZE / 2, drawingPath[0].y + PLAYER_SIZE / 2);
-                for (let i = 1; i < drawingPath.length; i++) {
-                    ctx.lineTo(drawingPath[i].x + PLAYER_SIZE / 2, drawingPath[i].y + PLAYER_SIZE / 2);
+        };
+        
+        // Claimed areas
+        let claimedAreas = [];
+        
+        // Grid that tracks claimed/unclaimed areas
+        const grid = [];
+        const gridSize = 20;
+        const initGrid = () => {
+            for (let y = 0; y < canvas.height / gridSize; y++) {
+                grid[y] = [];
+                for (let x = 0; x < canvas.width / gridSize; x++) {
+                    grid[y][x] = 0; // 0 = unclaimed, 1 = claimed, 2 = boundary
                 }
-                ctx.strokeStyle = isDrawingFast ? DRAW_COLOR_FAST : DRAW_COLOR_SLOW;
+            }
+            
+            // Set edges as claimed
+            for (let x = 0; x < grid[0].length; x++) {
+                grid[0][x] = 2;
+                grid[grid.length - 1][x] = 2;
+            }
+            
+            for (let y = 0; y < grid.length; y++) {
+                grid[y][0] = 2;
+                grid[y][grid[0].length - 1] = 2;
+            }
+        };
+        
+        // Draw functions
+        const drawPlayer = () => {
+            ctx.fillStyle = 'cyan';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw path while drawing
+            if (player.isDrawing && player.path.length > 1) {
+                ctx.strokeStyle = 'cyan';
                 ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(player.path[0].x, player.path[0].y);
+                for (let i = 1; i < player.path.length; i++) {
+                    ctx.lineTo(player.path[i].x, player.path[i].y);
+                }
                 ctx.stroke();
             }
-
-            // 5. Disegna Giocatore
-            ctx.fillStyle = PLAYER_COLOR;
-            ctx.fillRect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
-
-            // 6. Disegna Qix
-            ctx.fillStyle = QIX_COLOR;
-            ctx.fillRect(qix.x, qix.y, QIX_SIZE, QIX_SIZE); // Semplificato come quadrato
-
-             // 7. Disegna Sparx
-             ctx.fillStyle = SPARX_COLOR;
-             sparx.forEach(s => {
-                 ctx.fillRect(s.x, s.y, SPARX_SIZE, SPARX_SIZE);
-             });
-        }
-
-        // --- Game Loop ---
-        function gameLoop() {
-            if (isGameOver) {
-                 // Non fare update se game over, ma permetti il disegno per il messaggio
-                 draw(); // Disegna lo stato finale
-                 return;
+        };
+        
+        const drawQixes = () => {
+            qixes.forEach(qix => {
+                ctx.fillStyle = qix.color;
+                ctx.beginPath();
+                ctx.arc(qix.x, qix.y, qix.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        };
+        
+        const drawClaimedAreas = () => {
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[0].length; x++) {
+                    if (grid[y][x] === 1) {
+                        ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    } else if (grid[y][x] === 2) {
+                        ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+                        ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                        ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+                    }
+                }
             }
-
-            movePlayer();
-            moveQix();
-            moveSparx();
-            checkCollisions(); // Controlla DOPO che tutto si è mosso
-
-            draw();
-
-            // Richiama il prossimo frame
-            // Usiamo setTimeout invece di requestAnimationFrame per controllare più facilmente la velocità base
-            // NOTA: requestAnimationFrame è generalmente migliore per animazioni fluide.
-             gameLoopTimeout = setTimeout(gameLoop, 1000 / 60); // Circa 60 FPS
-        }
-
-        // --- Gestione Input ---
+        };
+        
+        const drawBoundary = () => {
+            ctx.strokeStyle = 'cyan';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        };
+        
+        // Game logic
+        const updatePlayerPosition = () => {
+            if (player.isDrawing) {
+                player.path.push({x: player.x, y: player.y});
+            }
+            
+            // Move player
+            player.x += player.dx;
+            player.y += player.dy;
+            
+            // Wall collision
+            if (player.x < player.size) player.x = player.size;
+            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+            if (player.y < player.size) player.y = player.size;
+            if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+            
+            // Check if we've completed a drawing
+            if (player.isDrawing && player.path.length > 10) {
+                // Check if we're near the start of the path
+                const start = player.path[0];
+                if (Math.abs(player.x - start.x) < 10 && Math.abs(player.y - start.y) < 10) {
+                    completeDrawing();
+                }
+            }
+        };
+        
+        const updateQixes = () => {
+            qixes.forEach(qix => {
+                qix.x += qix.dx * qix.speed;
+                qix.y += qix.dy * qix.speed;
+                
+                // Bounce off walls
+                if (qix.x < qix.size || qix.x > canvas.width - qix.size) {
+                    qix.dx *= -1;
+                }
+                if (qix.y < qix.size || qix.y > canvas.height - qix.size) {
+                    qix.dy *= -1;
+                }
+                
+                // Occasionally change direction randomly
+                if (Math.random() < 0.01) {
+                    qix.dx = Math.random() > 0.5 ? 1 : -1;
+                    qix.dy = Math.random() > 0.5 ? 1 : -1;
+                }
+            });
+        };
+        
+        const checkCollisions = () => {
+            // Check player collision with Qix
+            for (const qix of qixes) {
+                const dx = player.x - qix.x;
+                const dy = player.y - qix.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < player.size + qix.size) {
+                    gameOver();
+                    return;
+                }
+            }
+        };
+        
+        const completeDrawing = () => {
+            if (player.path.length < 3) return;
+            
+            // Close the path
+            player.path.push({x: player.path[0].x, y: player.path[0].y});
+            
+            // Mark the area as claimed
+            markAreaAsClaimed();
+            
+            // Reset drawing state
+            player.isDrawing = false;
+            player.path = [];
+            
+            // Update score
+            score += Math.floor(percentageClaimed) * 10;
+            scoreDisplay.textContent = `Score: ${score}`;
+            
+            // Check win condition
+            if (percentageClaimed >= 75) {
+                winGame();
+            }
+        };
+        
+        const markAreaAsClaimed = () => {
+            // Simple flood fill for demonstration
+            // In a real game you'd use a more sophisticated algorithm
+            
+            // First mark boundary
+            for (let i = 0; i < player.path.length - 1; i++) {
+                const p1 = player.path[i];
+                const p2 = player.path[i+1];
+                
+                // Mark all grid cells along this line segment
+                const steps = Math.max(Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y));
+                for (let s = 0; s <= steps; s++) {
+                    const t = steps === 0 ? 0 : s / steps;
+                    const x = Math.floor((p1.x * (1 - t) + p2.x * t) / gridSize);
+                    const y = Math.floor((p1.y * (1 - t) + p2.y * t) / gridSize);
+                    
+                    if (x >= 0 && x < grid[0].length && y >= 0 && y < grid.length) {
+                        grid[y][x] = 2; // Boundary
+                    }
+                }
+            }
+            
+            // Then fill the area (simplified approach)
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[0].length; x++) {
+                    if (isInsideClaimedArea(x * gridSize + gridSize/2, y * gridSize + gridSize/2, player.path)) {
+                        grid[y][x] = 1; // Claimed
+                    }
+                }
+            }
+            
+            // Update claimed percentage
+            updateClaimedPercentage();
+        };
+        
+        const isInsideClaimedArea = (x, y, path) => {
+            // Simple ray casting algorithm
+            if (path.length < 3) return false;
+            
+            let inside = false;
+            for (let i = 0, j = path.length - 1; i < path.length; j = i++) {
+                const xi = path[i].x, yi = path[i].y;
+                const xj = path[j].x, yj = path[j].y;
+                
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        };
+        
+        const updateClaimedPercentage = () => {
+            let claimed = 0;
+            let total = 0;
+            
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[0].length; x++) {
+                    if (grid[y][x] === 1) {
+                        claimed++;
+                    }
+                    if (grid[y][x] !== 2) { // Don't count boundaries
+                        total++;
+                    }
+                }
+            }
+            
+            percentageClaimed = (claimed / total) * 100;
+        };
+        
+        // Game state functions
+        const startGame = () => {
+            gameRunning = true;
+            gamePaused = false;
+            score = 0;
+            percentageClaimed = 0;
+            
+            initGrid();
+            spawnQixes();
+            
+            player.x = 20;
+            player.y = 20;
+            player.path = [];
+            player.isDrawing = false;
+            
+            scoreDisplay.textContent = `Score: ${score}`;
+            animate();
+        };
+        
+        const gameOver = () => {
+            gameRunning = false;
+            alert(`Game Over! Your score: ${score}`);
+        };
+        
+        const winGame = () => {
+            gameRunning = false;
+            alert(`You Win! Claimed ${percentageClaimed.toFixed(1)}% of the area. Final score: ${score}`);
+        };
+        
+        const togglePause = () => {
+            gamePaused = !gamePaused;
+            pauseButton.textContent = gamePaused ? 'Resume' : 'Pause';
+        };
+        
+        // Main game loop
+        const animate = () => {
+            if (!gameRunning || gamePaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawClaimedAreas();
+            drawBoundary();
+            drawQixes();
+            drawPlayer();
+            
+            if (!gamePaused) {
+                updatePlayerPosition();
+                updateQixes();
+                checkCollisions();
+            }
+            
+            requestAnimationFrame(animate);
+        };
+        
+        // Event listeners
         document.addEventListener('keydown', (e) => {
-             // Permetti riavvio anche in game over
-            if (e.key === 'r' || e.key === 'R') {
-                initGame();
-                return;
-            }
-
-            if (isGameOver) return; // Ignora altri input se game over
-
-            switch (e.key) {
-                case 'ArrowUp':
-                case 'ArrowDown':
+            if (!gameRunning) return;
+            
+            switch(e.key) {
                 case 'ArrowLeft':
+                    player.dx = -player.speed;
+                    break;
                 case 'ArrowRight':
-                    // Se siamo sul bordo e premiamo shift + direzione verso l'interno -> inizia disegno
-                    if (player.onEdge && e.shiftKey) {
-                         // Controlla se la direzione è valida per entrare
-                         const canGoIn = ( (e.key === 'ArrowDown' && player.y === BORDER_THICKNESS) ||
-                                          (e.key === 'ArrowUp' && player.y === canvas.height - BORDER_THICKNESS - PLAYER_SIZE) ||
-                                          (e.key === 'ArrowRight' && player.x === BORDER_THICKNESS) ||
-                                          (e.key === 'ArrowLeft' && player.x === canvas.width - BORDER_THICKNESS - PLAYER_SIZE) );
-                        if (canGoIn) {
-                             isDrawing = true;
-                             isDrawingFast = true; // Shift premuto = veloce
-                             player.onEdge = false; // Non sei più sul bordo
-                             drawingPath = [{ x: player.x, y: player.y }]; // Inizia il tracciato dal punto attuale
-                             currentDirection = e.key; // Imposta la direzione
-                             console.log("Start drawing FAST");
-                        } else {
-                             // Se premi shift ma non puoi entrare, muoviti sul bordo
-                             currentDirection = e.key;
-                             isDrawingFast = false; // Non stai disegnando
-                        }
-                    }
-                     // Se siamo sul bordo e premiamo SOLO direzione -> muovi sul bordo
-                    else if (player.onEdge && !e.shiftKey) {
-                         isDrawing = false; // Assicurati di non disegnare
-                         currentDirection = e.key;
-                         isDrawingFast = false;
-                         // Qui la logica di movimento sul bordo è gestita in movePlayer()
-                    }
-                     // Se stiamo GIA' disegnando -> cambia direzione (se permesso dalla logica in movePlayer)
-                     else if (isDrawing) {
-                         // Tenta di cambiare direzione, movePlayer deciderà se valido
-                         currentDirection = e.key;
-                         // Controlla se shift è ancora premuto per la velocità
-                         isDrawingFast = e.shiftKey;
+                    player.dx = player.speed;
+                    break;
+                case 'ArrowUp':
+                    player.dy = -player.speed;
+                    break;
+                case 'ArrowDown':
+                    player.dy = player.speed;
+                    break;
+                case ' ':
+                    if (!player.isDrawing) {
+                        player.isDrawing = true;
+                        player.path = [{x: player.x, y: player.y}];
                     }
                     break;
-                // Aggiunta per gestire il solo premere/rilasciare Shift *durante* il disegno
-                 case 'Shift':
-                     if (isDrawing) {
-                         isDrawingFast = true; // Se premi shift mentre disegni, vai veloce
-                     }
-                     break;
             }
         });
-
-         document.addEventListener('keyup', (e) => {
-            if (isGameOver) return;
-
-             // Se rilasci il tasto Shift *mentre* stai disegnando, rallenta
-             if (e.key === 'Shift' && isDrawing) {
-                 isDrawingFast = false;
-                 console.log("Drawing SLOW");
-             }
-
-             // Semplificazione: fermati quando rilasci il tasto freccia (non ideale per Qix, ma più semplice)
-             // In un Qix reale, il movimento continua finché non premi un'altra freccia o completi/muori.
-             /*
-             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                  if (currentDirection === e.key) { // Ferma solo se stai rilasciando la direzione corrente
-                      // Non fermarti se stai disegnando, devi completare!
-                      // if (!isDrawing) {
-                      //     currentDirection = null;
-                      // }
-                  }
-             }
-             */
-             // Per ora, NON fermiamo il movimento al keyup per simulare meglio Qix
-             // Il giocatore si fermerà solo quando completa una linea o muore.
-         });
-
-        // --- Avvio Gioco ---
-        initGame();
-
+        
+        document.addEventListener('keyup', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    if (e.key === 'ArrowLeft' && player.dx < 0 || e.key === 'ArrowRight' && player.dx > 0) {
+                        player.dx = 0;
+                    }
+                    break;
+                case 'ArrowUp':
+                case 'ArrowDown':
+                    if (e.key === 'ArrowUp' && player.dy < 0 || e.key === 'ArrowDown' && player.dy > 0) {
+                        player.dy = 0;
+                    }
+                    break;
+                case ' ':
+                    // Space released - nothing to do here
+                    break;
+            }
+        });
+        
+        startButton.addEventListener('click', startGame);
+        pauseButton.addEventListener('click', togglePause);
+        
+        // Initialize
+        initGrid();
+        drawBoundary();
     </script>
 </body>
 </html>
