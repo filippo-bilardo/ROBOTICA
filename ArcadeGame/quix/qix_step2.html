@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qix Step 2</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">Qix Step 2</h1>
+  <canvas id="qixCanvas" width="600" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById('qixCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let player = { x: 300, y: 200, size: 10, speed: 2 };
+    let obstacle = { x: 100, y: 50, size: 20, speedX: 2, speedY: 2 };
+    let directions = { up: false, down: false, left: false, right: false };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') directions.up = true;
+      if (e.key === 'ArrowDown') directions.down = true;
+      if (e.key === 'ArrowLeft') directions.left = true;
+      if (e.key === 'ArrowRight') directions.right = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp') directions.up = false;
+      if (e.key === 'ArrowDown') directions.down = false;
+      if (e.key === 'ArrowLeft') directions.left = false;
+      if (e.key === 'ArrowRight') directions.right = false;
+    });
+
+    function updatePlayer() {
+      if (directions.up && player.y > 0) player.y -= player.speed;
+      if (directions.down && player.y < canvas.height - player.size) player.y += player.speed;
+      if (directions.left && player.x > 0) player.x -= player.speed;
+      if (directions.right && player.x < canvas.width - player.size) player.x += player.speed;
+    }
+
+    function updateObstacle() {
+      obstacle.x += obstacle.speedX;
+      obstacle.y += obstacle.speedY;
+
+      // Collision con i bordi
+      if (obstacle.x <= 0 || obstacle.x >= canvas.width - obstacle.size) {
+        obstacle.speedX *= -1;
+      }
+      if (obstacle.y <= 0 || obstacle.y >= canvas.height - obstacle.size) {
+        obstacle.speedY *= -1;
+      }
+    }
+
+    function checkCollision() {
+      if (
+        player.x < obstacle.x + obstacle.size &&
+        player.x + player.size > obstacle.x &&
+        player.y < obstacle.y + obstacle.size &&
+        player.y + player.size > obstacle.y
+      ) {
+        alert('Game Over! Hai colpito un ostacolo!');
+        player.x = 300;
+        player.y = 200; // Reset posizione
+      }
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawObstacle() {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(obstacle.x, obstacle.y, obstacle.size, obstacle.size);
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updatePlayer();
+      updateObstacle();
+      checkCollision();
+      drawPlayer();
+      drawObstacle();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>

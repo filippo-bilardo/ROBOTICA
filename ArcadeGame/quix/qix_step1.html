@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gioco Qix</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">Gioco Qix</h1>
+  <canvas id="qixCanvas" width="600" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById('qixCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let player = { x: 300, y: 200, size: 10, speed: 2 };
+    let directions = { up: false, down: false, left: false, right: false };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') directions.up = true;
+      if (e.key === 'ArrowDown') directions.down = true;
+      if (e.key === 'ArrowLeft') directions.left = true;
+      if (e.key === 'ArrowRight') directions.right = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp') directions.up = false;
+      if (e.key === 'ArrowDown') directions.down = false;
+      if (e.key === 'ArrowLeft') directions.left = false;
+      if (e.key === 'ArrowRight') directions.right = false;
+    });
+
+    function updatePlayer() {
+      if (directions.up && player.y > 0) player.y -= player.speed;
+      if (directions.down && player.y < canvas.height - player.size) player.y += player.speed;
+      if (directions.left && player.x > 0) player.x -= player.speed;
+      if (directions.right && player.x < canvas.width - player.size) player.x += player.speed;
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updatePlayer();
+      drawPlayer();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>

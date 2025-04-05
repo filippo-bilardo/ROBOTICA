@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qix Step 6</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 0 auto;
+    }
+    h1, p {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Qix Step 6</h1>
+  <p>Punteggio: <span id="score">0</span></p>
+  <canvas id="qixCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('qixCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+
+    let canvasWidth = 600;
+    let canvasHeight = 400;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    let player = { x: 300, y: 200, size: 10, speed: 2 };
+    let obstacle = { x: 100, y: 50, size: 20, speedX: 2, speedY: 2 };
+    let collectible = { x: 400, y: 300, size: 15, collected: false };
+    let directions = { up: false, down: false, left: false, right: false };
+    let score = 0;
+    let gameArea = { x: 0, y: 0, width: canvasWidth, height: canvasHeight };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') directions.up = true;
+      if (e.key === 'ArrowDown') directions.down = true;
+      if (e.key === 'ArrowLeft') directions.left = true;
+      if (e.key === 'ArrowRight') directions.right = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp') directions.up = false;
+      if (e.key === 'ArrowDown') directions.down = false;
+      if (e.key === 'ArrowLeft') directions.left = false;
+      if (e.key === 'ArrowRight') directions.right = false;
+    });
+
+    function updatePlayer() {
+      if (directions.up && player.y > gameArea.y) player.y -= player.speed;
+      if (directions.down && player.y < gameArea.y + gameArea.height - player.size) player.y += player.speed;
+      if (directions.left && player.x > gameArea.x) player.x -= player.speed;
+      if (directions.right && player.x < gameArea.x + gameArea.width - player.size) player.x += player.speed;
+    }
+
+    function updateObstacle() {
+      obstacle.x += obstacle.speedX;
+      obstacle.y += obstacle.speedY;
+
+      // Collision con i bordi
+      if (obstacle.x <= gameArea.x || obstacle.x >= gameArea.x + gameArea.width - obstacle.size) {
+        obstacle.speedX *= -1;
+      }
+      if (obstacle.y <= gameArea.y || obstacle.y >= gameArea.y + gameArea.height - obstacle.size) {
+        obstacle.speedY *= -1;
+      }
+    }
+
+    function checkCollision() {
+      if (
+        player.x < obstacle.x + obstacle.size &&
+        player.x + player.size > obstacle.x &&
+        player.y < obstacle.y + obstacle.size &&
+        player.y + player.size > obstacle.y
+      ) {
+        alert('Game Over! Hai colpito un ostacolo!');
+        player.x = gameArea.x + gameArea.width / 2;
+        player.y = gameArea.y + gameArea.height / 2; // Reset posizione
+        score = 0; // Reset punteggio
+        scoreElement.textContent = score;
+      }
+    }
+
+    function checkCollectible() {
+      if (
+        player.x < collectible.x + collectible.size &&
+        player.x + player.size > collectible.x &&
+        player.y < collectible.y + collectible.size &&
+        player.y + player.size > collectible.y &&
+        !collectible.collected
+      ) {
+        collectible.collected = true;
+        score += 10; // Aggiunge 10 punti
+        scoreElement.textContent = score;
+
+        // Riposiziona il collectible
+        collectible.x = gameArea.x + Math.random() * (gameArea.width - collectible.size);
+        collectible.y = gameArea.y + Math.random() * (gameArea.height - collectible.size);
+        collectible.collected = false;
+      }
+    }
+
+    function reduceGameArea() {
+      gameArea.x += 10;
+      gameArea.y += 10;
+      gameArea.width -= 20;
+      gameArea.height -= 20;
+
+      if (gameArea.width < 100 || gameArea.height < 100) {
+        alert('Il campo è troppo piccolo! Hai resistito fino alla fine!');
+        gameArea.x = 0;
+        gameArea.y = 0;
+        gameArea.width = canvasWidth;
+        gameArea.height = canvasHeight;
+        score = 0; // Reset del punteggio
+        scoreElement.textContent = score;
+      }
+    }
+
+    setInterval(reduceGameArea, 5000); // Riduce il campo ogni 5 secondi
+
+    function drawPlayer() {
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawObstacle() {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(obstacle.x, obstacle.y, obstacle.size, obstacle.size);
+    }
+
+    function drawCollectible() {
+      ctx.fillStyle = 'gold';
+      ctx.fillRect(collectible.x, collectible.y, collectible.size, collectible.size);
+    }
+
+    function drawGameArea() {
+      ctx.strokeStyle = 'black';
+      ctx.strokeRect(gameArea.x, gameArea.y, gameArea.width, gameArea.height);
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGameArea();
+      updatePlayer();
+      updateObstacle();
+      checkCollision();
+      checkCollectible();
+      drawPlayer();
+      drawObstacle();
+      drawCollectible();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
