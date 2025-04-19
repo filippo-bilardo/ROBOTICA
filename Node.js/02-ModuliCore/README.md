@@ -1,116 +1,210 @@
 # Esercitazione 2: Moduli Core di Node.js
 
-## Descrizione
-
-Questa esercitazione ti introdurrà ai moduli core di Node.js, che forniscono funzionalità essenziali per lo sviluppo di applicazioni. Esplorerai i moduli principali come fs, path, http, e events, imparando come utilizzarli per creare applicazioni server-side efficaci.
+## Panoramica
+In questa esercitazione esploreremo i moduli core di Node.js, imparando come utilizzare le funzionalità native senza dipendenze esterne.
 
 ## Obiettivi
-
 - Comprendere il sistema di moduli di Node.js
-- Utilizzare i moduli core più importanti
-- Creare un semplice server HTTP
-- Gestire file e directory con il modulo fs
-- Implementare un sistema di eventi personalizzato
+- Utilizzare i principali moduli core
+- Implementare funzionalità comuni con i moduli built-in
+
+## Argomenti Teorici Collegati
+- [Sistema di Moduli in Node.js](../teoria/02-moduli.md#sistema-di-moduli)
+- [Moduli Core Principali](../teoria/02-moduli.md#moduli-core-principali)
+- [CommonJS vs ES Modules](../teoria/02-moduli.md#commonjs-vs-es-modules)
 
 ## Esercizi Pratici
 
-1. **Sistema di Moduli**
-   - Crea un file `moduli.js` che importa e utilizza diversi moduli core
-   - Sperimenta con `require()` e `module.exports`
-   - Crea un modulo personalizzato e importalo in un altro file
+### Esercizio 2.1: Modulo Path
+Il modulo `path` fornisce utilità per lavorare con percorsi di file e directory.
 
-2. **File System (fs)**
-   - Crea un file `fileSystem.js` con il seguente contenuto:
-     ```javascript
-     const fs = require('fs');
-     
-     // Lettura sincrona
-     try {
-       const data = fs.readFileSync('esempio.txt', 'utf8');
-       console.log('Lettura sincrona:', data);
-     } catch (err) {
-       console.error('Errore nella lettura sincrona:', err);
-     }
-     
-     // Lettura asincrona
-     fs.readFile('esempio.txt', 'utf8', (err, data) => {
-       if (err) {
-         console.error('Errore nella lettura asincrona:', err);
-         return;
-       }
-       console.log('Lettura asincrona:', data);
-     });
-     
-     // Scrittura su file
-     fs.writeFile('nuovo.txt', 'Questo è un nuovo file creato con Node.js', err => {
-       if (err) {
-         console.error('Errore nella scrittura:', err);
-         return;
-       }
-       console.log('File scritto con successo!');
-     });
-     ```
-   - Crea un file `esempio.txt` con del testo di esempio
-   - Esegui lo script e osserva i risultati
+```javascript
+// path-demo.js
+const path = require('path');
 
-3. **Server HTTP**
-   - Crea un file `server.js` con il seguente contenuto:
-     ```javascript
-     const http = require('http');
-     
-     const server = http.createServer((req, res) => {
-       res.statusCode = 200;
-       res.setHeader('Content-Type', 'text/html');
-       res.end('<h1>Hello, Node.js Server!</h1><p>Il mio primo server HTTP</p>');
-     });
-     
-     const PORT = 3000;
-     server.listen(PORT, () => {
-       console.log(`Server in esecuzione su http://localhost:${PORT}/`);
-     });
-     ```
-   - Esegui lo script con `node server.js`
-   - Apri il browser e visita `http://localhost:3000`
+// Informazioni sul file corrente
+console.log('Nome del file:', path.basename(__filename));
+console.log('Directory:', path.dirname(__filename));
+console.log('Estensione:', path.extname(__filename));
 
-4. **Sistema di Eventi**
-   - Crea un file `eventi.js` con il seguente contenuto:
-     ```javascript
-     const EventEmitter = require('events');
-     
-     // Crea una classe personalizzata basata su EventEmitter
-     class MioEmettitore extends EventEmitter {}
-     
-     // Crea un'istanza
-     const emettitore = new MioEmettitore();
-     
-     // Registra un listener per l'evento 'messaggio'
-     emettitore.on('messaggio', (msg) => {
-       console.log('Messaggio ricevuto:', msg);
-     });
-     
-     // Emetti alcuni eventi
-     emettitore.emit('messaggio', 'Ciao!');
-     emettitore.emit('messaggio', 'Come stai?');
-     emettitore.emit('messaggio', 'Benvenuto in Node.js!');
-     ```
-   - Esegui lo script e osserva come funziona il sistema di eventi
+// Creazione di un percorso
+const nuovoPercorso = path.join(__dirname, 'files', 'esempio.txt');
+console.log('Nuovo percorso:', nuovoPercorso);
 
-## Argomenti Teorici Collegati
+// Normalizzazione percorsi
+console.log('Percorso normalizzato:', path.normalize('/test/test1//2slashes/1slash/tab/..'));
 
-- [1. Sistema di Moduli](./teoria/01-sistema-moduli.md)
-- [2. File System](./teoria/02-file-system.md)
-- [3. HTTP e Networking](./teoria/03-http-networking.md)
-- [4. Eventi e EventEmitter](./teoria/04-eventi-eventemitter.md)
-- [5. Altri Moduli Core](./teoria/05-altri-moduli-core.md)
+// Percorsi assoluti vs relativi
+console.log('Risoluzione percorso:', path.resolve('temp', 'file.txt'));
+```
+
+### Esercizio 2.2: Modulo OS
+Il modulo `os` fornisce metodi per interagire con il sistema operativo.
+
+```javascript
+// os-demo.js
+const os = require('os');
+
+// Informazioni sulla piattaforma
+console.log('Sistema operativo:', os.platform());
+console.log('Architettura:', os.arch());
+console.log('Versione:', os.version());
+
+// Informazioni sulla CPU
+console.log('CPU:', os.cpus().length, 'core');
+console.log('Tipo CPU:', os.cpus()[0].model);
+
+// Informazioni sulla memoria
+console.log('Memoria totale:', (os.totalmem() / 1024 / 1024 / 1024).toFixed(2), 'GB');
+console.log('Memoria libera:', (os.freemem() / 1024 / 1024 / 1024).toFixed(2), 'GB');
+
+// Informazioni utente
+console.log('Utente corrente:', os.userInfo().username);
+console.log('Home directory:', os.homedir());
+console.log('Directory temporanea:', os.tmpdir());
+```
+
+### Esercizio 2.3: Modulo URL
+Il modulo `url` fornisce utilità per il parsing degli URL.
+
+```javascript
+// url-demo.js
+const url = require('url');
+
+// Analisi di un URL
+const indirizzo = 'http://example.com:8080/path/to/page?query=string&name=value#anchor';
+const parsedUrl = new URL(indirizzo);
+
+console.log('Host:', parsedUrl.host);
+console.log('Pathname:', parsedUrl.pathname);
+console.log('Search:', parsedUrl.search);
+console.log('Parametri di ricerca:', parsedUrl.searchParams.get('query'));
+console.log('Hash:', parsedUrl.hash);
+
+// Creazione di un URL
+const newUrl = new URL('https://example.org');
+newUrl.pathname = '/products';
+newUrl.search = '?category=electronics';
+console.log('URL costruito:', newUrl.href);
+```
+
+### Esercizio 2.4: Modulo Util
+Il modulo `util` fornisce funzioni di utilità.
+
+```javascript
+// util-demo.js
+const util = require('util');
+const fs = require('fs');
+
+// Deprecazione
+util.deprecate(() => {
+  console.log('Questa funzione è deprecata');
+}, 'Usare la nuova funzione invece')(1, 2, 3);
+
+// Promisify: convertire callback in promises
+const readFile = util.promisify(fs.readFile);
+
+// Utilizzare la versione promisified
+readFile(__filename, 'utf8')
+  .then(data => console.log('File letto con successo'))
+  .catch(err => console.error('Errore nella lettura:', err));
+
+// Formattazione di stringhe
+console.log(util.format('La %s è %d. Oggetto: %j', 'risposta', 42, { hello: 'world' }));
+
+// Ispezione di oggetti
+const obj = { 
+  name: 'Node.js', 
+  versions: process.versions, 
+  env: process.env 
+};
+console.log(util.inspect(obj, { depth: 1, colors: true }));
+```
+
+### Esercizio 2.5: Eventi con EventEmitter
+Il modulo `events` permette di creare e gestire eventi.
+
+```javascript
+// events-demo.js
+const EventEmitter = require('events');
+
+// Creazione di una classe personalizzata basata su EventEmitter
+class GestoreMessaggi extends EventEmitter {}
+
+// Istanza del gestore di eventi
+const gestore = new GestoreMessaggi();
+
+// Registrazione di un listener per l'evento 'messaggio'
+gestore.on('messaggio', (msg, utente) => {
+  console.log(`${utente}: ${msg}`);
+});
+
+// Registrazione di un listener che si attiva solo una volta
+gestore.once('evento-singolo', () => {
+  console.log('Questo verrà stampato solo una volta');
+});
+
+// Emissione di eventi
+gestore.emit('messaggio', 'Ciao mondo!', 'Utente1');
+gestore.emit('messaggio', 'Come stai?', 'Utente2');
+gestore.emit('evento-singolo');
+gestore.emit('evento-singolo'); // Questo non produrrà output
+
+// Listener per gestire gli errori
+gestore.on('error', (err) => {
+  console.error('Errore:', err.message);
+});
+
+// Emettere un errore
+gestore.emit('error', new Error('Qualcosa è andato storto'));
+```
+
+## Sfida Aggiuntiva
+Crea un'applicazione per monitorare le risorse del sistema che utilizza i moduli `os`, `events` e `util`. L'applicazione dovrebbe emettere eventi quando l'utilizzo della memoria o della CPU supera determinate soglie.
+
+```javascript
+// Esempio di implementazione (da sviluppare autonomamente)
+const EventEmitter = require('events');
+const os = require('os');
+const util = require('util');
+
+class MonitorRisorse extends EventEmitter {
+  constructor(intervalloMs = 2000) {
+    super();
+    this.intervalloMs = intervalloMs;
+    this.intervallo = null;
+  }
+  
+  avvia() {
+    this.intervallo = setInterval(() => {
+      const memUso = process.memoryUsage();
+      const memoriaUtilizzata = memUso.rss / os.totalmem() * 100;
+      
+      if (memoriaUtilizzata > 70) {
+        this.emit('memoria-alta', memoriaUtilizzata);
+      }
+      
+      // Aggiungi altre metriche da monitorare
+    }, this.intervalloMs);
+  }
+  
+  ferma() {
+    clearInterval(this.intervallo);
+  }
+}
+
+// Utilizzo
+const monitor = new MonitorRisorse(1000);
+monitor.on('memoria-alta', (percentuale) => {
+  console.log(`ATTENZIONE: Utilizzo memoria alto (${percentuale.toFixed(2)}%)`);
+});
+monitor.avvia();
+```
 
 ## Risorse Aggiuntive
-
-- [Documentazione ufficiale dei moduli core di Node.js](https://nodejs.org/docs/latest/api/)
-- [Node.js File System in dettaglio](https://nodejs.dev/learn/the-nodejs-fs-module)
-- [Guida completa a HTTP in Node.js](https://nodejs.dev/learn/the-nodejs-http-module)
-
-## Prossima Esercitazione
-
-Nella prossima esercitazione, esploreremo npm (Node Package Manager) e impareremo a utilizzare pacchetti di terze parti per estendere le funzionalità delle nostre applicazioni.
-
-[Prossima Esercitazione](../03-NPM/README.md)
+- [Documentazione moduli core di Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/)
+- [Path module](https://nodejs.org/api/path.html)
+- [OS module](https://nodejs.org/api/os.html)
+- [URL module](https://nodejs.org/api/url.html)
+- [Util module](https://nodejs.org/api/util.html)
+- [Events module](https://nodejs.org/api/events.html)

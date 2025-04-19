@@ -14,23 +14,57 @@ Questa prima esercitazione ti introdurrà a Node.js, spiegandone le caratteristi
 
 ## Esercizi Pratici
 
-1. **Installazione di Node.js**
-   - Scarica e installa Node.js dal sito ufficiale
-   - Verifica l'installazione con i comandi `node -v` e `npm -v`
+### Esercizio 1.1: Installazione di Node.js
+1. Visita [nodejs.org](https://nodejs.org/)
+2. Scarica la versione LTS (Long Term Support) per il tuo sistema operativo
+3. Installa Node.js seguendo le istruzioni
+4. Verifica l'installazione con i comandi:
 
-2. **Hello World**
-   - Crea un file `hello.js` con il seguente contenuto:
-     ```javascript
-     console.log('Hello, Node.js!');
-     ```
-   - Eseguilo con il comando `node hello.js`
+```bash
+node -v
+npm -v
+```
 
-3. **Utilizzo del REPL**
-   - Avvia il REPL digitando `node` nel terminale
-   - Sperimenta con alcune espressioni JavaScript
-   - Esplora i comandi speciali del REPL (`.help`, `.exit`, ecc.)
+### Esercizio 1.2: Hello World
+1. Crea un file chiamato `hello.js` con il seguente contenuto:
 
-4. **Primo Script Asincrono**
+```javascript
+console.log('Hello, Node.js!');
+```
+
+2. Esegui il file con Node.js:
+
+```bash
+node hello.js
+```
+
+### Esercizio 1.3: Utilizzo della REPL
+1. Apri la REPL di Node.js digitando `node` nel terminale
+2. Sperimenta con alcune espressioni JavaScript:
+
+```javascript
+1 + 1
+"Node.js".toUpperCase()
+const saluto = "Ciao"
+saluto + " mondo!"
+```
+
+3. Premi Ctrl+D (o Ctrl+C due volte) per uscire dalla REPL
+
+### Esercizio 1.4: Informazioni sul Sistema
+1. Crea un file chiamato `node-info.js` con il seguente contenuto:
+
+```javascript
+console.log('Versione Node.js:', process.version);
+console.log('Sistema operativo:', process.platform);
+console.log('Architettura CPU:', process.arch);
+console.log('Directory corrente:', process.cwd());
+console.log('Tempo di esecuzione (secondi):', process.uptime());
+```
+
+2. Esegui il file e osserva le informazioni sul tuo ambiente
+
+### Esercizio 1.5: Primo Script Asincrono
    - Crea un file `async.js` con il seguente contenuto:
      ```javascript
      console.log('Inizio');
@@ -42,6 +76,24 @@ Questa prima esercitazione ti introdurrà a Node.js, spiegandone le caratteristi
      console.log('Fine');
      ```
    - Eseguilo e osserva l'ordine di esecuzione
+
+## Sfida Aggiuntiva
+Crea uno script chiamato `fibonacci.js` che calcoli e visualizzi i primi 10 numeri della sequenza di Fibonacci:
+
+```javascript
+// Soluzione di esempio (da implementare autonomamente)
+function fibonacci(n) {
+    const sequence = [0, 1];
+    for (let i = 2; i < n; i++) {
+        sequence[i] = sequence[i-1] + sequence[i-2];
+    }
+    return sequence;
+}
+
+const result = fibonacci(10);
+console.log('I primi 10 numeri della sequenza di Fibonacci:');
+console.log(result);
+```
 
 ## Argomenti Teorici Collegati
 
