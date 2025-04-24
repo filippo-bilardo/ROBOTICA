@@ -339,3 +339,10 @@ I principi REST forniscono linee guida per la creazione di API web scalabili, ma
 - **Evolutive nel tempo**
 
 Nel prossimo capitolo, esploreremo come implementare concretamente questi principi utilizzando Express.js per creare API RESTful robuste e conformi alle best practices del settore.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: REST API](../README.md)
+- [Documento Precedente: Gestione dei Form e Upload di File](../../07-GestioneRichiesteHTTP/teoria/04-gestione-form.md)
+- [Documento Successivo: Implementazione di API con Express](./02-implementazione-api.md)

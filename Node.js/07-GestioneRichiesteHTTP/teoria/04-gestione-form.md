@@ -1067,3 +1067,10 @@ Oltre alla protezione CSRF, considera queste misure di sicurezza aggiuntive:
 La gestione efficace dei form è un aspetto cruciale dello sviluppo web con Node.js e Express. Implementando le tecniche e le best practices descritte in questa guida, puoi creare applicazioni web robuste, sicure e user-friendly che gestiscono correttamente l'input degli utenti e forniscono feedback appropriati.
 
 Ricorda che la sicurezza dovrebbe essere sempre una priorità, specialmente quando si tratta di gestire dati inviati dagli utenti. Utilizza la validazione, la sanitizzazione e le misure di protezione appropriate per garantire che la tua applicazione sia resistente agli attacchi comuni.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Gestione delle Richieste HTTP](../README.md)
+- [Documento Precedente: Body Parsing e Middleware](./03-body-parsing.md)
+- [Documento Successivo: Principi REST e Architettura](../../08-REST_API/teoria/01-principi-rest.md)

@@ -395,3 +395,10 @@ app.use(helmet());
 L'implementazione di un sistema di autenticazione e autorizzazione robusto è fondamentale per la sicurezza delle applicazioni web. Utilizzando i middleware di Express.js, è possibile creare un sistema modulare e manutenibile che protegge le risorse dell'applicazione e garantisce che solo gli utenti autorizzati possano accedere a determinate funzionalità.
 
 Nel prossimo capitolo, approfondiremo l'utilizzo dei JSON Web Tokens (JWT) per l'autenticazione stateless nelle API RESTful.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Middleware e Autenticazione](../README.md)
+- [Documento Precedente: Middleware in Express.js](./01-middleware-express.md)
+- [Documento Successivo: JWT (JSON Web Tokens)](./03-jwt.md)

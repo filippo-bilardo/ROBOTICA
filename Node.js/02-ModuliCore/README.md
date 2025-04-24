@@ -208,3 +208,9 @@ monitor.avvia();
 - [URL module](https://nodejs.org/api/url.html)
 - [Util module](https://nodejs.org/api/util.html)
 - [Events module](https://nodejs.org/api/events.html)
+
+## Navigazione
+
+- [Indice del Corso](../README.md)
+- Modulo Precedente: [Introduzione a Node.js](../01-Introduzione/README.md)
+- Modulo Successivo: [Sistema di File](../03-Sistema_di_File_in_Node.js/README.md.md)

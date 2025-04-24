@@ -109,8 +109,7 @@ console.log(result);
 - [Node.js su GitHub](https://github.com/nodejs/node)
 - [Guida interattiva a Node.js](https://nodeschool.io/)
 
-## Prossima Esercitazione
+## Navigazione
 
-Nella prossima esercitazione, esploreremo i moduli core di Node.js, che forniscono funzionalità essenziali per lo sviluppo di applicazioni.
-
-[Prossima Esercitazione](./02-ModuliCore/README.md)
+- [Indice del Corso](../README.md)
+- Modulo Successivo: [Moduli Core](../02-ModuliCore/README.md)

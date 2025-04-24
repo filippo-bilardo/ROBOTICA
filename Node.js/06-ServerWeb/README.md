@@ -527,3 +527,9 @@ node server.js
 - [MDN Web Docs - HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP)
 - [RESTful API Design](https://restfulapi.net/)
 - [Express.js Middleware](https://expressjs.com/en/guide/using-middleware.html)
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: NPM](../05-NPM/README.md)
+- [Modulo Successivo: Gestione Richieste HTTP](../07-GestioneRichiesteHTTP/README.md)

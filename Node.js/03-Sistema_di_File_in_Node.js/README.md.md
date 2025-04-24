@@ -454,3 +454,9 @@ mostraMenu();
 - [Guida ai file system in Node.js](https://nodejs.dev/learn/the-nodejs-fs-module)
 - [Lavorare con gli stream in Node.js](https://nodejs.dev/learn/nodejs-streams)
 - [Best practices per le operazioni su file in Node.js](https://blog.risingstack.com/mastering-the-nodejs-core-modules-file-system-fs-module/)
+
+## Navigazione
+
+- [Indice del Corso](../README.md)
+- Modulo Precedente: [Moduli Core](../02-ModuliCore/README.md)
+- Modulo Successivo: [Moduli Personalizzati](../04-ModuliPersonalizzati/README.md)

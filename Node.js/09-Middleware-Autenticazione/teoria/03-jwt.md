@@ -274,3 +274,10 @@ I JSON Web Tokens offrono un meccanismo efficace per l'autenticazione stateless 
 Tuttavia, è importante implementare correttamente i JWT e seguire le best practices di sicurezza per evitare vulnerabilità comuni. Con una corretta implementazione, i JWT possono fornire un sistema di autenticazione robusto e scalabile per le tue applicazioni.
 
 Nel prossimo capitolo, esploreremo le best practices di sicurezza per le API, inclusi argomenti come la protezione contro attacchi comuni, la gestione sicura delle password e l'implementazione di controlli di accesso granulari.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Middleware e Autenticazione](../README.md)
+- [Documento Precedente: Autenticazione e Autorizzazione](./02-autenticazione-autorizzazione.md)
+- [Documento Successivo: Sicurezza delle API](./04-sicurezza-api.md)

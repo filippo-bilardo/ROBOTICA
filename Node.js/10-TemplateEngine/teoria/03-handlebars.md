@@ -438,6 +438,13 @@ In produzione, puoi utilizzare i template precompilati per un rendering più vel
 
 Handlebars è un template engine potente che promuove una chiara separazione tra logica e presentazione. La sua sintassi dichiarativa e l'approccio "logica minima" lo rendono ideale per progetti in cui la manutenibilità e la leggibilità dei template sono prioritarie.
 
-Con Handlebars, puoi creare template puliti e dichiarativi, implementare componenti riutilizzabili e mantenere una chiara separazione delle responsabilità nella tua applicazione. Sebbene possa sembrare più limitato rispetto ad altri template engine che permettono JavaScript completo, questa limitazione è intenzionale e promuove migliori pratiche di sviluppo.
+La capacità di estendere le funzionalità attraverso helper personalizzati offre un buon equilibrio tra semplicità e potenza, permettendo di adattare Handlebars alle esigenze specifiche del progetto senza compromettere la filosofia di base.
 
-Nel prossimo capitolo, esploreremo Pug, un template engine con una sintassi completamente diversa basata sull'indentazione, che offre un approccio ancora più conciso alla creazione di template.
+Nel prossimo capitolo, esploreremo Pug (precedentemente Jade), un template engine con un approccio radicalmente diverso basato sull'indentazione e una sintassi minimalista.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Torna all'Esercitazione 10](../README.md)
+- [Precedente: EJS - Embedded JavaScript](./02-ejs.md)
+- [Prossimo: Pug - Template Engine Minimalista](./04-pug.md)

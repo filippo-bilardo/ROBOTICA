@@ -416,3 +416,10 @@ La gestione efficace dei parametri URL è fondamentale per creare API RESTful in
 Utilizzando correttamente i parametri di percorso per identificare risorse e i parametri di query per filtrare, ordinare e paginare i risultati, è possibile creare API che sono sia potenti che facili da utilizzare. La validazione e la conversione dei parametri sono passaggi cruciali per garantire che l'applicazione riceva dati nel formato atteso e per prevenire errori o vulnerabilità di sicurezza.
 
 Nella prossima sezione, esploreremo come gestire il corpo delle richieste HTTP (request body) per elaborare dati più complessi inviati dai client attraverso richieste POST, PUT e PATCH.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Gestione delle Richieste HTTP](../README.md)
+- [Documento Precedente: Metodi HTTP e loro utilizzo](./01-metodi-http.md)
+- [Documento Successivo: Body Parsing e Middleware](./03-body-parsing.md)

@@ -212,3 +212,9 @@ I template engine sono strumenti potenti che semplificano lo sviluppo di applica
 La scelta del template engine dipende dalle preferenze personali, dalle esigenze del progetto e dal team di sviluppo. EJS offre una sintassi familiare basata su JavaScript, Handlebars promuove template con logica minima, mentre Pug offre una sintassi concisa e potente.
 
 Nei prossimi capitoli, esploreremo in dettaglio ciascuno di questi template engine, imparando come sfruttare al meglio le loro caratteristiche per creare applicazioni web robuste e scalabili.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Torna all'Esercitazione 10](../README.md)
+- [Prossimo: EJS - Embedded JavaScript](./02-ejs.md)

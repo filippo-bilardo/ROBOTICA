@@ -424,8 +424,15 @@ const html = compiledTemplate({ data: 'valore' });
 
 ## Conclusione
 
-EJS è un template engine potente e flessibile che offre un modo semplice per generare HTML dinamico in applicazioni Node.js. La sua sintassi familiare e la bassa curva di apprendimento lo rendono una scelta eccellente per molti progetti, specialmente per sviluppatori che preferiscono mantenere la sintassi HTML standard e utilizzare JavaScript per la logica di template.
+EJS è un template engine potente ma semplice da utilizzare, ideale per sviluppatori che preferiscono mantenere la familiarità con JavaScript nei loro template. La sua sintassi intuitiva, combinata con la flessibilità di eseguire codice JavaScript completo, lo rende una scelta eccellente per progetti di varie dimensioni.
 
-Con EJS, puoi creare rapidamente interfacce utente dinamiche, implementare componenti riutilizzabili e strutturare le tue applicazioni in modo modulare. Sebbene non offra alcune funzionalità avanzate presenti in altri template engine, la sua semplicità e flessibilità lo rendono uno strumento prezioso nell'ecosistema Node.js.
+Sebbene possa incoraggiare l'inserimento di troppa logica nei template se non utilizzato con disciplina, EJS offre un buon equilibrio tra semplicità e potenza, rendendolo uno dei template engine più popolari nell'ecosistema Node.js.
 
-Nel prossimo capitolo, esploreremo Handlebars, un template engine che adotta un approccio diverso con una sintassi più dichiarativa e una separazione più rigida tra logica e presentazione.
+Nel prossimo capitolo, esploreremo Handlebars, un template engine che adotta un approccio diverso, focalizzandosi sulla minimizzazione della logica nei template.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Torna all'Esercitazione 10](../README.md)
+- [Precedente: Introduzione ai Template Engine](./01-introduzione-template-engine.md)
+- [Prossimo: Handlebars - Logica Minima](./03-handlebars.md)

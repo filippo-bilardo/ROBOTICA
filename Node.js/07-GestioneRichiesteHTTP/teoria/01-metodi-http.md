@@ -228,6 +228,8 @@ app.all('/api/resource', (req, res, next) => {
 });
 ```
 
+```
+
 ## Scelta del Metodo HTTP Appropriato
 
 La scelta del metodo HTTP appropriato è fondamentale per la progettazione di API RESTful coerenti e intuitive:
@@ -326,3 +328,9 @@ app.get('/users', authenticate, (req, res) => {
 I metodi HTTP sono fondamentali per la progettazione di API RESTful e applicazioni web moderne. La scelta del metodo appropriato per ogni operazione contribuisce a creare API intuitive, coerenti e conformi agli standard web. Express.js semplifica la gestione di questi metodi fornendo un'API chiara e flessibile per definire route e middleware che rispondono a diversi tipi di richieste HTTP.
 
 Nella prossima sezione, esploreremo come gestire i parametri URL e le query string per personalizzare il comportamento delle nostre API in base ai dati forniti dal client.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Gestione delle Richieste HTTP](../README.md)
+- [Documento Successivo: Gestione dei Parametri URL](./02-parametri-url.md)

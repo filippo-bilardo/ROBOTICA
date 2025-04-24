@@ -544,3 +544,10 @@ La sicurezza delle API è un processo continuo che richiede attenzione costante.
 Ricorda che la sicurezza è solo forte quanto il suo anello più debole, quindi è importante adottare un approccio olistico che copra tutti gli aspetti dell'applicazione, dal codice all'infrastruttura, dalle politiche alle procedure.
 
 Nel prossimo capitolo, metteremo in pratica questi concetti implementando un'API RESTful completa con autenticazione, autorizzazione e tutte le misure di sicurezza necessarie.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Middleware e Autenticazione](../README.md)
+- [Documento Precedente: JWT (JSON Web Tokens)](./03-jwt.md)
+- [Documento Successivo: Introduzione ai Template Engine](../../10-TemplateEngine/teoria/01-introduzione-template-engine.md)

@@ -299,3 +299,9 @@ Aggiorniamo gli script nel package.json:
 - [Semantic Versioning](https://semver.org/)
 - [Creazione di pacchetti Node.js](https://docs.npmjs.com/creating-node-js-modules)
 - [NPM CLI Commands](https://docs.npmjs.com/cli/v8/commands)
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: Moduli Personalizzati](../04-ModuliPersonalizzati/README.md)
+- [Modulo Successivo: Server Web](../06-ServerWeb/README.md)

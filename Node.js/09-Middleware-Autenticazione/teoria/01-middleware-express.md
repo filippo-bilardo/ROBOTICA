@@ -241,3 +241,10 @@ app.get('/users/:id', async (req, res, next) => {
 I middleware sono uno dei concetti più potenti in Express.js e consentono di creare applicazioni modulari, manutenibili e ben strutturate. Comprendere come funzionano e come utilizzarli efficacemente è fondamentale per sviluppare applicazioni Express robuste.
 
 Nel prossimo capitolo, esploreremo come utilizzare i middleware per implementare l'autenticazione e l'autorizzazione nelle nostre API.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Middleware e Autenticazione](../README.md)
+- [Documento Precedente: Implementazione di API con Express](../../08-REST_API/teoria/02-implementazione-api.md)
+- [Documento Successivo: Autenticazione e Autorizzazione](./02-autenticazione-autorizzazione.md)

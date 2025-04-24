@@ -381,3 +381,9 @@ main();
 - [Documentazione ufficiale Node.js sui moduli](https://nodejs.org/api/modules.html)
 - [Patterns di modularizzazione in JavaScript](https://addyosmani.com/resources/essentialjsdesignpatterns/book/#modulepatternjavascript)
 - [CommonJS vs ES Modules](https://blog.logrocket.com/commonjs-vs-es-modules-node-js/)
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: Sistema di File in Node.js](../03-Sistema_di_File_in_Node.js/README.md)
+- [Modulo Successivo: NPM](../05-NPM/README.md)

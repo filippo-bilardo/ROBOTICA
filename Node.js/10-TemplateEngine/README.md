@@ -270,3 +270,9 @@ app.get('/products/:id', (req, res) => {
 In questa esercitazione hai imparato a utilizzare i template engine per creare pagine web dinamiche con Node.js e Express. Hai configurato EJS, implementato layout e partials, e creato pagine che visualizzano dati dinamici. Questi concetti sono fondamentali per lo sviluppo di applicazioni web moderne e ti permetteranno di creare interfacce utente più complesse e interattive.
 
 Nel prossimo modulo, esploreremo come integrare un database con la tua applicazione Express per creare applicazioni web complete con persistenza dei dati.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: Middleware e Autenticazione](../09-Middleware-Autenticazione/README.md)
+- [Modulo Successivo: MongoDB](../11-MongoDB/README.md)

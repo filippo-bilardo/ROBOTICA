@@ -62,3 +62,9 @@ Per completare l'esercitazione, crea un repository GitHub contenente:
 - Un file README.md con istruzioni per l'installazione e l'utilizzo
 - Documentazione delle API implementate
 - Test unitari per i middleware e le funzionalità di autenticazione
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: REST API](../08-REST_API/README.md)
+- [Modulo Successivo: Template Engine](../10-TemplateEngine/README.md)

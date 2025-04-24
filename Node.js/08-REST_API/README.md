@@ -43,3 +43,9 @@ Crea una documentazione completa per la tua API utilizzando strumenti come Swagg
 
 ## Conclusione
 Al termine di questo modulo, sarai in grado di progettare e implementare API RESTful robuste, sicure e ben documentate utilizzando Node.js ed Express. Queste competenze sono fondamentali per lo sviluppo di applicazioni web moderne, microservizi e architetture orientate ai servizi. Le API REST rappresentano uno standard de facto per la comunicazione tra client e server nel web moderno, e la padronanza di questi concetti ti permetterà di creare sistemi distribuiti efficienti e scalabili.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: Gestione Richieste HTTP](../07-GestioneRichiesteHTTP/README.md)
+- [Modulo Successivo: Middleware e Autenticazione](../09-Middleware-Autenticazione/README.md)

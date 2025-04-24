@@ -597,3 +597,10 @@ Il body parsing è un aspetto fondamentale dello sviluppo di applicazioni web co
 È importante configurare correttamente i middleware di parsing, implementare la validazione dei dati e considerare le implicazioni di sicurezza per garantire che l'applicazione sia sia funzionale che sicura.
 
 Nella prossima sezione, esploreremo come gestire i form HTML e l'upload di file in modo più dettagliato, concentrandoci sulle best practice e sulle tecniche avanzate per migliorare l'esperienza utente e la sicurezza.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: Gestione delle Richieste HTTP](../README.md)
+- [Documento Precedente: Gestione dei Parametri URL](./02-parametri-url.md)
+- [Documento Successivo: Gestione dei Form e Upload di File](./04-gestione-form.md)

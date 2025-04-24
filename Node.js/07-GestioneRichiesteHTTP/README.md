@@ -42,3 +42,9 @@ Combina tutte le tecniche apprese per creare un'API completa che gestisca divers
 
 ## Conclusione
 Al termine di questo modulo, sarai in grado di gestire efficacemente diversi tipi di richieste HTTP nelle tue applicazioni Node.js, elaborare dati in vari formati e implementare funzionalità comuni come la validazione dei dati e l'upload di file. Queste competenze sono fondamentali per lo sviluppo di API robuste e applicazioni web interattive.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../README.md)
+- [Modulo Precedente: Server Web](../06-ServerWeb/README.md)
+- [Modulo Successivo: REST API](../08-REST_API/README.md)

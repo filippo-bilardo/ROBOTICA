@@ -631,3 +631,10 @@ In questo capitolo abbiamo esplorato come implementare API RESTful robuste e sca
 Seguendo queste best practices, è possibile creare API che sono non solo conformi ai principi REST, ma anche sicure, performanti e facili da mantenere nel tempo.
 
 Nel prossimo capitolo, approfondiremo gli aspetti di sicurezza e autenticazione per le API REST, esplorando tecniche come JWT, OAuth e protezione contro attacchi comuni.
+
+## Navigazione del Corso
+
+- [Indice del Corso](../../README.md)
+- [Modulo Corrente: REST API](../README.md)
+- [Documento Precedente: Principi REST e Architettura](./01-principi-rest.md)
+- [Documento Successivo: Middleware Express](../../09-Middleware-Autenticazione/teoria/01-middleware-express.md)
