@@ -1,0 +1,1 @@
+# Questo file rende la cartella 'tests' un pacchetto Python

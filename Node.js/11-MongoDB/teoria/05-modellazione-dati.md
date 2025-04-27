@@ -682,3 +682,20 @@ async function aggiungiUtenteAGruppo(utenteId, gruppoId) {
 ```
 
 ## Best Practices per la Modellazione dei Dati
+
+- Progettare lo schema in base ai modelli di accesso dell'applicazione
+- Combinare oggetti in un unico documento se verranno utilizzati insieme
+- Duplicare i dati (denormalizzare) quando necessario per migliorare le prestazioni di lettura
+- Riferirsi ad altri documenti tramite riferimenti quando i dati cambiano frequentemente
+- Utilizzare array incorporati per relazioni uno-a-molti quando la cardinalità è limitata
+- Considerare l'impatto delle operazioni di scrittura sul modello di dati
+- Evitare documenti che crescono in modo illimitato nel tempo
+- Utilizzare indici appropriati per supportare i modelli di query comuni
+- Testare il modello di dati con volumi di dati realistici
+
+## Navigazione
+
+- [Indice del Corso Node.js](../../README.md)
+- [Modulo 11: MongoDB](../README.md)
+- [Precedente: Mongoose](./04-mongoose.md)
+- [Torna all'Introduzione NoSQL](./01-introduzione-nosql.md)

@@ -378,3 +378,15 @@ Comment.belongsTo(Comment, {
 Le relazioni sono una parte fondamentale della modellazione dei dati in Sequelize e nei database relazionali in generale. Una corretta definizione e gestione delle relazioni permette di creare applicazioni robuste e scalabili, mantenendo l'integrità dei dati e semplificando le operazioni di lettura e scrittura.
 
 Nel prossimo capitolo, esploreremo le migrazioni e i seed in Sequelize, strumenti essenziali per gestire l'evoluzione dello schema del database e popolare il database con dati iniziali.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: ORM (Object-Relational Mapping)**
+  - [01 - Introduzione agli ORM](./01-introduzione-orm.md)
+  - [02 - Sequelize: Configurazione e Modelli](./02-sequelize-configurazione.md)
+  - **03 - Relazioni tra Modelli** (Documento Corrente)
+  - [04 - Migrazioni e Seed](./04-migrazioni-seed.md)
+  - [05 - Query Avanzate e Ottimizzazione](./05-query-avanzate.md)

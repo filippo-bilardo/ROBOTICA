@@ -1,0 +1,8 @@
+# Dati del livello 2
+# Esempio: Mappa del livello, nemici, oggetti
+
+YYYYYYYYYYYYYYYYYYYY
+Y                  Y
+Y        E         Y
+Y  P               Y
+YYYYYYYYYYYYYYYYYYYY

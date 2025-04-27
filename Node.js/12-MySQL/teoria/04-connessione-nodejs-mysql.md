@@ -716,3 +716,15 @@ La scelta dell'approccio dipende dalla complessità del progetto e dalle prefere
 Indipendentemente dall'approccio scelto, è fondamentale seguire le best practice per la sicurezza (query parametrizzate, gestione sicura delle credenziali) e l'efficienza (pool di connessioni, transazioni appropriate).
 
 Nel prossimo capitolo, esploreremo pattern più avanzati per la gestione delle connessioni e l'organizzazione del codice in applicazioni Node.js con MySQL.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: MySQL**
+  - [01 - Introduzione ai Database Relazionali](./01-introduzione-db-relazionali.md)
+  - [02 - Installazione e Configurazione di MySQL](./02-installazione-mysql.md)
+  - [03 - Operazioni SQL Fondamentali](./03-operazioni-sql.md)
+  - **04 - Connessione a MySQL da Node.js** (Documento Corrente)
+  - [05 - Pattern di Gestione delle Connessioni](./05-pattern-connessioni.md)

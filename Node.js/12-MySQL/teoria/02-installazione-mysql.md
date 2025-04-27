@@ -274,3 +274,15 @@ FLUSH PRIVILEGES;
 In questo capitolo abbiamo visto come installare e configurare MySQL su diversi sistemi operativi, creare un database e un utente per lo sviluppo, e verificare la connessione da Node.js. Con queste basi, sei pronto per iniziare a sviluppare applicazioni Node.js che utilizzano MySQL come database.
 
 Nei prossimi capitoli, esploreremo le operazioni SQL fondamentali e come implementarle in Node.js, approfondendo i pattern di gestione delle connessioni e le best practice per lo sviluppo di applicazioni robuste e scalabili.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: MySQL**
+  - [01 - Introduzione ai Database Relazionali](./01-introduzione-db-relazionali.md)
+  - **02 - Installazione e Configurazione di MySQL** (Documento Corrente)
+  - [03 - Operazioni SQL Fondamentali](./03-operazioni-sql.md)
+  - [04 - Connessione a MySQL da Node.js](./04-connessione-nodejs-mysql.md)
+  - [05 - Pattern di Gestione delle Connessioni](./05-pattern-connessioni.md)

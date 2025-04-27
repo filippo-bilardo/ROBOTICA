@@ -1,0 +1,1 @@
+# Init file for the assistente_personale package

@@ -192,3 +192,15 @@ I database relazionali come MySQL rappresentano una tecnologia matura e affidabi
 Nonostante l'ascesa dei database NoSQL, i sistemi relazionali continuano a essere fondamentali nel panorama tecnologico moderno, spesso utilizzati in combinazione con altre tecnologie di persistenza in architetture poliglotte.
 
 Nei prossimi capitoli, esploreremo in dettaglio come installare, configurare e utilizzare MySQL con Node.js, implementando pattern comuni e best practice per lo sviluppo di applicazioni robuste e scalabili.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: MySQL**
+  - **01 - Introduzione ai Database Relazionali** (Documento Corrente)
+  - [02 - Installazione e Configurazione di MySQL](./02-installazione-mysql.md)
+  - [03 - Operazioni SQL Fondamentali](./03-operazioni-sql.md)
+  - [04 - Connessione a MySQL da Node.js](./04-connessione-nodejs-mysql.md)
+  - [05 - Pattern di Gestione delle Connessioni](./05-pattern-connessioni.md)

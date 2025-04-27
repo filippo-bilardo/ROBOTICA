@@ -861,4 +861,18 @@ Per la maggior parte delle applicazioni Node.js, il pattern Singleton Pool rappr
 
 Indipendentemente dal pattern scelto, è fondamentale seguire le best practice per la gestione delle connessioni, implementare una robusta gestione degli errori e monitorare costantemente le prestazioni del database per garantire che l'applicazione rimanga scalabile, affidabile e performante.
 
-Nei prossimi capitoli, metteremo in pratica questi concetti implementando un'applicazione completa che utilizza MySQL come database, applicando i pattern e le best practice discusse in questo modulo.
+In questo capitolo abbiamo esplorato diversi pattern per la gestione delle connessioni MySQL in applicazioni Node.js, dalle soluzioni più semplici come il Singleton Pool fino a pattern più avanzati come Read/Write Splitting. Abbiamo anche discusso best practice per la gestione delle credenziali, il dimensionamento del pool e la gestione degli errori.
+
+La comprensione di questi pattern ti permetterà di progettare applicazioni Node.js con MySQL che siano robuste, scalabili e facili da mantenere. Nel tuo percorso di sviluppo, potrai iniziare con pattern semplici e poi evolvere verso soluzioni più sofisticate man mano che le esigenze della tua applicazione crescono.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: MySQL**
+  - [01 - Introduzione ai Database Relazionali](./01-introduzione-db-relazionali.md)
+  - [02 - Installazione e Configurazione di MySQL](./02-installazione-mysql.md)
+  - [03 - Operazioni SQL Fondamentali](./03-operazioni-sql.md)
+  - [04 - Connessione a MySQL da Node.js](./04-connessione-nodejs-mysql.md)
+  - **05 - Pattern di Gestione delle Connessioni** (Documento Corrente)

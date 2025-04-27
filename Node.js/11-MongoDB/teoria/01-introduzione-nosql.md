@@ -202,3 +202,11 @@ I database NoSQL rappresentano un'importante evoluzione nel panorama dei sistemi
 La scelta tra SQL e NoSQL non dovrebbe essere vista come un'opposizione, ma piuttosto come la selezione dello strumento più adatto per specifici requisiti. In molti casi, le architetture moderne adottano un approccio poliglotta, utilizzando diversi tipi di database per diversi aspetti dell'applicazione.
 
 Per gli sviluppatori Node.js, i database NoSQL come MongoDB offrono un'integrazione particolarmente naturale, consentendo di lavorare con i dati in modo flessibile e scalabile, in perfetta sintonia con la filosofia di Node.js stesso.
+
+---
+
+## Navigazione
+
+- [Indice del Corso Node.js](../../README.md)
+- [Modulo 11: MongoDB](../README.md)
+- [Successivo: MongoDB: Concetti Fondamentali](./02-mongodb-concetti.md)

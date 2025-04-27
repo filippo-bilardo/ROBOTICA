@@ -22,10 +22,10 @@ Il corso è strutturato in 20 esercitazioni, ognuna focalizzata su specifici asp
 13. [Programmazione Concorrente](./13-Programmazione_Concorrente/README.md)
 14. [Testing](./14-Testing/README.md)
 15. [Librerie Standard di Python](./15-Librerie_Standard/README.md)
-16. [Lavorare con i Database](./16-Database/README.md)
-17. [Sviluppo Web con Python](./17-Sviluppo_Web/README.md)
-18. [Data Science e Visualizzazione](./18-Data_Science/README.md)
-19. [Automazione e Script](./19-Automazione_Script/README.md)
+16. [Librerie di Terze Parti](./16-Librerie_Terze_Parti/README.md)
+17. [Progetti Pratici](./17-Progetti_Pratici/README.md)
+18. [Best Practices](./18-Best_Practices/README.md)
+19. [Algoritmi e Strutture Dati](./19-Algoritmi_Strutture_Dati/README.md)
 20. [Progetto Finale](./20-Progetto_Finale/README.md)
 
 ## Come Utilizzare Questo Corso

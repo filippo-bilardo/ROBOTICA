@@ -502,3 +502,15 @@ Questo comando creerà sia un modello che una migrazione corrispondente. Tuttavi
 Le migrazioni e i seed sono strumenti potenti per gestire l'evoluzione del database e garantire la coerenza tra diversi ambienti. Utilizzando questi strumenti, è possibile mantenere un controllo preciso sullo schema del database e sui dati iniziali, facilitando lo sviluppo collaborativo e il deployment sicuro delle applicazioni.
 
 Nel prossimo capitolo, esploreremo le query avanzate e le tecniche di ottimizzazione in Sequelize, per sfruttare al massimo le potenzialità dell'ORM e migliorare le prestazioni delle applicazioni.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: ORM (Object-Relational Mapping)**
+  - [01 - Introduzione agli ORM](./01-introduzione-orm.md)
+  - [02 - Sequelize: Configurazione e Modelli](./02-sequelize-configurazione.md)
+  - [03 - Relazioni tra Modelli](./03-relazioni-modelli.md)
+  - **04 - Migrazioni e Seed** (Documento Corrente)
+  - [05 - Query Avanzate e Ottimizzazione](./05-query-avanzate.md)

@@ -799,14 +799,226 @@ async function trasferisciSaldo(daUtenteId, aUtenteId, importo) {
 
 ## Indici
 
-Mongoose permette di definire indici per migliorare le prestazioni delle query.
+Mongoose permette di definire indici per migliorare le prestazioni delle query. Gli indici in MongoDB funzionano in modo simile agli indici nei database relazionali, consentendo al database di trovare e recuperare i documenti in modo più efficiente.
+
+### Tipi di Indici
+
+#### Indici Singoli
+
+Gli indici singoli sono i più semplici e indicizzano un solo campo del documento.
 
 ```javascript
-// Indice singolo
+// Indice singolo (1 per ordine crescente, -1 per ordine decrescente)
 utenteSchema.index({ email: 1 }, { unique: true });
+utenteSchema.index({ dataRegistrazione: -1 });
+```
 
+L'opzione `unique: true` garantisce che non ci siano valori duplicati per il campo indicizzato.
+
+#### Indici Composti
+
+Gli indici composti indicizzano più campi insieme, utili per query che filtrano o ordinano su più campi.
+
+```javascript
 // Indice composto
 utenteSchema.index({ cognome: 1, nome: 1 });
 
+// Indice composto con opzioni
+utenteSchema.index(
+  { città: 1, cap: 1 },
+  { name: 'indice_località' } // Nome personalizzato dell'indice
+);
+```
+
+L'ordine dei campi nell'indice è importante: l'indice può essere utilizzato per query che filtrano sul primo campo o su entrambi, ma non solo sul secondo.
+
+#### Indici di Testo
+
+Gli indici di testo consentono ricerche full-text efficienti su campi di tipo stringa.
+
+```javascript
 // Indice di testo
-postSchema
+postSchema.index(
+  { titolo: 'text', contenuto: 'text', tags: 'text' },
+  {
+    weights: {
+      titolo: 10,    // Priorità maggiore
+      contenuto: 5,  // Priorità media
+      tags: 2        // Priorità minore
+    },
+    name: 'indice_ricerca_post',
+    default_language: 'italian',
+    language_override: 'idioma' // Campo che può specificare la lingua per documento
+  }
+);
+
+// Utilizzo dell'indice di testo
+try {
+  // Ricerca semplice
+  const risultatiBase = await Post.find({ $text: { $search: "mongodb mongoose" } });
+  
+  // Ricerca con score e ordinamento per rilevanza
+  const risultatiOrdinati = await Post.find(
+    { $text: { $search: "mongodb mongoose" } },
+    { score: { $meta: "textScore" } }
+  ).sort({ score: { $meta: "textScore" } });
+  
+  // Ricerca con frase esatta
+  const risultatiFrase = await Post.find({ $text: { $search: '"database NoSQL"' } });
+  
+  // Ricerca con esclusione di termini
+  const risultatiEsclusione = await Post.find({ $text: { $search: "mongodb -sql" } });
+  
+  console.log(`Trovati ${risultatiOrdinati.length} risultati`);
+} catch (error) {
+  console.error('Errore durante la ricerca:', error);
+}
+```
+
+Nota: MongoDB supporta un solo indice di testo per collezione.
+
+#### Indici Geospaziali
+
+Gli indici geospaziali ottimizzano le query che coinvolgono dati geografici, come la ricerca di luoghi vicini a una determinata posizione.
+
+```javascript
+// Schema per luoghi
+const luogoSchema = new Schema({
+  nome: String,
+  posizione: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] } // [longitudine, latitudine]
+  },
+  indirizzo: String,
+  categoria: String
+});
+
+// Indice geospaziale 2dsphere (per coordinate terrestri)
+luogoSchema.index({ posizione: '2dsphere' });
+
+// Utilizzo dell'indice geospaziale
+try {
+  // Trova luoghi entro 5km dal centro di Milano
+  const luoghiVicini = await Luogo.find({
+    posizione: {
+      $near: {
+        $geometry: {
+          type: 'Point',
+          coordinates: [9.1900, 45.4642] // Longitudine, latitudine di Milano
+        },
+        $maxDistance: 5000 // 5km in metri
+      }
+    }
+  });
+  
+  // Trova luoghi all'interno di un'area poligonale (es. quartiere)
+  const luoghiInArea = await Luogo.find({
+    posizione: {
+      $geoWithin: {
+        $geometry: {
+          type: 'Polygon',
+          coordinates: [[  // Array di punti che formano il poligono
+            [9.18, 45.46],
+            [9.20, 45.46],
+            [9.20, 45.47],
+            [9.18, 45.47],
+            [9.18, 45.46]  // Il primo e l'ultimo punto devono coincidere
+          ]]
+        }
+      }
+    }
+  });
+  
+  console.log(`Trovati ${luoghiVicini.length} luoghi vicini`);
+} catch (error) {
+  console.error('Errore durante la ricerca geospaziale:', error);
+}
+```
+
+#### Indici TTL (Time-To-Live)
+
+Gli indici TTL consentono a MongoDB di eliminare automaticamente i documenti dopo un certo periodo di tempo, utili per dati temporanei come sessioni, log o cache.
+
+```javascript
+// Schema per log
+const logSchema = new Schema({
+  livello: { type: String, enum: ['info', 'warning', 'error'] },
+  messaggio: String,
+  dettagli: Object,
+  dataCreazione: { type: Date, default: Date.now }
+});
+
+// Indice TTL (Time-To-Live)
+logSchema.index(
+  { dataCreazione: 1 },
+  { expireAfterSeconds: 86400 } // Elimina documenti dopo 24 ore
+);
+
+// Indice TTL con campo di scadenza esplicito
+const sessioneSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'Utente' },
+  token: String,
+  ultimoAccesso: Date,
+  scadenza: Date // Data di scadenza esplicita
+});
+
+sessioneSchema.index(
+  { scadenza: 1 },
+  { expireAfterSeconds: 0 } // 0 significa che il documento scade alla data indicata nel campo
+);
+```
+
+### Opzioni degli Indici
+
+Mongoose supporta varie opzioni per la creazione di indici:
+
+```javascript
+utenteSchema.index(
+  { email: 1 },
+  {
+    unique: true,           // Valori unici
+    background: true,       // Creazione in background (non blocca altre operazioni)
+    sparse: true,           // Indicizza solo documenti dove il campo esiste
+    partialFilterExpression: { attivo: true }, // Indicizza solo documenti che soddisfano la condizione
+    name: 'idx_email'       // Nome personalizzato dell'indice
+  }
+);
+```
+
+### Gestione degli Indici
+
+```javascript
+// Creazione di tutti gli indici definiti nello schema
+await mongoose.model('Utente').createIndexes();
+
+// Rimozione di un indice specifico
+await mongoose.model('Utente').collection.dropIndex('idx_email');
+
+// Rimozione di tutti gli indici (tranne _id)
+await mongoose.model('Utente').collection.dropIndexes();
+
+// Ottenere informazioni sugli indici
+const indici = await mongoose.model('Utente').collection.indexes();
+console.log('Indici:', indici);
+```
+
+### Best Practices per gli Indici
+
+1. **Crea indici per supportare le query comuni**: Analizza i pattern di accesso della tua applicazione
+2. **Evita indici inutili**: Ogni indice ha un costo in termini di spazio e prestazioni di scrittura
+3. **Monitora l'utilizzo degli indici**: Usa `explain()` per verificare se le query utilizzano gli indici previsti
+4. **Considera l'ordine dei campi negli indici composti**: Metti prima i campi usati per l'uguaglianza, poi quelli per l'ordinamento
+5. **Usa indici parziali per collezioni grandi**: Riducono lo spazio e migliorano le prestazioni
+
+```javascript
+// Esempio di utilizzo di explain() per analizzare una query
+const spiegazione = await Utente.find({ email: 'mario.rossi@example.com' }).explain('executionStats');
+console.log(JSON.stringify(spiegazione, null, 2));
+```
+
+## Navigazione
+
+- [Indice del Corso Node.js](../../README.md)
+- [Modulo 11: MongoDB](../README.md)
+- [Precedente: MongoDB CRUD](./03-mongodb-crud.md)
+- [Successivo: Modellazione dei Dati in MongoDB](./05-modellazione-dati.md)

@@ -324,3 +324,12 @@ MongoDB rappresenta una soluzione potente e flessibile per la gestione dei dati 
 La flessibilità dello schema, la scalabilità orizzontale e l'integrazione nativa con linguaggi di programmazione come JavaScript rendono MongoDB particolarmente adatto per lo sviluppo con Node.js, creando un ecosistema coerente e produttivo per gli sviluppatori.
 
 Nei prossimi capitoli, esploreremo in dettaglio come eseguire operazioni CRUD in MongoDB e come integrarlo efficacemente nelle applicazioni Node.js utilizzando sia il driver nativo che Mongoose.
+
+---
+
+## Navigazione
+
+- [Indice del Corso Node.js](../../README.md)
+- [Modulo 11: MongoDB](../README.md)
+- [Precedente: Introduzione ai Database NoSQL](./01-introduzione-nosql.md)
+- [Successivo: Operazioni CRUD in MongoDB](./03-mongodb-crud.md)

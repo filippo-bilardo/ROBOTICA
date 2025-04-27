@@ -514,3 +514,15 @@ eseguiOperazioniSQL();
 In questo capitolo abbiamo esplorato le operazioni SQL fondamentali che ti permetteranno di interagire efficacemente con MySQL nelle tue applicazioni Node.js. Abbiamo visto come creare e gestire database e tabelle, eseguire operazioni CRUD, utilizzare join per combinare dati da più tabelle, e sfruttare funzionalità avanzate come transazioni, stored procedures e trigger.
 
 La padronanza di SQL è essenziale per sviluppare applicazioni che utilizzano database relazionali, permettendoti di sfruttare appieno la potenza e la flessibilità di MySQL. Nel prossimo capitolo, vedremo come integrare queste operazioni SQL in un'applicazione Node.js, implementando pattern comuni per la gestione delle connessioni e la strutturazione del codice.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: MySQL**
+  - [01 - Introduzione ai Database Relazionali](./01-introduzione-db-relazionali.md)
+  - [02 - Installazione e Configurazione di MySQL](./02-installazione-mysql.md)
+  - **03 - Operazioni SQL Fondamentali** (Documento Corrente)
+  - [04 - Connessione a MySQL da Node.js](./04-connessione-nodejs-mysql.md)
+  - [05 - Pattern di Gestione delle Connessioni](./05-pattern-connessioni.md)

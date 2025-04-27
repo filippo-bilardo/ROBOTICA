@@ -410,3 +410,15 @@ module.exports = (sequelize, DataTypes) => {
 La configurazione corretta di Sequelize e la definizione accurata dei modelli sono fondamentali per sfruttare appieno le potenzialità di questo ORM. Una buona organizzazione del codice e l'utilizzo delle funzionalità avanzate come validatori e hooks possono migliorare significativamente la qualità e la manutenibilità del codice.
 
 Nel prossimo capitolo, esploreremo come definire e gestire le relazioni tra i modelli, un aspetto cruciale per lavorare con database relazionali.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: ORM (Object-Relational Mapping)**
+  - [01 - Introduzione agli ORM](./01-introduzione-orm.md)
+  - **02 - Sequelize: Configurazione e Modelli** (Documento Corrente)
+  - [03 - Relazioni tra Modelli](./03-relazioni-modelli.md)
+  - [04 - Migrazioni e Seed](./04-migrazioni-seed.md)
+  - [05 - Query Avanzate e Ottimizzazione](./05-query-avanzate.md)

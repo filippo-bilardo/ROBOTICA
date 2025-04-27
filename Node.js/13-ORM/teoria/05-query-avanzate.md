@@ -448,3 +448,15 @@ L'ottimizzazione delle query è un aspetto fondamentale per garantire prestazion
 Ricorda che l'ottimizzazione dovrebbe essere guidata da misurazioni reali e non da supposizioni. Utilizza strumenti di profiling e monitoraggio per identificare i colli di bottiglia effettivi e concentra gli sforzi di ottimizzazione dove avranno il maggiore impatto.
 
 Infine, mantieni un equilibrio tra la leggibilità del codice e l'ottimizzazione delle prestazioni. Un codice troppo ottimizzato ma difficile da comprendere può creare problemi di manutenibilità a lungo termine.
+
+---
+
+## Navigazione del Corso
+
+- [Indice del Corso Node.js](../../README.md)
+- **Modulo Corrente: ORM (Object-Relational Mapping)**
+  - [01 - Introduzione agli ORM](./01-introduzione-orm.md)
+  - [02 - Sequelize: Configurazione e Modelli](./02-sequelize-configurazione.md)
+  - [03 - Relazioni tra Modelli](./03-relazioni-modelli.md)
+  - [04 - Migrazioni e Seed](./04-migrazioni-seed.md)
+  - **05 - Query Avanzate e Ottimizzazione** (Documento Corrente)

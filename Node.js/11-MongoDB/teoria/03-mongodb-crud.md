@@ -846,3 +846,12 @@ Le operazioni CRUD rappresentano il fondamento dell'interazione con MongoDB. Gra
 In questo capitolo abbiamo esplorato come eseguire operazioni di creazione, lettura, aggiornamento ed eliminazione sia attraverso la shell di MongoDB che utilizzando il driver Node.js. Abbiamo anche visto come gestire gli errori e quali best practices seguire per garantire prestazioni, sicurezza e robustezza.
 
 Nel prossimo capitolo, esploreremo Mongoose, un Object Document Mapper (ODM) per MongoDB e Node.js che fornisce un livello di astrazione più alto e funzionalità aggiuntive come la validazione dei dati, i middleware e la definizione di schemi.
+
+---
+
+## Navigazione
+
+- [Indice del Corso Node.js](../../README.md)
+- [Modulo 11: MongoDB](../README.md)
+- [Precedente: Concetti di MongoDB](./02-mongodb-concetti.md)
+- [Successivo: Mongoose](./04-mongoose.md)
