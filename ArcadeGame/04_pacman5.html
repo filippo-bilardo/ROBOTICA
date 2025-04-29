@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Qix Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background: #000;
+        }
+        #score {
+            margin: 20px;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0%</div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+
+        canvas.width = 800;
+        canvas.height = 600;
+        const cellSize = 20;
+        const gridWidth = canvas.width / cellSize;
+        const gridHeight = canvas.height / cellSize;
+
+        let grid = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(false));
+        let score = 0;
+        let gameOver = false;
+
+        // Player
+        const player = {
+            x: 0,
+            y: 0,
+            velocity: 3,
+            drawing: false,
+            path: []
+        };
+
+        // Qix
+        const qix = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            velocity: 2,
+            direction: Math.random() * Math.PI * 2
+        };
+
+        // Sparks
+        const sparks = [];
+        const sparkCount = 5;
+
+        // Initialize game
+        function init() {
+            // Player start position
+            const edge = Math.floor(Math.random() * 4);
+            switch(edge) {
+                case 0: player.x = Math.random() * canvas.width; break;
+                case 1: player.x = canvas.width; player.y = Math.random() * canvas.height; break;
+                case 2: player.x = Math.random() * canvas.width; player.y = canvas.height; break;
+                case 3: player.y = Math.random() * canvas.height; break;
+            }
+
+            // Create sparks
+            for(let i = 0; i < sparkCount; i++) {
+                sparks.push({
+                    x: Math.random() < 0.5 ? 0 : canvas.width,
+                    y: Math.random() * canvas.height,
+                    direction: Math.random() < 0.5 ? 'clockwise' : 'counter'
+                });
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if(gameOver) return;
+
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            updatePlayer();
+            updateQix();
+            updateSparks();
+            checkCollisions();
+        }
+
+        function updatePlayer() {
+            if(!player.drawing) {
+                if(keys['ArrowUp']) player.y = Math.max(0, player.y - player.velocity);
+                if(keys['ArrowDown']) player.y = Math.min(canvas.height, player.y + player.velocity);
+                if(keys['ArrowLeft']) player.x = Math.max(0, player.x - player.velocity);
+                if(keys['ArrowRight']) player.x = Math.min(canvas.width, player.x + player.velocity);
+            } else {
+                player.path.push({x: player.x, y: player.y});
+            }
+        }
+
+        function updateQix() {
+            qix.x += Math.cos(qix.direction) * qix.velocity;
+            qix.y += Math.sin(qix.direction) * qix.velocity;
+
+            // Boundary check
+            if(qix.x < 0 || qix.x > canvas.width || qix.y < 0 || qix.y > canvas.height) {
+                qix.direction = Math.random() * Math.PI * 2;
+            }
+
+            // Check if in claimed area
+            const cellX = Math.floor(qix.x / cellSize);
+            const cellY = Math.floor(qix.y / cellSize);
+            if(grid[cellY]?.[cellX]) {
+                qix.direction += Math.PI;
+            }
+        }
+
+        function updateSparks() {
+            sparks.forEach(spark => {
+                if(spark.direction === 'clockwise') {
+                    if(spark.x === 0) spark.y = Math.max(0, spark.y - 2);
+                    if(spark.x === canvas.width) spark.y = Math.min(canvas.height, spark.y + 2);
+                    if(spark.y === 0) spark.x = Math.min(canvas.width, spark.x + 2);
+                    if(spark.y === canvas.height) spark.x = Math.max(0, spark.x - 2);
+                } else {
+                    if(spark.x === 0) spark.y = Math.min(canvas.height, spark.y + 2);
+                    if(spark.x === canvas.width) spark.y = Math.max(0, spark.y - 2);
+                    if(spark.y === 0) spark.x = Math.max(0, spark.x - 2);
+                    if(spark.y === canvas.height) spark.x = Math.min(canvas.width, spark.x + 2);
+                }
+            });
+        }
+
+        function checkCollisions() {
+            // Player-Qix collision
+            const dx = player.x - qix.x;
+            const dy = player.y - qix.y;
+            if(Math.hypot(dx, dy) < 15) gameOver = true;
+
+            // Player-Spark collision
+            sparks.forEach(spark => {
+                const dx = player.x - spark.x;
+                const dy = player.y - spark.y;
+                if(Math.hypot(dx, dy) < 8) gameOver = true;
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw claimed areas
+            ctx.fillStyle = '#0000ff33';
+            grid.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    if(cell) ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
+                });
+            });
+
+            // Draw player
+            ctx.fillStyle = '#0f0';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 5, 0, Math.PI*2);
+            ctx.fill();
+
+            // Draw Qix
+            ctx.fillStyle = '#f00';
+            ctx.beginPath();
+            ctx.arc(qix.x, qix.y, 10, 0, Math.PI*2);
+            ctx.fill();
+
+            // Draw sparks
+            ctx.fillStyle = '#ff0';
+            sparks.forEach(spark => {
+                ctx.beginPath();
+                ctx.arc(spark.x, spark.y, 3, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Draw active path
+            if(player.drawing && player.path.length > 1) {
+                ctx.strokeStyle = '#0f0';
+                ctx.beginPath();
+                ctx.moveTo(player.path[0].x, player.path[0].y);
+                player.path.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+            }
+        }
+
+        // Keyboard input
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            if(e.key === ' ') {
+                e.preventDefault();
+                if(!player.drawing && !gameOver) {
+                    player.drawing = true;
+                    player.path = [{x: player.x, y: player.y}];
+                }
+            }
+            keys[e.key] = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            if(e.key === ' ' && player.drawing) {
+                e.preventDefault();
+                player.drawing = false;
+                claimArea();
+            }
+            delete keys[e.key];
+        });
+
+        function claimArea() {
+            if(player.path.length < 2) return;
+
+            // Create path
+            const path = new Path2D();
+            path.moveTo(player.path[0].x, player.path[0].y);
+            player.path.forEach(p => path.lineTo(p.x, p.y));
+            path.closePath();
+
+            // Check which cells are inside
+            for(let y = 0; y < gridHeight; y++) {
+                for(let x = 0; x < gridWidth; x++) {
+                    const cx = x * cellSize + cellSize/2;
+                    const cy = y * cellSize + cellSize/2;
+                    if(ctx.isPointInPath(path, cx, cy)) {
+                        grid[y][x] = true;
+                    }
+                }
+            }
+
+            // Update score
+            const claimed = grid.flat().filter(c => c).length;
+            score = (claimed / (gridWidth * gridHeight)) * 100;
+            scoreDisplay.textContent = `Score: ${Math.floor(score)}%`;
+
+            // Reset path
+            player.path = [];
+        }
+
+        // Game over handling
+        function checkGameOver() {
+            if(gameOver) {
+                alert(`Game Over! Final Score: ${Math.floor(score)}%`);
+                document.location.reload();
+            }
+        }
+
+        // Start game
+        init();
+        setInterval(checkGameOver, 100);
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
