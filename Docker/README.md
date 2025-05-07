@@ -23,12 +23,12 @@ Docker è una piattaforma open source che automatizza il deployment di applicazi
 8. [Volumi e Persistenza dei Dati](./06-VolumePersistenza/README.md) - Gestione dei dati persistenti
 
 ### Modulo 4: Docker in Produzione
-8. [Docker Swarm](./08-DockerSwarm/README.md) - Orchestrazione di container
-9. [Docker e CI/CD](./09-DockerCICD/README.md) - Integrazione continua e deployment continuo
+8. [Sicurezza in Docker](./08-Sicurezza/README.md) - Best practice e gestione della sicurezza
+9. [Docker Swarm](./09-DockerSwarm/README.md) - Orchestrazione di container
+10. [Docker e CI/CD](./10-DockerCICD/README.md) - Integrazione continua e deployment continuo
 
 ### Modulo 5: Casi d'uso avanzati
-10. [Microservizi con Docker](./10-MicroserviziDocker/README.md) - Architettura a microservizi
-11. [Docker e sicurezza](./11-DockerSicurezza/README.md) - Best practice per la sicurezza
+11. [Microservizi con Docker](./11-MicroserviziDocker/README.md) - Architettura a microservizi
 
 ## Come utilizzare questo corso
 
