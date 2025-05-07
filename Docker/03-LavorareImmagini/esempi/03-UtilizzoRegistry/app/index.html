@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esempio Registry Docker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .registry-types {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        .registry-type {
+            flex: 1;
+            margin: 0 10px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Esempio Registry Docker</h1>
+        
+        <div class="success">
+            <strong>Congratulazioni!</strong> Se stai vedendo questa pagina, hai creato con successo un'immagine Docker e l'hai eseguita da un registry.
+        </div>
+        
+        <div class="registry-types">
+            <div class="registry-type">
+                <h3>Docker Hub</h3>
+                <p>Registry pubblico ufficiale di Docker</p>
+                <p>Comando: <code>docker push username/mia-app:1.0</code></p>
+            </div>
+            <div class="registry-type">
+                <h3>Registry Locale</h3>
+                <p>Registry privato in esecuzione sulla tua macchina</p>
+                <p>Comando: <code>docker push localhost:5000/mia-app:1.0</code></p>
+            </div>
+        </div>
+        
+        <h2>Cosa hai imparato</h2>
+        <ul>
+            <li>Come taggare le immagini per diversi registry</li>
+            <li>Come autenticarsi e caricare immagini su Docker Hub</li>
+            <li>Come configurare e utilizzare un registry locale</li>
+            <li>Come gestire le immagini nei registry</li>
+        </ul>
+        
+        <h2>Prossimi passi</h2>
+        <p>Prova a configurare un registry locale con autenticazione e TLS per un ambiente più sicuro.</p>
+        <p>Esplora servizi di registry gestiti come AWS ECR, Google Container Registry o Azure Container Registry.</p>
+    </div>
+</body>
+</html>

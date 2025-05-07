@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esempio Docker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Benvenuto nell'Esempio Docker</h1>
+        
+        <div class="success">
+            <strong>Congratulazioni!</strong> Se stai vedendo questa pagina, hai creato con successo un'immagine Docker e stai eseguendo un container basato su di essa.
+        </div>
+        
+        <h2>Cosa hai imparato</h2>
+        <ul>
+            <li>Come creare un <code>Dockerfile</code> semplice</li>
+            <li>Come utilizzare un'immagine base (nginx:alpine)</li>
+            <li>Come copiare file nell'immagine Docker</li>
+            <li>Come esporre porte per il container</li>
+        </ul>
+        
+        <h2>Prossimi passi</h2>
+        <p>Prova a modificare il file HTML e ricostruire l'immagine per vedere i cambiamenti.</p>
+        <p>Esplora altre istruzioni del Dockerfile come:</p>
+        <ul>
+            <li><code>RUN</code> - per eseguire comandi durante il build</li>
+            <li><code>ENV</code> - per impostare variabili d'ambiente</li>
+            <li><code>VOLUME</code> - per creare punti di montaggio</li>
+        </ul>
+    </div>
+</body>
+</html>
