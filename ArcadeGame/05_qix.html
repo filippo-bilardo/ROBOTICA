@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-P">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Qix Game - Improved</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            border: 3px solid #555;
+            background-color: #404040; /* Colore area non reclamata */
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        #info {
+            margin-top: 15px;
+            font-size: 1.5em;
+            text-shadow: 1px 1px 2px #000;
+        }
+        #controls {
+            margin-top: 8px;
+            font-size: 1em;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="info">Area: 0% - Vite: 3</div>
+    <div id="controls">Controlli: Frecce per muoversi, Spazio per disegnare/fermare. R per ricominciare.</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const infoDisplay = document.getElementById('info');
+
+        const GRID_SIZE = 20;
+        const CANVAS_WIDTH_CELLS = 30;
+        const CANVAS_HEIGHT_CELLS = 20;
+
+        canvas.width = CANVAS_WIDTH_CELLS * GRID_SIZE;
+        canvas.height = CANVAS_HEIGHT_CELLS * GRID_SIZE;
+
+        const EMPTY = 0;
+        const BORDER = 1;
+        const FILLED = 2;
+        const DRAWING = 3;
+
+        let grid = [];
+        let player = {
+            gridX: 0, gridY: 0,
+            pixelX: 0, pixelY: 0,
+            targetPixelX: 0, targetPixelY: 0,
+            isMoving: false,
+            moveSpeed: 5, // Pixel per frame per l'animazione del movimento
+            isDrawing: false,
+            drawingPath: [],
+            startDrawGridX: 0, startDrawGridY: 0 // Punto di partenza logico del disegno
+        };
+
+        let qix = {
+            points: [],
+            numSegments: 4,
+            velocities: [],
+            qixSpeed: 2.5
+        };
+
+        let lives = 3;
+        let claimedAreaPercentage = 0;
+        let totalClaimableCells = 0;
+        let gameOver = false;
+        let gameWon = false;
+
+        const PLAYER_COLOR = '#3498db';
+        const PLAYER_DRAWING_COLOR = '#f1c40f';
+        const BORDER_COLOR = '#7f8c8d';
+        const FILLED_COLOR = '#2980b9'; // Un blu più scuro per l'area riempita
+        const DRAWING_LINE_COLOR = '#e67e22';
+        const QIX_COLOR = '#e74c3c';
+        const EMPTY_COLOR = '#404040';
+
+
+        // --- Inizializzazione ---
+        function initGrid() {
+            grid = [];
+            totalClaimableCells = 0;
+            for (let r = 0; r < CANVAS_HEIGHT_CELLS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < CANVAS_WIDTH_CELLS; c++) {
+                    if (r === 0 || r === CANVAS_HEIGHT_CELLS - 1 || c === 0 || c === CANVAS_WIDTH_CELLS - 1) {
+                        grid[r][c] = BORDER;
+                    } else {
+                        grid[r][c] = EMPTY;
+                        totalClaimableCells++;
+                    }
+                }
+            }
+        }
+
+        function initPlayerState(isFullReset = true) {
+            player.gridX = 0;
+            player.gridY = Math.floor(CANVAS_HEIGHT_CELLS / 2);
+            // Assicurati che il giocatore inizi su un bordo valido
+            while(grid[player.gridY][player.gridX] !== BORDER) {
+                 if(player.gridX < CANVAS_WIDTH_CELLS -1) player.gridX++; else { player.gridX = 0; player.gridY++;}
+                 if(player.gridY >= CANVAS_HEIGHT_CELLS) {player.gridY =0; player.gridX = 0; break;} // Evita loop infinito
+            }
+
+            player.pixelX = player.gridX * GRID_SIZE + GRID_SIZE / 2;
+            player.pixelY = player.gridY * GRID_SIZE + GRID_SIZE / 2;
+            player.targetPixelX = player.pixelX;
+            player.targetPixelY = player.pixelY;
+            player.isMoving = false;
+            player.isDrawing = false;
+            player.drawingPath = [];
+
+            if (isFullReset) {
+                 lives = 3;
+                 claimedAreaPercentage = 0;
+            }
+        }
+
+        function initQix() {
+            qix.points = [];
+            qix.velocities = [];
+            let centerX = canvas.width / 2;
+            let centerY = canvas.height / 2;
+
+            for (let i = 0; i < qix.numSegments + 1; i++) {
+                qix.points.push({
+                    x: centerX + (Math.random() - 0.5) * GRID_SIZE * 4,
+                    y: centerY + (Math.random() - 0.5) * GRID_SIZE * 4
+                });
+                qix.velocities.push({
+                    vx: (Math.random() - 0.5) * qix.qixSpeed * 2,
+                    vy: (Math.random() - 0.5) * qix.qixSpeed * 2
+                });
+            }
+        }
+        
+        function resetGame() {
+            gameOver = false;
+            gameWon = false;
+            initGrid();
+            initPlayerState(true); // Full reset
+            initQix();
+            updateInfo();
+        }
+
+        // --- Logica di Gioco ---
+
+        function requestPlayerMove(dxCell, dyCell) {
+            if (gameOver || gameWon || player.isMoving) return;
+
+            let nextGridX = player.gridX + dxCell;
+            let nextGridY = player.gridY + dyCell;
+
+            if (nextGridX < 0 || nextGridX >= CANVAS_WIDTH_CELLS || nextGridY < 0 || nextGridY >= CANVAS_HEIGHT_CELLS) {
+                return;
+            }
+
+            if (player.isDrawing) {
+                // Non può tornare sulla traccia attiva (eccetto il punto di partenza per chiudere su se stesso, raro)
+                for (let i = 0; i < player.drawingPath.length -1; i++) {
+                     // Se il prossimo punto è già parte del percorso (non l'ultimo), non muovere
+                    if (player.drawingPath[i].x === nextGridX && player.drawingPath[i].y === nextGridY) return;
+                }
+                // Non può attraversare aree già piene (FILLED)
+                if (grid[nextGridY][nextGridX] === FILLED) return;
+                // Non può attraversare un BORDER se non per chiudere E se non è il primo movimento di disegno
+                if (grid[nextGridY][nextGridX] === BORDER && player.drawingPath.length > 1 && (player.drawingPath[0].x !== nextGridX || player.drawingPath[0].y !== nextGridY)) {
+                    // Ok, sta per chiudere su un BORDER
+                } else if (grid[nextGridY][nextGridX] === BORDER && player.drawingPath.length <=1) {
+                    return; // Non si può iniziare a disegnare o fare il primo passo su un BORDER esistente (a meno che non sia lo start node)
+                }
+
+
+                player.targetPixelX = nextGridX * GRID_SIZE + GRID_SIZE / 2;
+                player.targetPixelY = nextGridY * GRID_SIZE + GRID_SIZE / 2;
+                player.isMoving = true;
+                // Salva la destinazione logica per quando l'animazione finisce
+                player.intendedGridX = nextGridX;
+                player.intendedGridY = nextGridY;
+
+            } else { // Non sta disegnando, si muove solo sui bordi o aree piene
+                if (grid[nextGridY][nextGridX] === BORDER || grid[nextGridY][nextGridX] === FILLED) {
+                    player.targetPixelX = nextGridX * GRID_SIZE + GRID_SIZE / 2;
+                    player.targetPixelY = nextGridY * GRID_SIZE + GRID_SIZE / 2;
+                    player.isMoving = true;
+                    player.intendedGridX = nextGridX;
+                    player.intendedGridY = nextGridY;
+                }
+            }
+        }
+
+        function updatePlayerVisualPosition() {
+            if (!player.isMoving) return;
+
+            let dx = player.targetPixelX - player.pixelX;
+            let dy = player.targetPixelY - player.pixelY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist <= player.moveSpeed) {
+                player.pixelX = player.targetPixelX;
+                player.pixelY = player.targetPixelY;
+                player.isMoving = false;
+                handlePlayerMoveCompletion();
+            } else {
+                player.pixelX += (dx / dist) * player.moveSpeed;
+                player.pixelY += (dy / dist) * player.moveSpeed;
+            }
+        }
+        
+        function handlePlayerMoveCompletion() {
+            player.gridX = player.intendedGridX;
+            player.gridY = player.intendedGridY;
+
+            if (player.isDrawing) {
+                // Aggiungi il nuovo punto alla traccia
+                player.drawingPath.push({ x: player.gridX, y: player.gridY });
+                
+                // Se il giocatore si è mosso su un bordo esistente (e non è il punto di partenza del disegno)
+                if (grid[player.gridY][player.gridX] === BORDER && !(player.gridX === player.startDrawGridX && player.gridY === player.startDrawGridY)) {
+                    finalizeDrawingAndFill();
+                } else if (grid[player.gridY][player.gridX] === EMPTY || grid[player.gridY][player.gridX] === DRAWING){ // Se si muove su spazio vuoto o continua la linea
+                     // Evita di sovrascrivere BORDER o FILLED con DRAWING se per errore si arriva qui
+                    grid[player.gridY][player.gridX] = DRAWING;
+                }
+            }
+            updateInfo();
+        }
+
+        function toggleDrawing() {
+            if (gameOver || gameWon || player.isMoving) return;
+
+            if (player.isDrawing) { // Ferma il disegno
+                player.isDrawing = false;
+                // Rimuovi la traccia temporanea se non ha chiuso un'area
+                player.drawingPath.forEach(p => {
+                    if (grid[p.y][p.x] === DRAWING) {
+                        grid[p.y][p.x] = EMPTY;
+                    }
+                });
+                player.drawingPath = [];
+            } else { // Inizia a disegnare
+                if (grid[player.gridY][player.gridX] === BORDER || grid[player.gridY][player.gridX] === FILLED) { // Può iniziare solo da un bordo o area piena
+                    player.isDrawing = true;
+                    player.startDrawGridX = player.gridX; // Memorizza il punto di partenza logico
+                    player.startDrawGridY = player.gridY;
+                    player.drawingPath = [{ x: player.gridX, y: player.gridY }]; // Punto iniziale della traccia
+                }
+            }
+        }
+        
+        function finalizeDrawingAndFill() {
+            // 1. Converti la traccia in BORDER
+            player.drawingPath.forEach(p => {
+                // Non sovrascrivere FILLED se la linea passa attraverso (anche se non dovrebbe)
+                if(grid[p.y][p.x] === DRAWING || grid[p.y][p.x] === EMPTY) {
+                     grid[p.y][p.x] = BORDER;
+                }
+            });
+
+            // 2. Esegui Flood Fill
+            fillAreaAfterDraw();
+
+            // 3. Resetta stato disegno
+            player.isDrawing = false;
+            player.drawingPath = [];
+            calculateClaimedArea();
+            updateInfo();
+        }
+
+        function floodFill(startX, startY, targetColor, tempData) {
+            const q = [];
+            const filledCellsInThisArea = [];
+            const visitedInThisFill = new Set(); // Visitate per questa specifica chiamata floodFill
+
+            if (startX < 0 || startX >= CANVAS_WIDTH_CELLS || startY < 0 || startY >= CANVAS_HEIGHT_CELLS) return {cells: [], containsQix: false};
+            // Se il punto di partenza non è vuoto (o è già parte di un'area Qix), non fare nulla
+            if (grid[startY][startX] !== targetColor || tempData.qixAreaCells.has(`${startX},${startY}`)) return {cells: [], containsQix: false};
+            
+            q.push({ x: startX, y: startY });
+            visitedInThisFill.add(`${startX},${startY}`);
+            let areaContainsQix = false;
+
+            while (q.length > 0) {
+                const current = q.shift();
+                filledCellsInThisArea.push(current);
+                
+                if (tempData.qixAreaCells.has(`${current.x},${current.y}`)) {
+                    areaContainsQix = true;
+                }
+
+                const neighbors = [
+                    { x: current.x + 1, y: current.y }, { x: current.x - 1, y: current.y },
+                    { x: current.x, y: current.y + 1 }, { x: current.x, y: current.y - 1 }
+                ];
+
+                for (const n of neighbors) {
+                    if (n.x >= 0 && n.x < CANVAS_WIDTH_CELLS && n.y >= 0 && n.y < CANVAS_HEIGHT_CELLS &&
+                        !tempData.qixAreaCells.has(`${n.x},${n.y}`) && // Non deve essere già marcata come area del Qix
+                        grid[n.y][n.x] === targetColor && 
+                        !visitedInThisFill.has(`${n.x},${n.y}`)) {
+                        visitedInThisFill.add(`${n.x},${n.y}`);
+                        q.push(n);
+                    }
+                }
+            }
+            return {cells: filledCellsInThisArea, containsQix: areaContainsQix};
+        }
+        
+        function getQixOccupiedCells() {
+            const qixCells = new Set();
+            // Considera un'area più ampia attorno ai punti del Qix per il flood fill,
+            // per evitare di riempire troppo vicino ad esso.
+            const qixPadding = 1; // celle di padding attorno al qix
+            for(const p of qix.points) {
+                const gx = Math.floor(p.x / GRID_SIZE);
+                const gy = Math.floor(p.y / GRID_SIZE);
+                for (let rOffset = -qixPadding; rOffset <= qixPadding; rOffset++) {
+                    for (let cOffset = -qixPadding; cOffset <= qixPadding; cOffset++) {
+                        const cellX = gx + cOffset;
+                        const cellY = gy + rOffset;
+                        if (cellX >=0 && cellX < CANVAS_WIDTH_CELLS && cellY >=0 && cellY < CANVAS_HEIGHT_CELLS) {
+                             if(grid[cellY][cellX] === EMPTY) qixCells.add(`${cellX},${cellY}`);
+                        }
+                    }
+                }
+            }
+            return qixCells;
+        }
+
+
+        function fillAreaAfterDraw() {
+            const qixInitialCells = getQixOccupiedCells(); // Celle che il Qix occupa o è molto vicino
+
+            // Trova tutte le aree vuote
+            const allEmptyAreas = [];
+            const visitedForSeedFinding = new Set();
+
+            for (let r = 0; r < CANVAS_HEIGHT_CELLS; r++) {
+                for (let c = 0; c < CANVAS_WIDTH_CELLS; c++) {
+                    if (grid[r][c] === EMPTY && !visitedForSeedFinding.has(`${c},${r}`) && !qixInitialCells.has(`${c},${r}`)) {
+                        const areaData = floodFill(c, r, EMPTY, { qixAreaCells: qixInitialCells }); // Passa le celle del Qix
+                        if (areaData.cells.length > 0) {
+                            areaData.cells.forEach(cell => visitedForSeedFinding.add(`${cell.x},${cell.y}`));
+                            if (!areaData.containsQix) { // Solo se l'area NON contiene Qix (basato su qixInitialCells)
+                                allEmptyAreas.push(areaData);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Se ci sono aree vuote che NON contengono il Qix, riempile.
+            // Questo approccio riempie tutte le aree "sicure".
+            allEmptyAreas.forEach(area => {
+                if (!area.containsQix) { // Doppia verifica, anche se floodFill dovrebbe già filtrarle
+                    area.cells.forEach(cell => {
+                        if(grid[cell.y][cell.x] === EMPTY) grid[cell.y][cell.x] = FILLED;
+                    });
+                }
+            });
+        }
+
+
+        function calculateClaimedArea() {
+            let filledCount = 0;
+            for (let r = 1; r < CANVAS_HEIGHT_CELLS - 1; r++) { // Non contare i bordi esterni
+                for (let c = 1; c < CANVAS_WIDTH_CELLS - 1; c++) {
+                    if (grid[r][c] === FILLED) {
+                        filledCount++;
+                    }
+                }
+            }
+            if (totalClaimableCells > 0) {
+                 claimedAreaPercentage = Math.floor((filledCount / totalClaimableCells) * 100);
+            } else {
+                claimedAreaPercentage = 0; // Evita divisione per zero
+            }
+
+            if (claimedAreaPercentage >= 75) {
+                winGame();
+            }
+        }
+
+        function moveQix() {
+            if (gameOver || gameWon) return;
+
+            for (let i = 0; i < qix.points.length; i++) {
+                let p = qix.points[i];
+                let v = qix.velocities[i];
+
+                let nextX = p.x + v.vx;
+                let nextY = p.y + v.vy;
+
+                // Collisione con bordi del canvas
+                if (nextX < 0 || nextX > canvas.width) {
+                    v.vx *= -1;
+                    nextX = p.x + v.vx; // Ricalcola dopo inversione
+                }
+                if (nextY < 0 || nextY > canvas.height) {
+                    v.vy *= -1;
+                    nextY = p.y + v.vy; // Ricalcola dopo inversione
+                }
+                
+                // Collisione con griglia (BORDER o FILLED)
+                const nextGridX = Math.floor(nextX / GRID_SIZE);
+                const nextGridY = Math.floor(nextY / GRID_SIZE);
+
+                if (nextGridX >= 0 && nextGridX < CANVAS_WIDTH_CELLS &&
+                    nextGridY >= 0 && nextGridY < CANVAS_HEIGHT_CELLS &&
+                    (grid[nextGridY][nextGridX] === BORDER || grid[nextGridY][nextGridX] === FILLED)) {
+                    
+                    // Semplice rimbalzo: se la cella futura è un ostacolo, inverti la velocità
+                    // Potrebbe essere più intelligente, ma per ora:
+                    const currentGridX = Math.floor(p.x / GRID_SIZE);
+                    const currentGridY = Math.floor(p.y / GRID_SIZE);
+
+                    // Se il movimento in X ha causato la collisione
+                    if (nextGridX !== currentGridX && (grid[currentGridY][nextGridX] === BORDER || grid[currentGridY][nextGridX] === FILLED)) {
+                         v.vx *= -1;
+                    }
+                    // Se il movimento in Y ha causato la collisione
+                    if (nextGridY !== currentGridY && (grid[nextGridY][currentGridX] === BORDER || grid[nextGridY][currentGridX] === FILLED)) {
+                         v.vy *= -1;
+                    }
+                    // Se entrambi (colpito un angolo) o se è già dentro (improbabile con pre-check)
+                     if ((nextGridX !== currentGridX && nextGridY !== currentGridY) || 
+                         (grid[nextGridY][nextGridX] === BORDER || grid[nextGridY][nextGridX] === FILLED)) { // Se ancora in collisione
+                        if (Math.random() < 0.5) v.vx *= -1; else v.vy *= -1; // Fallback più casuale
+                    }
+
+                    nextX = p.x + v.vx; // Ricalcola dopo potenziale inversione
+                    nextY = p.y + v.vy;
+                }
+                
+                p.x = nextX;
+                p.y = nextY;
+
+                // Piccola variazione casuale della velocità per rendere il Qix meno prevedibile
+                if (Math.random() < 0.02) v.vx += (Math.random() - 0.5) * 0.5;
+                if (Math.random() < 0.02) v.vy += (Math.random() - 0.5) * 0.5;
+                v.vx = Math.max(-qix.qixSpeed*1.5, Math.min(qix.qixSpeed*1.5, v.vx)); // Limita velocità
+                v.vy = Math.max(-qix.qixSpeed*1.5, Math.min(qix.qixSpeed*1.5, v.vy));
+            }
+        }
+        
+        function checkQixCollisionWithDrawingLine() {
+            if (!player.isDrawing || player.drawingPath.length < 2 || gameOver || gameWon) return false;
+
+            for (const pathCell of player.drawingPath) {
+                // Rettangolo della cella della griglia in cui il giocatore sta disegnando
+                const cellRect = {
+                    x: pathCell.x * GRID_SIZE, y: pathCell.y * GRID_SIZE,
+                    width: GRID_SIZE, height: GRID_SIZE
+                };
+
+                for (let i = 0; i < qix.numSegments; i++) {
+                    const qp1 = qix.points[i];
+                    const qp2 = qix.points[i + 1];
+                    if (lineRectCollide(qp1, qp2, cellRect)) {
+                        return true;
+                    }
+                }
+            }
+            // Controlla anche la posizione attuale del giocatore se si sta muovendo verso una cella di disegno
+            if (player.isMoving) {
+                 const playerTargetCellRect = {
+                    x: player.intendedGridX * GRID_SIZE, y: player.intendedGridY * GRID_SIZE,
+                    width: GRID_SIZE, height: GRID_SIZE
+                };
+                 for (let i = 0; i < qix.numSegments; i++) {
+                    const qp1 = qix.points[i];
+                    const qp2 = qix.points[i + 1];
+                    if (lineRectCollide(qp1, qp2, playerTargetCellRect)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function lineRectCollide(p1, p2, rect) {
+            if (pointInRect(p1, rect) || pointInRect(p2, rect)) return true;
+            const r = [
+                {x: rect.x, y: rect.y}, {x: rect.x + rect.width, y: rect.y},
+                {x: rect.x + rect.width, y: rect.y + rect.height}, {x: rect.x, y: rect.y + rect.height}
+            ];
+            for (let i = 0; i < 4; i++) {
+                if (lineLineCollide(p1, p2, r[i], r[(i+1)%4])) return true;
+            }
+            return false;
+        }
+
+        function pointInRect(p, rect) {
+            return p.x >= rect.x && p.x <= rect.x + rect.width &&
+                   p.y >= rect.y && p.y <= rect.y + rect.height;
+        }
+
+        function lineLineCollide(p1, p2, p3, p4) {
+            const den = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+            if (den === 0) return false; // Linee parallele
+            const t = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / den;
+            const u = -((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / den;
+            return t > 0 && t < 1 && u > 0 && u < 1; // Intersezione sui segmenti
+        }
+
+
+        function loseLife() {
+            lives--;
+            // Cancella la linea che si stava disegnando
+            player.drawingPath.forEach(p => {
+                if (grid[p.y][p.x] === DRAWING) {
+                    grid[p.y][p.x] = EMPTY;
+                }
+            });
+            
+            initPlayerState(false); // Non un reset completo, solo stato giocatore
+
+            if (lives <= 0) {
+                gameOver = true;
+                infoDisplay.textContent = `GAME OVER! Area Finale: ${claimedAreaPercentage}%. Premi R per riprovare.`;
+            } else {
+                updateInfo();
+            }
+        }
+        
+        function winGame() {
+            gameWon = true;
+            infoDisplay.textContent = `HAI VINTO! Area: ${claimedAreaPercentage}%! Premi R per riprovare.`;
+        }
+
+        function updateInfo() {
+            if (gameOver) {
+                 infoDisplay.textContent = `GAME OVER! Area Finale: ${claimedAreaPercentage}%. Premi R.`;
+                 return;
+            }
+            if (gameWon) {
+                 infoDisplay.textContent = `HAI VINTO! Area: ${claimedAreaPercentage}%! Premi R.`;
+                 return;
+            }
+            infoDisplay.textContent = `Area: ${claimedAreaPercentage}% - Vite: ${lives}`;
+        }
+
+        // --- Disegno ---
+        function drawGrid() {
+            for (let r = 0; r < CANVAS_HEIGHT_CELLS; r++) {
+                for (let c = 0; c < CANVAS_WIDTH_CELLS; c++) {
+                    ctx.beginPath();
+                    ctx.rect(c * GRID_SIZE, r * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    switch(grid[r][c]) {
+                        case EMPTY: ctx.fillStyle = EMPTY_COLOR; break;
+                        case BORDER: ctx.fillStyle = BORDER_COLOR; break;
+                        case FILLED: ctx.fillStyle = FILLED_COLOR; break;
+                        case DRAWING: ctx.fillStyle = DRAWING_LINE_COLOR; break;
+                        default: ctx.fillStyle = '#fff'; // Errore
+                    }
+                    ctx.fill();
+                }
+            }
+        }
+
+        function drawPlayer() {
+            if (gameOver && lives <=0) return; // Non disegnare se game over e 0 vite
+            ctx.fillStyle = player.isDrawing ? PLAYER_DRAWING_COLOR : PLAYER_COLOR;
+            ctx.beginPath();
+            // Usa pixelX e pixelY per un disegno fluido
+            ctx.arc(player.pixelX, player.pixelY, GRID_SIZE / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Disegna la traccia "attiva" (non ancora parte della griglia) se il giocatore si sta muovendo per disegnare
+            // Questo non è più necessario perché la griglia viene aggiornata in handlePlayerMoveCompletion
+        }
+
+        function drawQix() {
+            if (gameOver && lives <=0 && !gameWon) return; // Non disegnare se game over e non vinto
+            ctx.beginPath();
+            ctx.moveTo(qix.points[0].x, qix.points[0].y);
+            for (let i = 1; i < qix.points.length; i++) {
+                ctx.lineTo(qix.points[i].x, qix.points[i].y);
+            }
+            ctx.strokeStyle = QIX_COLOR;
+            ctx.lineWidth = 4; // Qix più spesso
+            ctx.shadowColor = QIX_COLOR;
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset shadow
+            ctx.lineWidth = 1;
+        }
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (!gameOver && !gameWon) {
+                updatePlayerVisualPosition(); // Aggiorna posizione visuale del giocatore
+                moveQix();
+                if (checkQixCollisionWithDrawingLine()) {
+                    loseLife();
+                }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawPlayer();
+            drawQix();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listener ---
+        document.addEventListener('keydown', (e) => {
+            if ((gameOver || gameWon) && e.key.toLowerCase() === 'r') {
+                resetGame();
+                return;
+            }
+            if (gameOver || gameWon) return;
+
+            switch (e.key) {
+                case 'ArrowUp':    requestPlayerMove(0, -1); break;
+                case 'ArrowDown':  requestPlayerMove(0, 1);  break;
+                case 'ArrowLeft':  requestPlayerMove(-1, 0); break;
+                case 'ArrowRight': requestPlayerMove(1, 0);  break;
+                case ' ':          toggleDrawing();   e.preventDefault(); break; // Spazio
+            }
+        });
+
+        // --- Inizio Gioco ---
+        resetGame();
+        gameLoop();
+
+    </script>
+</body>
+</html>
