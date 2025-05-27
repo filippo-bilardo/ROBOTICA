@@ -75,5 +75,13 @@
 - ["JavaScript Allongé" di Reg Braithwaite](https://leanpub.com/javascriptallongesix)
 - [Fantasy Land Specification - Task](https://github.com/fantasyland/fantasy-land#task)
 
+## Collegamenti alle Funzionalità Moderne
+Per una comprensione completa dell'asincronia moderna, consulta anche:
+- [Modulo 17: JavaScript Moderno 2025](../17-ModernJSFeatures2025/README.md) per:
+  - Top-level await (ES2022)
+  - Array.at() per accesso asincrono agli array
+  - Pattern moderni con Temporal API
+  - Gestione asincrona con Record & Tuple
+
 ## Prossimo Modulo
 Continua con il [Modulo 10: Librerie e Framework Funzionali](../10-LibrerieFunzionali/README.md) per esplorare le librerie che supportano la programmazione funzionale in JavaScript.

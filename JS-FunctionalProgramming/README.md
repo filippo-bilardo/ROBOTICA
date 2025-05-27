@@ -52,8 +52,38 @@ Il corso è organizzato in esercitazioni progressive che vi permetteranno di esp
     - Ramda, Lodash/fp, RxJS
     - Integrazione con ecosistemi esistenti
 
-TODO:
-11. Programmazione funzionale in C
+### Moduli Avanzati
+
+11. [Fondamenti Matematici](./11-FondamentiMatematici/README.md)
+    - Teoria delle categorie applicata
+    - Algebra astratta per programmatori
+
+12. [Testing Avanzato](./12-TestingAvanzato/README.md)
+    - Property-based testing
+    - Test di integrazione funzionali
+
+13. [Production Patterns](./13-ProductionPatterns/README.md)
+    - Deployment e monitoring
+    - Performance optimization
+
+14. [Architecture Patterns](./14-ArchitecturePatterns/README.md)
+    - Microservizi funzionali
+    - Event sourcing e CQRS
+
+15. [Integrazione con JavaScript Moderno](./15-ModernJSIntegration/README.md)
+    - ES6+ features e programmazione funzionale
+    - Framework moderni (React, Vue, Node.js)
+
+16. [JavaScript Moderno 2025 - Funzionalità Emergenti](./17-ModernJSFeatures2025/README.md)
+    - ES2022-2025 features e programmazione funzionale
+    - TypeScript avanzato, WebAssembly, Runtime moderni (Deno, Bun)
+    - Pattern matching, Record & Tuple, Temporal API
+
+### Progetto Finale
+
+17. [Progetto Finale - Sistema E-Learning](./16-FinalProject/README.md)
+    - Applicazione completa con architettura funzionale
+    - Integrazione di tutti i concetti appresi
 
 ## Come Utilizzare Questo Corso
 
