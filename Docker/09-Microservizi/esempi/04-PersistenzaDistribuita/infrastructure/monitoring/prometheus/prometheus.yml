@@ -1,0 +1,178 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'distributed-persistence'
+    environment: 'development'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # User Service
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8001']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # Order Service
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8002']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # Catalog Service
+  - job_name: 'catalog-service'
+    static_configs:
+      - targets: ['catalog-service:8003']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # Analytics Service
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['analytics-service:8004']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    params:
+      format: ['prometheus']
+
+  # MongoDB Exporter
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+    scrape_interval: 30s
+
+  # Redis Exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Elasticsearch
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    scrape_interval: 30s
+    metrics_path: /_prometheus/metrics
+
+  # ClickHouse
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse:8123']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+    scrape_interval: 30s
+
+  # Kafka Connect
+  - job_name: 'kafka-connect'
+    static_configs:
+      - targets: ['kafka-connect:8083']
+    scrape_interval: 30s
+
+  # EventStore
+  - job_name: 'eventstore'
+    static_configs:
+      - targets: ['eventstore:2113']
+    scrape_interval: 30s
+
+  # Node Exporter (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+
+  # Custom application metrics
+  - job_name: 'application-metrics'
+    static_configs:
+      - targets: 
+        - 'user-service:8001'
+        - 'order-service:8002'
+        - 'catalog-service:8003'
+        - 'analytics-service:8004'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: service
+        replacement: '${1}'
+
+  # Health check endpoints
+  - job_name: 'health-checks'
+    static_configs:
+      - targets:
+        - 'api-gateway:8000'
+        - 'user-service:8001'
+        - 'order-service:8002'
+        - 'catalog-service:8003'
+        - 'analytics-service:8004'
+    scrape_interval: 30s
+    metrics_path: /health
+    scrape_timeout: 10s
+
+  # Database connection pools
+  - job_name: 'db-pools'
+    static_configs:
+      - targets:
+        - 'user-service:8001'
+        - 'order-service:8002'
+        - 'catalog-service:8003'
+        - 'analytics-service:8004'
+    scrape_interval: 15s
+    metrics_path: /metrics/database
+    honor_labels: true
+
+  # Business metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets:
+        - 'api-gateway:8000'
+        - 'user-service:8001'
+        - 'order-service:8002'
+        - 'catalog-service:8003'
+        - 'analytics-service:8004'
+    scrape_interval: 30s
+    metrics_path: /metrics/business
+    honor_labels: true

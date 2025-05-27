@@ -1,0 +1,217 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- Network Configuration -->
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <mysql_port>9004</mysql_port>
+    <postgresql_port>9005</postgresql_port>
+    <interserver_http_port>9009</interserver_http_port>
+    
+    <!-- Listen on all interfaces -->
+    <listen_host>0.0.0.0</listen_host>
+    
+    <!-- Data Storage Configuration -->
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+    
+    <!-- Memory and Performance Settings -->
+    <max_server_memory_usage>0</max_server_memory_usage>
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_connections>1024</max_connections>
+    <keep_alive_timeout>3</keep_alive_timeout>
+    
+    <!-- Query Processing -->
+    <max_query_size>1048576</max_query_size>
+    <interactive_delay>1000000</interactive_delay>
+    <connect_timeout>10</connect_timeout>
+    <receive_timeout>300</receive_timeout>
+    <send_timeout>300</send_timeout>
+    
+    <!-- Thread Pool Configuration -->
+    <max_thread_pool_size>10000</max_thread_pool_size>
+    <max_thread_pool_free_size>1000</max_thread_pool_free_size>
+    <thread_pool_queue_size>10000</thread_pool_queue_size>
+    
+    <!-- Memory Management -->
+    <uncompressed_cache_size>8589934592</uncompressed_cache_size>
+    <mark_cache_size>5368709120</mark_cache_size>
+    <compiled_expression_cache_size>134217728</compiled_expression_cache_size>
+    
+    <!-- Logging Configuration -->
+    <logger>
+        <level>information</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size>
+        <count>10</count>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </logger>
+    
+    <!-- Query Logging -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </query_log>
+    
+    <!-- Part Log -->
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </part_log>
+    
+    <!-- Metric Log -->
+    <metric_log>
+        <database>system</database>
+        <table>metric_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <collect_interval_milliseconds>1000</collect_interval_milliseconds>
+    </metric_log>
+    
+    <!-- Trace Log -->
+    <trace_log>
+        <database>system</database>
+        <table>trace_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </trace_log>
+    
+    <!-- OpenTelemetry Configuration -->
+    <opentelemetry_span_log>
+        <engine>
+            engine MergeTree
+            partition by toYYYYMM(finish_date)
+            order by (finish_date, finish_time_us, trace_id)
+        </engine>
+        <database>system</database>
+        <table>opentelemetry_span_log</table>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </opentelemetry_span_log>
+    
+    <!-- Remote Servers Configuration -->
+    <remote_servers>
+        <analytics_cluster>
+            <shard>
+                <replica>
+                    <host>clickhouse</host>
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </analytics_cluster>
+    </remote_servers>
+    
+    <!-- Distributed DDL -->
+    <distributed_ddl>
+        <path>/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+    
+    <!-- Compression Settings -->
+    <compression>
+        <case>
+            <method>lz4</method>
+        </case>
+    </compression>
+    
+    <!-- MergeTree Configuration -->
+    <merge_tree>
+        <max_suspicious_broken_parts>10</max_suspicious_broken_parts>
+        <parts_to_delay_insert>150</parts_to_delay_insert>
+        <parts_to_throw_insert>300</parts_to_throw_insert>
+        <max_delay_to_insert>1</max_delay_to_insert>
+        <max_parts_in_total>100000</max_parts_in_total>
+        <replicated_deduplication_window>100</replicated_deduplication_window>
+        <replicated_deduplication_window_seconds>604800</replicated_deduplication_window_seconds>
+        <max_replicated_merges_in_queue>16</max_replicated_merges_in_queue>
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>8</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+        <max_bytes_to_merge_at_min_space_in_pool>1048576</max_bytes_to_merge_at_min_space_in_pool>
+        <max_bytes_to_merge_at_max_space_in_pool>161061273600</max_bytes_to_merge_at_max_space_in_pool>
+        <min_bytes_for_wide_part>10485760</min_bytes_for_wide_part>
+        <min_rows_for_wide_part>0</min_rows_for_wide_part>
+        <ttl_only_drop_parts>0</ttl_only_drop_parts>
+        <allow_remote_fs_zero_copy_replication>false</allow_remote_fs_zero_copy_replication>
+        <merge_with_ttl_timeout>86400</merge_with_ttl_timeout>
+        <write_final_mark>true</write_final_mark>
+        <merge_with_recompression_ttl_timeout>86400</merge_with_recompression_ttl_timeout>
+        <try_fetch_recompressed_part_timeout>7200</try_fetch_recompressed_part_timeout>
+        <always_fetch_merged_part>false</always_fetch_merged_part>
+        <max_number_of_merges_with_ttl_in_pool>2</max_number_of_merges_with_ttl_in_pool>
+        <cleanup_delay_period>30</cleanup_delay_period>
+        <cleanup_delay_period_random_add>10</cleanup_delay_period_random_add>
+        <cleanup_thread_preferred_points_per_iteration>100</cleanup_thread_preferred_points_per_iteration>
+    </merge_tree>
+    
+    <!-- Background Processing -->
+    <background_pool_size>16</background_pool_size>
+    <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
+    <background_schedule_pool_size>16</background_schedule_pool_size>
+    <background_fetches_pool_size>8</background_fetches_pool_size>
+    <background_move_pool_size>8</background_move_pool_size>
+    <background_common_pool_size>8</background_common_pool_size>
+    
+    <!-- Kafka Integration -->
+    <kafka>
+        <auto_offset_reset>smallest</auto_offset_reset>
+        <client_id>clickhouse_consumer</client_id>
+        <max_block_size>65536</max_block_size>
+        <skip_broken_messages>0</skip_broken_messages>
+        <commit_every_batch>false</commit_every_batch>
+        <max_rows_per_message>1</max_rows_per_message>
+    </kafka>
+    
+    <!-- Profiles for Query Optimization -->
+    <profiles>
+        <default>
+            <max_memory_usage>10000000000</max_memory_usage>
+            <use_uncompressed_cache>1</use_uncompressed_cache>
+            <load_balancing>random</load_balancing>
+        </default>
+        
+        <readonly>
+            <readonly>1</readonly>
+        </readonly>
+        
+        <analytics>
+            <max_memory_usage>20000000000</max_memory_usage>
+            <max_execution_time>600</max_execution_time>
+            <max_rows_to_read>1000000000</max_rows_to_read>
+            <max_bytes_to_read>100000000000</max_bytes_to_read>
+            <use_uncompressed_cache>1</use_uncompressed_cache>
+            <prefer_localhost_replica>1</prefer_localhost_replica>
+        </analytics>
+    </profiles>
+    
+    <!-- Quotas -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+    
+    <!-- Format Settings -->
+    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+    
+    <!-- Dictionaries Configuration -->
+    <dictionaries_config>*_dictionary.xml</dictionaries_config>
+    
+    <!-- Default Database -->
+    <default_database>analytics_db</default_database>
+    
+    <!-- Session and Query Settings -->
+    <default_session_timeout>60</default_session_timeout>
+    <max_session_timeout>3600</max_session_timeout>
+    
+    <!-- Access Control -->
+    <access_control_path>/var/lib/clickhouse/access/</access_control_path>
+    
+    <!-- Include additional configuration files -->
+    <include_from>/etc/clickhouse-server/config.d/*.xml</include_from>
+</clickhouse>

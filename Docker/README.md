@@ -23,12 +23,14 @@ Docker è una piattaforma open source che automatizza il deployment di applicazi
 8. [Volumi e Persistenza dei Dati](./06-VolumePersistenza/README.md) - Gestione dei dati persistenti
 
 ### Modulo 4: Docker in Produzione
-8. [Sicurezza in Docker](./08-Sicurezza/README.md) - Best practice e gestione della sicurezza
-9. [Docker Swarm](./09-DockerSwarm/README.md) - Orchestrazione di container
-10. [Docker e CI/CD](./10-DockerCICD/README.md) - Integrazione continua e deployment continuo
+9. [Orchestrazione Docker](./07-Orchestrazione/README.md) - Docker Swarm e gestione cluster
+10. [Sicurezza in Docker](./08-Sicurezza/README.md) - Best practice e gestione della sicurezza
+11. [Microservizi con Docker](./09-Microservizi/README.md) - Architettura a microservizi
 
 ### Modulo 5: Casi d'uso avanzati
-11. [Microservizi con Docker](./11-MicroserviziDocker/README.md) - Architettura a microservizi
+12. [Docker e CI/CD](./10-DockerCICD/README.md) - Integrazione continua e deployment continuo
+13. [Monitoring e Logging](./11-MonitoringLogging/README.md) - Observability per container
+14. [Docker in Cloud](./12-DockerCloud/README.md) - Deploy su cloud provider
 
 ## Come utilizzare questo corso
 
@@ -52,3 +54,10 @@ Se desideri contribuire a questo corso, sentiti libero di aprire una pull reques
 ## Licenza
 
 Questo corso è distribuito con licenza MIT. Consulta il file LICENSE per maggiori dettagli.
+
+## TODO 
+- [ ] Aggiungere esercitazioni avanzate su Docker e Kubernetes
+- [ ] Includere casi d'uso reali e best practices
+- [ ] Aggiungere una guida a Portainer e Podman
+- [ ] Creare un glossario dei termini Docker
+- [ ] Guida a Proxmox Virtual Environment (Proxmox VE)

@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Debug configuration for development
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.debug.yml up
+
+services:
+  # User Service Debug Configuration
+  user-service:
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+      PYTHONPATH: /app
+      # Debug port for Python debugger
+      PYTHONDEBUGPORT: 5678
+    ports:
+      - "5678:5678"  # Python debugger port
+    volumes:
+      - ./services/user-service:/app:delegated
+      - user_service_venv:/app/.venv
+    command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client app.py
+
+  # Order Service Debug Configuration
+  order-service:
+    environment:
+      NODE_ENV: development
+      DEBUG: app:*
+      # Node.js debug port
+      NODE_OPTIONS: --inspect=0.0.0.0:9229
+    ports:
+      - "9229:9229"  # Node.js debugger port
+    volumes:
+      - ./services/order-service:/app:delegated
+      - /app/node_modules
+    command: npm run debug
+
+  # Payment Service Debug Configuration
+  payment-service:
+    environment:
+      GIN_MODE: debug
+      # Delve debugger port for Go
+      DELVE_PORT: 2345
+    ports:
+      - "2345:2345"  # Go debugger port (Delve)
+    volumes:
+      - ./services/payment-service:/app:delegated
+    command: dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/main.go
+
+  # Notification Service Debug Configuration
+  notification-service:
+    environment:
+      PYTHONPATH: /app
+      PYTHON_DEBUG: 1
+      # Python debugger port
+      PYTHONDEBUGPORT: 5679
+    ports:
+      - "5679:5679"  # Python debugger port
+      - "8001:8000"  # Alternative metrics port
+    volumes:
+      - ./services/notification-service:/app:delegated
+      - notification_service_venv:/app/.venv
+    command: python -m debugpy --listen 0.0.0.0:5679 --wait-for-client worker.py
+
+  # Redis with debug logging
+  redis:
+    command: redis-server /usr/local/etc/redis/redis.conf --loglevel debug
+
+  # PostgreSQL with debug logging
+  postgres:
+    environment:
+      POSTGRES_LOG_STATEMENT: all
+      POSTGRES_LOG_MIN_DURATION_STATEMENT: 0
+    command: postgres -c log_statement=all -c log_min_duration_statement=0
+
+  # MongoDB with debug logging
+  mongo:
+    command: mongod --profile 2 --slowms 0
+
+volumes:
+  user_service_venv:
+  notification_service_venv:

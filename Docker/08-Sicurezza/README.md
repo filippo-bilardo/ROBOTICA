@@ -4,11 +4,20 @@ Benvenuti al modulo sulla sicurezza in Docker! In questa sezione, esploreremo le
 
 ## Indice dei Contenuti
 
+### Teoria
+
 1. [Introduzione alla Sicurezza dei Container](./01-IntroduzioneSicurezza.md)
 2. [Best Practice di Sicurezza](./02-BestPractice.md)
 3. [Scansione delle Vulnerabilità](./03-ScansioneVulnerabilita.md)
 4. [Isolamento e Privilegi](./04-IsolamentoPrivilegi.md)
 5. [Secrets Management](./05-SecretsManagement.md)
+
+### Esempi Pratici
+
+1. [Scansione di Sicurezza](./esempi/01-ScansioneSicurezza/README.md) - Tool per analizzare vulnerabilità nelle immagini
+2. [Container Sicuri](./esempi/02-ContainerSecure/README.md) - Configurazione di container con elevata sicurezza
+3. [Gestione dei Secrets](./esempi/03-SecretsManagement/README.md) - Gestione sicura di password e chiavi
+4. [Isolamento e Privilegi](./esempi/04-IsolamentoPrivilegi/README.md) - Implementazione del principio del privilegio minimo
 
 ## Prerequisiti
 

@@ -1,0 +1,63 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm up"
+    - duration: 120  
+      arrivalRate: 20
+      name: "Load test"
+    - duration: 60
+      arrivalRate: 50
+      name: "Spike test"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  - name: "User Service Load Test"
+    weight: 40
+    flow:
+      - get:
+          url: "/users"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/users/{{ $randomInt(1, 3) }}"
+          expect:
+            - statusCode: [200, 404]
+      - post:
+          url: "/users"
+          json:
+            name: "Load Test User {{ $randomString() }}"
+            email: "user{{ $randomInt(1, 10000) }}@test.com"
+          expect:
+            - statusCode: [201, 409]
+
+  - name: "Product Service Load Test"  
+    weight: 40
+    flow:
+      - get:
+          url: "/products"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/products/{{ $randomInt(1, 3) }}"
+          expect:
+            - statusCode: [200, 404]
+
+  - name: "Order Service Load Test"
+    weight: 20
+    flow:
+      - get:
+          url: "/orders"
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/orders"
+          json:
+            userId: "{{ $randomInt(1, 3) }}"
+            productId: "{{ $randomInt(1, 3) }}"
+            quantity: "{{ $randomInt(1, 5) }}"
+          expect:
+            - statusCode: 201

@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # Traefik API Gateway
+  traefik:
+    image: traefik:v3.0
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.file.filename=/etc/traefik/dynamic-config.yml
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=metrics
+      - --entrypoints.metrics.address=:9090
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard
+      - "9090:9090"  # Metrics
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic-config.yml:/etc/traefik/dynamic-config.yml:ro
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+  # Servizio Users
+  user-service:
+    build: ../services/user-service
+    environment:
+      PORT: 3000
+      DB_URL: postgresql://users_db_user:password@user-db:5432/users_db
+    depends_on:
+      - user-db
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/users`)"
+      - "traefik.http.routers.users.entrypoints=web"
+      - "traefik.http.services.users.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.users-ratelimit.ratelimit.burst=100"
+      - "traefik.http.routers.users.middlewares=users-ratelimit"
+    deploy:
+      replicas: 2
+
+  user-db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: users_db_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    networks:
+      - traefik-net
+
+  # Servizio Products
+  product-service:
+    build: ../services/product-service
+    environment:
+      PORT: 3000
+      REDIS_URL: redis://product-cache:6379
+    depends_on:
+      - product-cache
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.products.rule=PathPrefix(`/products`)"
+      - "traefik.http.routers.products.entrypoints=web"
+      - "traefik.http.services.products.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.products-ratelimit.ratelimit.burst=150"
+      - "traefik.http.middlewares.products-cache.plugin.cache.ttl=300"
+      - "traefik.http.routers.products.middlewares=products-ratelimit,products-cache"
+    deploy:
+      replicas: 3
+
+  product-cache:
+    image: redis:7-alpine
+    networks:
+      - traefik-net
+
+  # Servizio Orders
+  order-service:
+    build: ../services/order-service
+    environment:
+      PORT: 3000
+      MONGO_URL: mongodb://order-db:27017/orders
+    depends_on:
+      - order-db
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orders.rule=PathPrefix(`/orders`)"
+      - "traefik.http.routers.orders.entrypoints=web"
+      - "traefik.http.services.orders.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.orders-ratelimit.ratelimit.burst=75"
+      - "traefik.http.middlewares.orders-auth.basicauth.users=admin:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
+      - "traefik.http.routers.orders.middlewares=orders-ratelimit"
+    deploy:
+      replicas: 2
+
+  order-db:
+    image: mongo:6
+    volumes:
+      - order_db_data:/data/db
+    networks:
+      - traefik-net
+
+  # Monitoring con Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.localhost`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+volumes:
+  user_db_data:
+  order_db_data:
+  prometheus_data:
+
+networks:
+  traefik-net:
+    driver: bridge

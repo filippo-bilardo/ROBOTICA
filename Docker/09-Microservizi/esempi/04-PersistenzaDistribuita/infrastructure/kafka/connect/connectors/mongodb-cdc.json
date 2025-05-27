@@ -1,0 +1,31 @@
+{
+  "name": "mongodb-cdc-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+    "tasks.max": "1",
+    "mongodb.connection.string": "mongodb://admin:password@mongodb:27017/?authSource=admin&replicaSet=rs0",
+    "mongodb.name": "mongodb-cdc",
+    "collection.include.list": "orders_db.orders,orders_db.order_events,orders_db.event_store",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "transforms": "route,extractNewRecordState",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$2",
+    "transforms.extractNewRecordState.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.extractNewRecordState.drop.tombstones": "false",
+    "transforms.extractNewRecordState.delete.handling.mode": "rewrite",
+    "topic.prefix": "mongodb",
+    "snapshot.mode": "initial",
+    "capture.mode": "change_streams_update_full",
+    "heartbeat.interval.ms": "10000",
+    "heartbeat.topics.prefix": "__debezium-heartbeat",
+    "errors.tolerance": "all",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true",
+    "provide.transaction.metadata": "false",
+    "tombstones.on.delete": "false"
+  }
+}

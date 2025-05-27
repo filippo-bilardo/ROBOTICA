@@ -17,11 +17,10 @@ In questo modulo esploreremo i concetti fondamentali dei microservizi, i pattern
 
 ## Esercitazioni Pratiche
 
-1. [Creazione di un'Applicazione a Microservizi](./esercizi/01-CreazioneAppMicroservizi/)
-2. [Implementazione di API Gateway](./esercizi/02-ImplementazioneAPIGateway/)
-3. [Comunicazione tra Microservizi](./esercizi/03-ComunicazioneMicroservizi/)
-4. [Gestione della Persistenza](./esercizi/04-GestionePersistenza/)
-5. [Monitoraggio e Logging](./esercizi/05-MonitoraggioLogging/)
+1. [Applicazione a Microservizi](./esempi/01-AppMicroservizi/README.md) - Implementazione completa di un'architettura a microservizi
+2. [API Gateway](./esempi/02-APIGateway/README.md) - Configurazione di un gateway per gestire le API
+3. [Comunicazione tra Servizi](./esempi/03-ComunicazioneServizi/README.md) - Pattern di comunicazione sincrona e asincrona
+4. [Persistenza Distribuita](./esempi/04-PersistenzaDistribuita/README.md) - Gestione dei dati in architetture distribuite
 
 ## Risorse Aggiuntive
 
