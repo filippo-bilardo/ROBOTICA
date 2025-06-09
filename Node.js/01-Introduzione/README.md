@@ -1,7 +1,5 @@
 # Esercitazione 1: Introduzione a Node.js
 
-## Descrizione
-
 Questa prima esercitazione ti introdurrà a Node.js, spiegandone le caratteristiche fondamentali, i vantaggi e come configurare l'ambiente di sviluppo. Imparerai a eseguire il tuo primo script Node.js e comprenderai il funzionamento del modello asincrono basato su eventi.
 
 ## Obiettivi
