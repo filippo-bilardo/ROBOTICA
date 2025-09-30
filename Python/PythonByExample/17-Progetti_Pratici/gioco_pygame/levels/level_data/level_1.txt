@@ -1,7 +1,0 @@
-# Dati del livello 1
-# Esempio: Mappa del livello, posizioni iniziali, ecc.
-
-XXXXXXXXXXXXXXXXXXXX
-X                  X
-X  P               X
-XXXXXXXXXXXXXXXXXXXX

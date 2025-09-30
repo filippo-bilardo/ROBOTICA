@@ -1,6 +1,0 @@
-# requirements.txt
-
-pygame>=2.0.0
-# Aggiungere qui altre dipendenze se necessario
-# Esempio: pytmx (se si usano mappe Tiled)
-# pytmx

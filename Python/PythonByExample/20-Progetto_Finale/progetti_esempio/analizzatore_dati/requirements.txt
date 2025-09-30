@@ -1,6 +1,0 @@
-# Elenco delle dipendenze del progetto
-
-pandas>=1.0.0
-numpy>=1.18.0
-matplotlib>=3.0.0
-# Aggiungere qui altre dipendenze necessarie
