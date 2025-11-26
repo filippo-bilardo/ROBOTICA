@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qix Clone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #111;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            border: 2px solid #555;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        .screen p {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">
+        <div>SCORE: <span id="scoreDisplay">0</span></div>
+        <div>CLAIMED: <span id="fillDisplay">0</span>%</div>
+        <div>LEVEL: <span id="levelDisplay">1</span></div>
+    </div>
+
+    <div id="startScreen" class="screen">
+        <h1>QIX CLONE</h1>
+        <p>Use ARROW KEYS to move</p>
+        <p>Hold SPACE to Draw Stix</p>
+        <p>Capture 75% to Win!</p>
+        <button id="startBtn">START GAME</button>
+    </div>
+
+    <div id="gameOverScreen" class="screen hidden">
+        <h1 style="color: #f00; text-shadow: 0 0 10px #f00;">GAME OVER</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button id="restartBtn">TRY AGAIN</button>
+    </div>
+
+    <div id="levelCompleteScreen" class="screen hidden">
+        <h1>LEVEL COMPLETE!</h1>
+        <p>Bonus: <span id="bonusDisplay">0</span></p>
+        <button id="nextLevelBtn">NEXT LEVEL</button>
+    </div>
+</div>
+
+<script>
+    /**
+     * Qix Game Implementation
+     */
+
+    // --- Constants ---
+    const CANVAS_WIDTH = 600;
+    const CANVAS_HEIGHT = 600;
+    const GRID_SIZE = 600; // Logical resolution
+    
+    // Grid States
+    const EMPTY = 0;
+    // FILLED will be >= 10
+    const BORDER = 2; // The permanent boundary
+    const TRAIL = 3;  // The line currently being drawn
+    const FILLED_BASE = 10;
+
+    // Colors
+    const COLORS = {
+        bg: '#000000',
+        border: '#FFFFFF',
+        trail: '#FF0000', // Red while drawing
+        player: '#00FF00', // Green diamond
+        qix: '#FF00FF',    // Magenta lines
+        sparx: '#FFFF00',  // Yellow sparks
+        text: '#FFFFFF',
+        fills: [
+            '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#00FFFF', '#FF00FF', 
+            '#C0C0C0', '#800000', '#808000', '#008000', '#800080', '#008080', '#000080'
+        ]
+    };
+
+    // Game Config
+    const PLAYER_SPEED = 4;
+    const QIX_SPEED = 3;
+    const SPARX_SPEED = 3;
+    const FILL_THRESHOLD = 75;
+
+    // --- Global State ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // UI Elements
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const fillDisplay = document.getElementById('fillDisplay');
+    const levelDisplay = document.getElementById('levelDisplay');
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+    const finalScoreEl = document.getElementById('finalScore');
+    const bonusDisplay = document.getElementById('bonusDisplay');
+
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+
+    // Game Variables
+    let gameState = 'START'; // START, PLAYING, GAMEOVER, LEVEL_DONE
+    let score = 0;
+    let level = 1;
+    let lives = 3;
+    let fillPercent = 0;
+    
+    // Entities
+    let player;
+    let qix;
+    let sparxList = [];
+    
+    // The Grid (2D array)
+    let grid = new Uint8Array(GRID_SIZE * GRID_SIZE);
+
+    // Input
+    const keys = {
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+        Space: false
+    };
+
+    // --- Helper Functions ---
+    
+    function getCell(x, y) {
+        if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return -1;
+        return grid[y * GRID_SIZE + x];
+    }
+
+    function setCell(x, y, val) {
+        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+            grid[y * GRID_SIZE + x] = val;
+        }
+    }
+
+    function resetGrid() {
+        grid.fill(EMPTY);
+        // Draw border
+        for (let x = 0; x < GRID_SIZE; x++) {
+            setCell(x, 0, BORDER);
+            setCell(x, GRID_SIZE - 1, BORDER);
+        }
+        for (let y = 0; y < GRID_SIZE; y++) {
+            setCell(0, y, BORDER);
+            setCell(GRID_SIZE - 1, y, BORDER);
+        }
+    }
+
+    // --- Classes ---
+
+    class Player {
+        constructor() {
+            this.x = GRID_SIZE / 2;
+            this.y = GRID_SIZE - 1;
+            this.isDrawing = false;
+            this.trail = []; // List of {x, y} points
+        }
+
+        update() {
+            let dx = 0;
+            let dy = 0;
+
+            if (keys.ArrowUp) dy = -PLAYER_SPEED;
+            else if (keys.ArrowDown) dy = PLAYER_SPEED;
+            else if (keys.ArrowLeft) dx = -PLAYER_SPEED;
+            else if (keys.ArrowRight) dx = PLAYER_SPEED;
+
+            if (dx === 0 && dy === 0) return;
+
+            // Determine if we are trying to draw
+            const attemptingDraw = keys.Space;
+            
+            // Predict next position
+            let nextX = this.x + dx;
+            let nextY = this.y + dy;
+
+            // Clamp to bounds
+            nextX = Math.max(0, Math.min(GRID_SIZE - 1, nextX));
+            nextY = Math.max(0, Math.min(GRID_SIZE - 1, nextY));
+
+            const currentCell = getCell(this.x, this.y);
+            const nextCell = getCell(nextX, nextY);
+
+            // Logic:
+            // 1. If we are ON A BORDER, we can move freely along it.
+            // 2. If we move INTO EMPTY space:
+            //    - If holding SPACE, we start/continue DRAWING.
+            //    - If NOT holding SPACE, we CANNOT move there.
+            // 3. If we are DRAWING:
+            //    - We cannot move back onto our own TRAIL.
+            //    - If we touch BORDER, we COMPLETE the shape.
+            // 4. We CANNOT move onto FILLED cells (val >= FILLED_BASE).
+
+            const onSafeGround = (currentCell === BORDER);
+            const movingToSafe = (nextCell === BORDER);
+            const movingToEmpty = (nextCell === EMPTY);
+            const movingToFilled = (nextCell >= FILLED_BASE);
+
+            if (movingToFilled) {
+                // Blocked!
+                return;
+            }
+
+            if (this.isDrawing) {
+                // We are currently drawing a line
+                
+                if (nextCell === TRAIL) {
+                    // Cannot cross own trail
+                    return; 
+                }
+
+                this.x = nextX;
+                this.y = nextY;
+                
+                // Add to trail
+                this.trail.push({x: this.x, y: this.y});
+                setCell(this.x, this.y, TRAIL);
+
+                if (movingToSafe) {
+                    // Completed a shape!
+                    this.finishShape();
+                }
+
+            } else {
+                // Not drawing yet
+                if (onSafeGround) {
+                    if (movingToSafe) {
+                        // Just moving along the edge
+                        this.x = nextX;
+                        this.y = nextY;
+                    } else if (movingToEmpty && attemptingDraw) {
+                        // Start drawing
+                        this.isDrawing = true;
+                        this.x = nextX;
+                        this.y = nextY;
+                        this.trail = [{x: this.x, y: this.y}];
+                        setCell(this.x, this.y, TRAIL);
+                    }
+                    // Else: trying to move into empty without drawing -> blocked
+                }
+            }
+        }
+
+        finishShape() {
+            this.isDrawing = false;
+            
+            // Convert trail to BORDER temporarily to close the loop
+            for (let p of this.trail) {
+                setCell(p.x, p.y, BORDER);
+            }
+
+            // Flood fill analysis
+            let seeds = [];
+            const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+            
+            for (let p of this.trail) {
+                for (let d of dirs) {
+                    let nx = p.x + d[0];
+                    let ny = p.y + d[1];
+                    if (getCell(nx, ny) === EMPTY) {
+                        seeds.push({x: nx, y: ny});
+                    }
+                }
+            }
+
+            let visited = new Uint8Array(GRID_SIZE * GRID_SIZE);
+            let regions = [];
+
+            for (let seed of seeds) {
+                if (visited[seed.y * GRID_SIZE + seed.x]) continue;
+                let regionInfo = this.floodFillAnalysis(seed.x, seed.y, visited);
+                regions.push(regionInfo);
+            }
+
+            // Pick a random color for this fill
+            const colorIndex = Math.floor(Math.random() * COLORS.fills.length);
+            const fillVal = FILLED_BASE + colorIndex;
+
+            let filledCount = 0;
+            
+            for (let r of regions) {
+                if (!r.hasQix) {
+                    this.fillRegion(r.pixels, fillVal);
+                    filledCount += r.pixels.length;
+                }
+            }
+            
+            score += filledCount * 10;
+            this.trail = [];
+            updateFillStats();
+        }
+
+        floodFillAnalysis(startX, startY, visitedGlobal) {
+            let stack = [{x: startX, y: startY}];
+            let pixels = [];
+            let hasQix = false;
+            
+            visitedGlobal[startY * GRID_SIZE + startX] = 1;
+            pixels.push({x: startX, y: startY});
+
+            let qx = Math.floor(qix.x);
+            let qy = Math.floor(qix.y);
+
+            while (stack.length > 0) {
+                let p = stack.pop();
+                
+                if (Math.abs(p.x - qx) < 5 && Math.abs(p.y - qy) < 5) {
+                    hasQix = true;
+                }
+
+                const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                for (let d of dirs) {
+                    let nx = p.x + d[0];
+                    let ny = p.y + d[1];
+                    
+                    if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                        let idx = ny * GRID_SIZE + nx;
+                        if (grid[idx] === EMPTY && !visitedGlobal[idx]) {
+                            visitedGlobal[idx] = 1;
+                            let np = {x: nx, y: ny};
+                            stack.push(np);
+                            pixels.push(np);
+                        }
+                    }
+                }
+            }
+            
+            return { hasQix, pixels };
+        }
+
+        fillRegion(pixels, fillVal) {
+            for (let p of pixels) {
+                setCell(p.x, p.y, fillVal);
+            }
+        }
+
+        die() {
+            lives--;
+            this.x = GRID_SIZE / 2;
+            this.y = GRID_SIZE - 1;
+            this.isDrawing = false;
+            
+            for (let p of this.trail) {
+                setCell(p.x, p.y, EMPTY);
+            }
+            this.trail = [];
+
+            if (lives <= 0) {
+                endGame();
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = COLORS.player;
+            ctx.fillRect(this.x - 4, this.y - 4, 9, 9);
+        }
+    }
+
+    class Qix {
+        constructor() {
+            this.x = GRID_SIZE / 2;
+            this.y = GRID_SIZE / 2;
+            this.vx = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+            this.vy = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+
+            let cx = Math.floor(this.x);
+            let cy = Math.floor(this.y);
+            
+            if (cx <= 0 || cx >= GRID_SIZE - 1) this.vx *= -1;
+            if (cy <= 0 || cy >= GRID_SIZE - 1) this.vy *= -1;
+
+            let cell = getCell(cx, cy);
+            if (cell === BORDER || cell >= FILLED_BASE) {
+                this.x -= this.vx * 2;
+                this.y -= this.vy * 2;
+                this.vx = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+                this.vy = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+            } else if (cell === TRAIL) {
+                player.die();
+            }
+
+            if (Math.random() < 0.02) {
+                this.vx = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+                this.vy = (Math.random() > 0.5 ? 1 : -1) * QIX_SPEED;
+            }
+        }
+
+        draw() {
+            ctx.strokeStyle = COLORS.qix;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<5; i++) {
+                ctx.moveTo(this.x + i*2, this.y + i*2);
+                ctx.lineTo(this.x - i*4 + 10, this.y + i*3 - 10);
+            }
+            ctx.stroke();
+        }
+    }
+
+    class Sparx {
+        constructor(isClockwise) {
+            this.x = GRID_SIZE / 2; // Start at top middle usually
+            this.y = 0;
+            this.isClockwise = isClockwise;
+            // Find a valid border start if top middle isn't valid (unlikely at start)
+        }
+
+        update() {
+            // Sparx moves along BORDER cells.
+            // This is actually tricky on a complex grid.
+            // Simple algorithm: Follow the wall.
+            // If clockwise: keep wall on right.
+            // If counter-clockwise: keep wall on left.
+            // But here "wall" is the EMPTY/FILLED space? No, Sparx moves ON the border.
+            // So it follows the line of BORDER cells.
+            
+            // Simplified Sparx: Just moves along the outer edge of the screen for now?
+            // No, that's too simple. It should follow the claimed areas too.
+            
+            // Let's implement a "Follow Line" behavior.
+            // Current cell must be BORDER.
+            // Look at neighbors that are also BORDER.
+            // Pick the one that continues the direction or turns correctly.
+            
+            // For this prototype, let's stick to the outer boundary to ensure stability,
+            // or just simple edge traversing if we can.
+            // Implementing full graph traversal for Sparx on the fly is hard.
+            // Let's make Sparx just patrol the outer rectangle for MVP.
+            
+            // ...Actually, let's try to make it follow the player's path if connected?
+            // Let's stick to Outer Boundary for MVP to guarantee no bugs.
+            
+            if (this.y === 0 && this.x < GRID_SIZE - 1) { // Top edge, moving right
+                this.x += SPARX_SPEED;
+            } else if (this.x === GRID_SIZE - 1 && this.y < GRID_SIZE - 1) { // Right edge, moving down
+                this.y += SPARX_SPEED;
+            } else if (this.y === GRID_SIZE - 1 && this.x > 0) { // Bottom edge, moving left
+                this.x -= SPARX_SPEED;
+            } else if (this.x === 0 && this.y > 0) { // Left edge, moving up
+                this.y -= SPARX_SPEED;
+            }
+            
+            // Collision with Player
+            let dx = this.x - player.x;
+            let dy = this.y - player.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 10) {
+                player.die();
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = COLORS.sparx;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    // --- Main Loop ---
+
+    function initGame() {
+        score = 0;
+        level = 1;
+        lives = 3;
+        startLevel();
+        gameLoop();
+    }
+
+    function startLevel() {
+        resetGrid();
+        player = new Player();
+        qix = new Qix();
+        sparxList = [new Sparx(true), new Sparx(false)];
+        fillPercent = 0;
+        updateUI();
+        gameState = 'PLAYING';
+        
+        // Hide screens
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        levelCompleteScreen.classList.add('hidden');
+    }
+
+    function updateFillStats() {
+        // Count filled pixels
+        let filled = 0;
+        for(let i=0; i<grid.length; i++) {
+            if (grid[i] >= FILLED_BASE) filled++;
+        }
+        // Total area is roughly GRID_SIZE*GRID_SIZE (minus borders)
+        let total = GRID_SIZE * GRID_SIZE;
+        fillPercent = Math.floor((filled / total) * 100);
+        
+        fillDisplay.innerText = fillPercent;
+        scoreDisplay.innerText = score;
+        
+        if (fillPercent >= FILL_THRESHOLD) {
+            levelComplete();
+        }
+    }
+
+    function levelComplete() {
+        gameState = 'LEVEL_DONE';
+        levelCompleteScreen.classList.remove('hidden');
+        bonusDisplay.innerText = (fillPercent - FILL_THRESHOLD) * 1000;
+        score += (fillPercent - FILL_THRESHOLD) * 1000;
+    }
+
+    function endGame() {
+        gameState = 'GAMEOVER';
+        gameOverScreen.classList.remove('hidden');
+        finalScoreEl.innerText = score;
+    }
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        player.update();
+        qix.update();
+        sparxList.forEach(s => s.update());
+    }
+
+    function draw() {
+        // Clear canvas
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // Draw Grid Content (Filled areas and Trails)
+        const imgData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const data = imgData.data;
+        
+        for (let i = 0; i < grid.length; i++) {
+            const val = grid[i];
+            if (val !== EMPTY) {
+                const idx = i * 4;
+                let r=0, g=0, b=0;
+                
+                if (val === BORDER) { r=255; g=255; b=255; }
+                else if (val === TRAIL) { r=255; g=0; b=0; }
+                else if (val >= FILLED_BASE) {
+                    // Get color from palette
+                    const colorIdx = (val - FILLED_BASE) % COLORS.fills.length;
+                    const hex = COLORS.fills[colorIdx];
+                    // Parse hex
+                    r = parseInt(hex.substr(1,2), 16);
+                    g = parseInt(hex.substr(3,2), 16);
+                    b = parseInt(hex.substr(5,2), 16);
+                }
+                
+                data[idx] = r;
+                data[idx+1] = g;
+                data[idx+2] = b;
+                data[idx+3] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        // Draw Entities
+        player.draw();
+        qix.draw();
+        sparxList.forEach(s => s.draw());
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function updateUI() {
+        scoreDisplay.innerText = score;
+        fillDisplay.innerText = fillPercent;
+        levelDisplay.innerText = level;
+    }
+
+    // --- Event Listeners ---
+
+    window.addEventListener('keydown', e => {
+        if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+    });
+
+    window.addEventListener('keyup', e => {
+        if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+    });
+
+    document.getElementById('startBtn').addEventListener('click', initGame);
+    
+    document.getElementById('restartBtn').addEventListener('click', initGame);
+    
+    document.getElementById('nextLevelBtn').addEventListener('click', () => {
+        level++;
+        startLevel();
+    });
+
+    // Initial render
+    resetGrid();
+    draw();
+
+</script>
+</body>
+</html>
