@@ -1,4 +1,19 @@
-// Sketch base per sensore a ultrasuoni HC-SR04
+/*
+ * @file Ultrasuoni_01_misurazione_base.ino
+ * @brief Misurazione base con sensore a ultrasuoni HC-SR04 
+ * 
+ * @description
+ * Questo sketch è un esempio base per utilizzare il sensore a ultrasuoni HC-SR04 con Arduino.
+ * Il sensore misura la distanza da un oggetto riflettente inviando un impulso ultrasonico e misurando il tempo di ritorno dell'eco.
+ * Il risultato viene visualizzato in centimetri sul monitor seriale.
+ * 
+ * https://wokwi.com/projects/458007500865594369
+ * @author Filippo Bilardo
+ * @date 09/03/2026
+ * @version 1.0
+ */
+
+ // Sketch base per sensore a ultrasuoni HC-SR04
 const int TRIG_PIN = 9;  // Pin Trigger del sensore
 const int ECHO_PIN = 10; // Pin Echo del sensore
 

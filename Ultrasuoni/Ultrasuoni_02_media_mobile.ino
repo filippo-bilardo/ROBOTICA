@@ -1,4 +1,22 @@
-// Misurazione con media mobile per ridurre il rumore
+/*
+ * @file Ultrasuoni_02_media_mobile
+ * @brief Misurazione con media mobile per ridurre il rumore 
+ * 
+ * @description
+ * Questo sketch è un esempio avanzato per utilizzare il sensore a ultrasuoni HC-SR04 con Arduino, 
+ * implementando una media mobile per ridurre il rumore nelle misurazioni.
+ * La media mobile aiuta a stabilizzare le letture della distanza, specialmente in ambienti con 
+ * molte interferenze o quando il sensore è soggetto a vibrazioni.
+ * Il risultato viene visualizzato in centimetri sul monitor seriale, mostrando sia la lettura 
+ * attuale che la media delle ultime letture.
+ * 
+ * https://wokwi.com/projects/458007761964228609
+ * @author Filippo Bilardo
+ * @date 09/03/2026
+ * @version 1.0
+ */
+
+ // Misurazione con media mobile per ridurre il rumore
 const int TRIG_PIN = 9;
 const int ECHO_PIN = 10;
 

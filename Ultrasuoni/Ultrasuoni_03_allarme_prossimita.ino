@@ -1,13 +1,32 @@
-// Sistema di allarme di prossimità con LED e buzzer
-const int TRIG_PIN = 9;
-const int ECHO_PIN = 10;
-const int LED_PIN = 13;    // LED integrato o esterno
-const int BUZZER_PIN = 8;  // Pin per il buzzer
+/*
+ * @file Ultrasuoni_03_allarme_prossimita.ino
+ * @brief Sistema di allarme di prossimità con sensore a ultrasuoni HC-SR04
+ * 
+ * @description
+ * Questo sketch implementa un sistema di allarme di prossimità utilizzando il sensore a ultrasuoni HC-SR04 con Arduino.
+ * Il sistema utilizza un LED e un buzzer per segnalare la presenza di oggetti a diverse distanze, con tre livelli di 
+ * allarme: sicuro, avvertimento e pericolo.
+ * La distanza viene misurata continuamente e il sistema reagisce in tempo reale, fornendo feedback visivo e acustico 
+ * in base alla vicinanza dell'oggetto rilevato. Il risultato viene visualizzato in centimetri sul monitor seriale, 
+ * insieme a messaggi di stato per ogni livello di allarme.  
+ *  
+ * 
+ * https://wokwi.com/projects/458008366796643329
+ * @author Filippo Bilardo
+ * @date 09/03/2026
+ * @version 1.0
+ */
+
+ // Sistema di allarme di prossimità con LED e buzzer
+const int TRIG_PIN = 10;
+const int ECHO_PIN = 9;
+const int LED_PIN = 11;    // LED integrato o esterno
+const int BUZZER_PIN = 4;  // Pin per il buzzer
 
 // Soglie di distanza per l'allarme (in cm)
-const int SAFE_DISTANCE = 50;     // Distanza sicura
-const int WARNING_DISTANCE = 30;  // Distanza di avvertimento
-const int DANGER_DISTANCE = 15;   // Distanza di pericolo
+const int SAFE_DISTANCE = 150;     // Distanza sicura
+const int WARNING_DISTANCE = 80;  // Distanza di avvertimento
+const int DANGER_DISTANCE = 40;   // Distanza di pericolo
 
 void setup() {
   pinMode(TRIG_PIN, OUTPUT);
