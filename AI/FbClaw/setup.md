@@ -1,6 +1,6 @@
 # Setup e Configurazione
 
-Per realizzare questo agente AI personale ho preso spunto da questo video:
+Per realizzare questo agente AI personale ho preso spunto da questa guida:
 [Simone Rizzo - Ho rifatto OpenClaw… ed è stato troppo facile](https://www.youtube.com/watch?v=YKO-BPogmY0&t=1249s)
 
 ## Requisiti
@@ -11,7 +11,7 @@ Per realizzare questo agente AI personale ho preso spunto da questo video:
 - API key Groq (per la trascrizione audio)
 - URL pubblico HTTPS (per il webhook Telegram)
 
-## 1. Clona e installa le dipendenze
+## 1. Installa le dipendenze
 
 ```bash
 pip install -r requirements.txt

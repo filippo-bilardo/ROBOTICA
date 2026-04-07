@@ -4,6 +4,9 @@ Questa guida mostra come costruire un agente AI completo usando la libreria [Agn
 
 ![Conversazione con l'agente AI personale](01-AgenteAI-personale.png)
 
+Per realizzare questo agente AI personale ho preso spunto da questa guida:
+[Simone Rizzo - Ho rifatto OpenClaw… ed è stato troppo facile](https://www.youtube.com/watch?v=YKO-BPogmY0&t=1249s)
+
 ---
 
 ## Prerequisiti
