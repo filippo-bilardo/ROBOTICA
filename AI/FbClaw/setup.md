@@ -1,5 +1,8 @@
 # Setup e Configurazione
 
+Per realizzare questo agente AI personale ho preso spunto da questo video:
+[Simone Rizzo - Ho rifatto OpenClaw… ed è stato troppo facile](https://www.youtube.com/watch?v=YKO-BPogmY0&t=1249s)
+
 ## Requisiti
 
 - Python 3.10+
