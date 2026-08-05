@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qix · Arcade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a12;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+        }
+        .container {
+            background: #12121f;
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 0 50px rgba(0, 180, 255, 0.08);
+            border: 2px solid #2a3a5a;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+            background: #0b0b1a;
+            cursor: none;
+            width: 800px;
+            height: 600px;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            color: #9ab8e6;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 120, 255, 0.2);
+            padding: 0 6px;
+        }
+        .info span {
+            background: #18182e;
+            padding: 4px 18px;
+            border-radius: 30px;
+            border: 1px solid #2a4a7a;
+            letter-spacing: 1px;
+        }
+        .info .lives {
+            color: #ff6b8a;
+        }
+        .info .percent {
+            color: #6bffb0;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 12px;
+            color: #6078a0;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .controls kbd {
+            background: #18182e;
+            padding: 2px 14px;
+            border-radius: 6px;
+            border: 1px solid #2a4a7a;
+            color: #b0d0ff;
+            font-size: 13px;
+        }
+        @media (max-width: 840px) {
+            canvas {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 800 / 600;
+            }
+            .container {
+                padding: 12px;
+                margin: 10px;
+            }
+            .info {
+                font-size: 14px;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .controls {
+                font-size: 11px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="info">
+            <span class="lives">❤️ <span id="livesDisplay">3</span></span>
+            <span class="percent">⬛ <span id="percentDisplay">0</span>%</span>
+            <span>🏆 <span id="scoreDisplay">0</span></span>
+        </div>
+        <div class="controls">
+            <span><kbd>←</kbd> <kbd>→</kbd> Muovi</span>
+            <span><kbd>SPAZIO</kbd> Traccia</span>
+            <span><kbd>R</kbd> Riavvia</span>
+        </div>
+    </div>
+    <script>
+        // ============================================================
+        //  QIX – versione fedele all'arcade originale
+        //  - Qix che accelera con la percentuale
+        //  - Sparks che uccidono il giocatore sul bordo
+        //  - Angolo bloccato durante il tracciamento
+        //  - Grafica e sensibilità classiche
+        // ============================================================
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const livesSpan = document.getElementById('livesDisplay');
+        const percentSpan = document.getElementById('percentDisplay');
+        const scoreSpan = document.getElementById('scoreDisplay');
+
+        const W = 800,
+            H = 600;
+        const MARGIN = 48;
+        const LEFT = MARGIN;
+        const RIGHT = W - MARGIN;
+        const TOP = MARGIN;
+        const BOTTOM = H - MARGIN;
+        const PERIMETER_LENGTH = 2 * ((RIGHT - LEFT) + (BOTTOM - TOP));
+
+        // ---- stato di gioco ----
+        let game = {
+            lives: 3,
+            score: 0,
+            percent: 0,
+            state: 'idle', // 'idle' | 'drawing' | 'gameover' | 'win'
+            playerPos: 0, // posizione sul perimetro (0 .. PERIMETER_LENGTH)
+            startPos: 0,
+            angle: 0, // angolo fisso all'inizio del tracciamento
+            lineHead: null,
+            lineStart: null,
+            lineEnd: null,
+            lines: [],
+            filled: [],
+            qix: { x: 0, y: 0, vx: 0, vy: 0, radius: 10 },
+            sparks: [],
+            trail: [],
+            drawProgress: 0,
+            flashTimer: 0,
+            message: '',
+            messageTimer: 0,
+            baseSpeed: 1.2,
+        };
+
+        // ---- utility ----
+        function dist(x1, y1, x2, y2) {
+            return Math.hypot(x2 - x1, y2 - y1);
+        }
+
+        function pointOnPerimeter(t) {
+            let p = ((t % PERIMETER_LENGTH) + PERIMETER_LENGTH) % PERIMETER_LENGTH;
+            const w = RIGHT - LEFT,
+                h = BOTTOM - TOP;
+            if (p < w) return { x: LEFT + p, y: TOP };
+            p -= w;
+            if (p < h) return { x: RIGHT, y: TOP + p };
+            p -= h;
+            if (p < w) return { x: RIGHT - p, y: BOTTOM };
+            p -= w;
+            return { x: LEFT, y: BOTTOM - p };
+        }
+
+        function perimeterNormal(t) {
+            const p = ((t % PERIMETER_LENGTH) + PERIMETER_LENGTH) % PERIMETER_LENGTH;
+            const w = RIGHT - LEFT,
+                h = BOTTOM - TOP;
+            if (p < w) return { x: 0, y: 1 };
+            if (p < w + h) return { x: -1, y: 0 };
+            if (p < 2 * w + h) return { x: 0, y: -1 };
+            return { x: 1, y: 0 };
+        }
+
+        function intersectSegments(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const d1x = x2 - x1,
+                d1y = y2 - y1;
+            const d2x = x4 - x3,
+                d2y = y4 - y3;
+            const denom = d1x * d2y - d1y * d2x;
+            if (Math.abs(denom) < 1e-10) return null;
+            const t = ((x3 - x1) * d2y - (y3 - y1) * d2x) / denom;
+            const u = ((x3 - x1) * d1y - (y3 - y1) * d1x) / denom;
+            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                return { x: x1 + t * d1x, y: y1 + t * d1y, t: t, u: u };
+            }
+            return null;
+        }
+
+        function rayIntersectPerimeter(originX, originY, dirX, dirY) {
+            const rect = [
+                [LEFT, TOP, RIGHT, TOP],
+                [RIGHT, TOP, RIGHT, BOTTOM],
+                [RIGHT, BOTTOM, LEFT, BOTTOM],
+                [LEFT, BOTTOM, LEFT, TOP]
+            ];
+            let best = null,
+                bestT = Infinity;
+            for (let seg of rect) {
+                const p = intersectSegments(originX, originY, originX + dirX * 10000, originY + dirY * 10000,
+                    seg[0], seg[1], seg[2], seg[3]);
+                if (p) {
+                    const d = dist(originX, originY, p.x, p.y);
+                    if (d > 0.5 && d < bestT) { bestT = d;
+                        best = p; }
+                }
+            }
+            return best;
+        }
+
+        function rayIntersectLines(originX, originY, dirX, dirY, excludeLast) {
+            let best = null,
+                bestT = Infinity;
+            const lines = game.lines;
+            for (let i = 0; i < lines.length; i++) {
+                if (excludeLast && i === lines.length - 1) continue;
+                const l = lines[i];
+                const p = intersectSegments(originX, originY, originX + dirX * 10000, originY + dirY * 10000,
+                    l.x1, l.y1, l.x2, l.y2);
+                if (p) {
+                    const d = dist(originX, originY, p.x, p.y);
+                    if (d > 0.5 && d < bestT) { bestT = d;
+                        best = p; }
+                }
+            }
+            return best;
+        }
+
+        function pointInPolygon(px, py, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x,
+                    yi = polygon[i].y;
+                const xj = polygon[j].x,
+                    yj = polygon[j].y;
+                const intersect = ((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function polygonArea(poly) {
+            let area = 0;
+            for (let i = 0; i < poly.length; i++) {
+                const j = (i + 1) % poly.length;
+                area += poly[i].x * poly[j].y;
+                area -= poly[j].x * poly[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        function buildPolygon(A, B) {
+            const tA = game.startPos;
+            let tB = 0;
+            let bestDist = Infinity;
+            for (let i = 0; i < 2000; i++) {
+                const t = (i / 2000) * PERIMETER_LENGTH;
+                const p = pointOnPerimeter(t);
+                const d = dist(p.x, p.y, B.x, B.y);
+                if (d < bestDist) { bestDist = d;
+                    tB = t; }
+            }
+            const steps = 60;
+            const path1 = [],
+                path2 = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = tA + (tB - tA) * (i / steps);
+                path1.push(pointOnPerimeter(t));
+            }
+            for (let i = 0; i <= steps; i++) {
+                let t = tB + (tA - tB + PERIMETER_LENGTH) * (i / steps);
+                if (t >= PERIMETER_LENGTH) t -= PERIMETER_LENGTH;
+                path2.push(pointOnPerimeter(t));
+            }
+            const poly1 = [A, ...path1, B];
+            const poly2 = [A, ...path2, B];
+            return { poly1, poly2 };
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1,
+                dy = y2 - y1;
+            const len2 = dx * dx + dy * dy;
+            if (len2 < 0.0001) return dist(px, py, x1, y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+            t = Math.max(0, Math.min(1, t));
+            const cx = x1 + t * dx,
+                cy = y1 + t * dy;
+            return dist(px, py, cx, cy);
+        }
+
+        // ---- inizializzazione ----
+        function initQix() {
+            const q = game.qix;
+            q.radius = 10;
+            q.x = LEFT + (RIGHT - LEFT) * 0.3 + Math.random() * 0.4 * (RIGHT - LEFT);
+            q.y = TOP + (BOTTOM - TOP) * 0.3 + Math.random() * 0.4 * (BOTTOM - TOP);
+            const speed = game.baseSpeed + game.percent / 50;
+            const angle = Math.random() * 2 * Math.PI;
+            q.vx = Math.cos(angle) * speed;
+            q.vy = Math.sin(angle) * speed;
+        }
+
+        function initSparks() {
+            game.sparks = [];
+            for (let i = 0; i < 5; i++) {
+                const t = (i / 5) * PERIMETER_LENGTH + Math.random() * 30;
+                const p = pointOnPerimeter(t);
+                game.sparks.push({
+                    t: t,
+                    speed: 0.7 + Math.random() * 0.5,
+                    size: 3 + Math.random() * 3,
+                    color: `hsl(${200 + Math.random()*40}, 80%, 60%)`
+                });
+            }
+        }
+
+        function resetGame() {
+            game.lives = 3;
+            game.score = 0;
+            game.percent = 0;
+            game.lines = [];
+            game.filled = [];
+            game.state = 'idle';
+            game.playerPos = 0;
+            game.angle = 0;
+            game.trail = [];
+            game.message = '';
+            game.messageTimer = 0;
+            game.flashTimer = 0;
+            const p = pointOnPerimeter(0);
+            game.lineStart = { x: p.x, y: p.y };
+            game.lineEnd = null;
+            game.lineHead = null;
+            game.startPos = 0;
+            game.baseSpeed = 1.2;
+            initQix();
+            initSparks();
+            updateUI();
+        }
+
+        function updateUI() {
+            livesSpan.textContent = game.lives;
+            const filledArea = game.filled.reduce((acc, poly) => acc + polygonArea(poly), 0);
+            const totalArea = (RIGHT - LEFT) * (BOTTOM - TOP);
+            let pct = Math.min(100, (filledArea / totalArea) * 100);
+            if (game.percent < pct) game.percent = pct;
+            percentSpan.textContent = Math.floor(game.percent);
+            scoreSpan.textContent = game.score;
+            if (game.percent >= 98) {
+                game.state = 'win';
+                game.message = '🏆 HAI VINTO! 🏆';
+                game.messageTimer = 9999;
+            }
+        }
+
+        // ---- nemici ----
+        function updateQix() {
+            const q = game.qix;
+            const speed = game.baseSpeed + game.percent / 40;
+            const currentSpeed = Math.hypot(q.vx, q.vy);
+            if (currentSpeed > 0) {
+                q.vx = (q.vx / currentSpeed) * speed;
+                q.vy = (q.vy / currentSpeed) * speed;
+            } else {
+                q.vx = speed;
+                q.vy = 0;
+            }
+            q.x += q.vx;
+            q.y += q.vy;
+
+            if (q.x - q.radius < LEFT) { q.x = LEFT + q.radius;
+                q.vx = -q.vx; }
+            if (q.x + q.radius > RIGHT) { q.x = RIGHT - q.radius;
+                q.vx = -q.vx; }
+            if (q.y - q.radius < TOP) { q.y = TOP + q.radius;
+                q.vy = -q.vy; }
+            if (q.y + q.radius > BOTTOM) { q.y = BOTTOM - q.radius;
+                q.vy = -q.vy; }
+
+            if (Math.random() < 0.006) {
+                const ang = Math.atan2(q.vy, q.vx) + (Math.random() - 0.5) * 0.6;
+                const sp = Math.hypot(q.vx, q.vy);
+                q.vx = Math.cos(ang) * sp;
+                q.vy = Math.sin(ang) * sp;
+            }
+        }
+
+        function updateSparks() {
+            for (let s of game.sparks) {
+                s.t += s.speed * 0.7;
+                if (s.t >= PERIMETER_LENGTH) s.t -= PERIMETER_LENGTH;
+                if (s.t < 0) s.t += PERIMETER_LENGTH;
+            }
+            // Controlla collisione con il giocatore (solo in idle)
+            if (game.state === 'idle' || game.state === 'drawing') {
+                const player = pointOnPerimeter(game.playerPos);
+                for (let s of game.sparks) {
+                    const sp = pointOnPerimeter(s.t);
+                    if (dist(player.x, player.y, sp.x, sp.y) < 12) {
+                        // spark colpisce il giocatore
+                        loseLife('spark');
+                        return;
+                    }
+                }
+            }
+        }
+
+        // ---- perdita vita ----
+        function loseLife(cause) {
+            if (game.lives <= 0) return;
+            game.lives--;
+            game.state = 'idle';
+            game.trail = [];
+            game.lineHead = null;
+            game.lineEnd = null;
+            game.flashTimer = 20;
+            if (game.lives <= 0) {
+                game.state = 'gameover';
+                game.message = '💀 GAME OVER 💀';
+                game.messageTimer = 9999;
+            } else {
+                game.message = cause === 'spark' ? '⚡ Colpito da uno Spark!' : '💥 Toccato dal Qix!';
+                game.messageTimer = 60;
+            }
+            updateUI();
+            initQix();
+            initSparks();
+        }
+
+        // ---- tracciamento ----
+        function startDrawing() {
+            if (game.state !== 'idle' || game.lives <= 0) return;
+            const p = pointOnPerimeter(game.playerPos);
+            game.startPos = game.playerPos;
+            game.lineStart = { x: p.x, y: p.y };
+            const n = perimeterNormal(game.playerPos);
+            game.angle = Math.atan2(n.y, n.x);
+            game.angle += (Math.random() - 0.5) * 0.1;
+            game.lineHead = { x: p.x, y: p.y };
+            game.lineEnd = null;
+            game.trail = [{ x: p.x, y: p.y }];
+            game.state = 'drawing';
+            game.flashTimer = 0;
+        }
+
+        function updateDrawing() {
+            if (game.state !== 'drawing' || !game.lineStart) return;
+            const origin = game.lineStart;
+            const dirX = Math.cos(game.angle);
+            const dirY = Math.sin(game.angle);
+
+            const hitPerim = rayIntersectPerimeter(origin.x, origin.y, dirX, dirY);
+            const hitLine = rayIntersectLines(origin.x, origin.y, dirX, dirY, true);
+
+            let hit = null,
+                hitType = 'perim';
+            if (hitPerim && hitLine) {
+                if (dist(origin.x, origin.y, hitLine.x, hitLine.y) < dist(origin.x, origin.y, hitPerim.x, hitPerim.y)) {
+                    hit = hitLine;
+                    hitType = 'line';
+                } else { hit = hitPerim;
+                    hitType = 'perim'; }
+            } else if (hitPerim) { hit = hitPerim;
+                hitType = 'perim'; } else if (hitLine) { hit = hitLine;
+                hitType = 'line'; } else return;
+
+            const distToHit = dist(origin.x, origin.y, hit.x, hit.y);
+            const speed = 4.0;
+            const step = Math.min(speed, distToHit);
+            const last = game.trail[game.trail.length - 1];
+            const dLast = dist(last.x, last.y, hit.x, hit.y);
+
+            if (dLast < 1.5) {
+                game.lineEnd = { x: hit.x, y: hit.y };
+                game.state = 'idle';
+                // Controlla se il Qix ha toccato la linea
+                const q = game.qix;
+                let qixOnLine = false;
+                for (let i = 0; i < game.trail.length - 1; i++) {
+                    const a = game.trail[i];
+                    const b = game.trail[i + 1];
+                    if (distToSegment(q.x, q.y, a.x, a.y, b.x, b.y) < q.radius + 2) { qixOnLine = true; break; }
+                }
+                if (dist(q.x, q.y, origin.x, origin.y) < q.radius + 2) qixOnLine = true;
+                if (dist(q.x, q.y, hit.x, hit.y) < q.radius + 2) qixOnLine = true;
+
+                if (qixOnLine) {
+                    loseLife('qix');
+                    return;
+                }
+                completeLine(hit, hitType);
+                return;
+            }
+
+            const frac = step / dLast;
+            const newX = last.x + (hit.x - last.x) * frac;
+            const newY = last.y + (hit.y - last.y) * frac;
+            game.trail.push({ x: newX, y: newY });
+            game.lineHead = { x: newX, y: newY };
+
+            const q = game.qix;
+            for (let i = 0; i < game.trail.length - 1; i++) {
+                const a = game.trail[i];
+                const b = game.trail[i + 1];
+                if (distToSegment(q.x, q.y, a.x, a.y, b.x, b.y) < q.radius + 2) {
+                    game.state = 'idle';
+                    loseLife('qix');
+                    return;
+                }
+            }
+        }
+
+        function completeLine(hit, hitType) {
+            const A = game.lineStart;
+            const B = hit;
+            game.lines.push({ x1: A.x, y1: A.y, x2: B.x, y2: B.y });
+
+            const { poly1, poly2 } = buildPolygon(A, B);
+            const q = game.qix;
+            const in1 = pointInPolygon(q.x, q.y, poly1);
+            const in2 = pointInPolygon(q.x, q.y, poly2);
+
+            let toFill = null;
+            if (in1 && !in2) toFill = poly2;
+            else if (in2 && !in1) toFill = poly1;
+            else {
+                const area1 = polygonArea(poly1);
+                const area2 = polygonArea(poly2);
+                toFill = area1 < area2 ? poly1 : poly2;
+                // Se il Qix è sulla linea, controlla
+                for (let i = 0; i < game.trail.length - 1; i++) {
+                    const a = game.trail[i];
+                    const b = game.trail[i + 1];
+                    if (distToSegment(q.x, q.y, a.x, a.y, b.x, b.y) < q.radius + 2) {
+                        loseLife('qix');
+                        return;
+                    }
+                }
+            }
+
+            const areaFill = polygonArea(toFill);
+            if (areaFill < 0.5) {
+                game.state = 'idle';
+                game.trail = [];
+                game.lineHead = null;
+                game.lineEnd = null;
+                return;
+            }
+
+            game.filled.push(toFill);
+            const totalArea = (RIGHT - LEFT) * (BOTTOM - TOP);
+            const pct = areaFill / totalArea;
+            game.score += Math.floor(pct * 150) + 2;
+
+            game.state = 'idle';
+            game.trail = [];
+            game.lineHead = null;
+            game.lineEnd = null;
+            game.message = `✅ +${Math.floor(pct * 150) + 2} punti!`;
+            game.messageTimer = 40;
+            updateUI();
+            // Riavvio Qix e sparks
+            initQix();
+            initSparks();
+            if (game.percent >= 98) {
+                game.state = 'win';
+                game.message = '🏆 HAI VINTO! 🏆';
+                game.messageTimer = 9999;
+            }
+        }
+
+        // ---- disegno ----
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // sfondo
+            const grad = ctx.createRadialGradient(400, 300, 80, 400, 300, 550);
+            grad.addColorStop(0, '#14142a');
+            grad.addColorStop(1, '#0a0a14');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+
+            // griglia leggera
+            ctx.strokeStyle = 'rgba(40,70,120,0.1)';
+            ctx.lineWidth = 1;
+            for (let x = LEFT; x <= RIGHT; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, TOP);
+                ctx.lineTo(x, BOTTOM);
+                ctx.stroke();
+            }
+            for (let y = TOP; y <= BOTTOM; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(LEFT, y);
+                ctx.lineTo(RIGHT, y);
+                ctx.stroke();
+            }
+
+            // ---- perimetro ----
+            ctx.strokeStyle = '#4a8aba';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(80,180,255,0.25)';
+            ctx.shadowBlur = 12;
+            ctx.strokeRect(LEFT, TOP, RIGHT - LEFT, BOTTOM - TOP);
+            ctx.shadowBlur = 0;
+
+            // ---- aree riempite ----
+            for (let poly of game.filled) {
+                ctx.beginPath();
+                ctx.moveTo(poly[0].x, poly[0].y);
+                for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(70,200,255,0.20)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(70,200,255,0.35)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+            }
+
+            // ---- linee interne ----
+            for (let l of game.lines) {
+                ctx.beginPath();
+                ctx.moveTo(l.x1, l.y1);
+                ctx.lineTo(l.x2, l.y2);
+                ctx.strokeStyle = '#5ab8ff';
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = 'rgba(80,200,255,0.3)';
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- tracciamento ----
+            if (game.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(game.trail[0].x, game.trail[0].y);
+                for (let i = 1; i < game.trail.length; i++) ctx.lineTo(game.trail[i].x, game.trail[i].y);
+                ctx.strokeStyle = '#ffdd44';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = 'rgba(255,220,68,0.7)';
+                ctx.shadowBlur = 20;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                const head = game.trail[game.trail.length - 1];
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffdd44';
+                ctx.shadowColor = 'rgba(255,220,68,0.9)';
+                ctx.shadowBlur = 25;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- giocatore ----
+            if (game.state === 'idle' || game.state === 'drawing') {
+                const p = pointOnPerimeter(game.playerPos);
+                const grd = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 20);
+                grd.addColorStop(0, 'rgba(140,230,255,0.9)');
+                grd.addColorStop(0.5, 'rgba(60,180,255,0.4)');
+                grd.addColorStop(1, 'rgba(60,180,255,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 20, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = '#88ddff';
+                ctx.shadowColor = 'rgba(100,220,255,0.8)';
+                ctx.shadowBlur = 20;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                if (game.state === 'idle') {
+                    const n = perimeterNormal(game.playerPos);
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + n.x * 35, p.y + n.y * 35);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 6]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // ---- Qix ----
+            const q = game.qix;
+            const grdQ = ctx.createRadialGradient(q.x, q.y, 2, q.x, q.y, q.radius * 2.5);
+            grdQ.addColorStop(0, 'rgba(255,100,140,0.9)');
+            grdQ.addColorStop(0.5, 'rgba(200,50,90,0.5)');
+            grdQ.addColorStop(1, 'rgba(200,50,90,0)');
+            ctx.fillStyle = grdQ;
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, q.radius * 2.5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            const gradQ2 = ctx.createRadialGradient(q.x - 3, q.y - 3, 2, q.x, q.y, q.radius);
+            gradQ2.addColorStop(0, '#ff8aaa');
+            gradQ2.addColorStop(0.6, '#e04070');
+            gradQ2.addColorStop(1, '#a02050');
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, q.radius, 0, 2 * Math.PI);
+            ctx.fillStyle = gradQ2;
+            ctx.shadowColor = 'rgba(255,80,120,0.6)';
+            ctx.shadowBlur = 25;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(q.x - 4, q.y - 3, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(q.x + 4, q.y - 3, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#1a1a3a';
+            ctx.beginPath();
+            ctx.arc(q.x - 5, q.y - 2, 1.8, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(q.x + 3, q.y - 2, 1.8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // ---- Sparks ----
+            for (let s of game.sparks) {
+                const p = pointOnPerimeter(s.t);
+                const gradS = ctx.createRadialGradient(p.x - 1, p.y - 1, 0.5, p.x, p.y, s.size + 2);
+                gradS.addColorStop(0, '#88ddff');
+                gradS.addColorStop(0.7, '#4488cc');
+                gradS.addColorStop(1, 'rgba(68,136,204,0)');
+                ctx.fillStyle = gradS;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, s.size + 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#aae0ff';
+                ctx.shadowColor = 'rgba(100,200,255,0.6)';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, s.size, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- messaggi ----
+            if (game.message && game.messageTimer > 0) {
+                ctx.font = 'bold 28px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const alpha = Math.min(1, game.messageTimer / 20);
+                ctx.globalAlpha = alpha;
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(game.message, W / 2, 70);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                game.messageTimer--;
+                if (game.messageTimer <= 0) game.message = '';
+            }
+
+            // ---- gameover / win ----
+            if (game.state === 'gameover' || game.state === 'win') {
+                ctx.font = 'bold 52px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                ctx.shadowBlur = 30;
+                ctx.fillStyle = game.state === 'win' ? '#6bffb0' : '#ff6b8a';
+                ctx.fillText(game.message, W / 2, H / 2 - 20);
+                ctx.font = '22px "Courier New", monospace';
+                ctx.fillStyle = '#88aacc';
+                ctx.fillText('Premi R per ricominciare', W / 2, H / 2 + 50);
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- barra percentuale ----
+            const barX = RIGHT - 160,
+                barY = TOP + 12,
+                barW = 140,
+                barH = 10;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.roundRect(barX - 4, barY - 4, barW + 8, barH + 8, 6);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(60,180,255,0.2)';
+            ctx.beginPath();
+            ctx.roundRect(barX, barY, barW, barH, 4);
+            ctx.fill();
+            const pct = Math.min(100, game.percent);
+            ctx.fillStyle = 'rgba(60,220,255,0.7)';
+            ctx.beginPath();
+            ctx.roundRect(barX, barY, barW * (pct / 100), barH, 4);
+            ctx.fill();
+            ctx.fillStyle = '#b0d0ff';
+            ctx.font = '10px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(Math.floor(pct) + '%', barX + barW / 2, barY + barH / 2);
+        }
+
+        // ---- loop ----
+        function gameLoop() {
+            if (game.state === 'drawing') updateDrawing();
+            if (game.state === 'idle' || game.state === 'drawing') {
+                updateQix();
+                updateSparks();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ---- input ----
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+            if (key === 'r' || key === 'R') { resetGame(); return; }
+            if (game.state === 'gameover' || game.state === 'win') return;
+
+            if (key === 'ArrowLeft' || key === 'ArrowRight') {
+                e.preventDefault();
+                if (game.state === 'idle') {
+                    const step = 3.0;
+                    if (key === 'ArrowLeft') game.playerPos -= step;
+                    else game.playerPos += step;
+                    if (game.playerPos < 0) game.playerPos += PERIMETER_LENGTH;
+                    if (game.playerPos >= PERIMETER_LENGTH) game.playerPos -= PERIMETER_LENGTH;
+                }
+                // Durante il tracciamento non si cambia angolo (fedeltà all'originale)
+            }
+
+            if (key === ' ' || key === 'Space') {
+                e.preventDefault();
+                if (game.state === 'idle' && game.lives > 0) startDrawing();
+            }
+        });
+
+        // ---- init ----
+        resetGame();
+        gameLoop();
+
+        // ---- roundRect polyfill ----
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (r > w / 2) r = w / 2;
+                if (r > h / 2) r = h / 2;
+                this.moveTo(x + r, y);
+                this.lineTo(x + w - r, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + r);
+                this.lineTo(x + w, y + h - r);
+                this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                this.lineTo(x + r, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - r);
+                this.lineTo(x, y + r);
+                this.quadraticCurveTo(x, y, x + r, y);
+                return this;
+            };
+        }
+
+        console.log('🕹️ Qix – classico arcade. Premi SPAZIO per tracciare, frecce per muoverti.');
+    </script>
+</body>
+</html>

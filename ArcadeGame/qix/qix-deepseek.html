@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+        }
+        .container {
+            background: #141428;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(0, 200, 255, 0.15);
+            border: 2px solid #2a3a5a;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+            background: #0d0d22;
+            cursor: none;
+            width: 800px;
+            height: 600px;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            color: #b0d0ff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 150, 255, 0.3);
+            padding: 0 6px;
+        }
+        .info span {
+            background: #1a1a3a;
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid #2a4a7a;
+            letter-spacing: 1px;
+        }
+        .info .lives {
+            color: #ff6b8a;
+        }
+        .info .percent {
+            color: #6bffb0;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 12px;
+            color: #6078a0;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+        .controls kbd {
+            background: #1a1a3a;
+            padding: 2px 12px;
+            border-radius: 6px;
+            border: 1px solid #2a4a7a;
+            color: #b0d0ff;
+            font-size: 13px;
+        }
+        @media (max-width: 840px) {
+            canvas {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 800 / 600;
+            }
+            .container {
+                padding: 12px;
+                margin: 10px;
+            }
+            .info {
+                font-size: 14px;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .controls {
+                font-size: 12px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="info">
+            <span class="lives">❤️ <span id="livesDisplay">3</span></span>
+            <span class="percent">⬛ <span id="percentDisplay">0</span>%</span>
+            <span>🏆 <span id="scoreDisplay">0</span></span>
+        </div>
+        <div class="controls">
+            <span><kbd>←</kbd> <kbd>→</kbd> Muovi</span>
+            <span><kbd>SPAZIO</kbd> Traccia</span>
+            <span><kbd>↑</kbd> <kbd>↓</kbd> Angolo</span>
+            <span><kbd>R</kbd> Riavvia</span>
+        </div>
+    </div>
+    <script>
+        // ============================================================
+        //  QIX – versione completa in una singola pagina HTML
+        //  Meccanica classica: traccia linee dal bordo, evita il Qix,
+        //  conquista l'area. 3 vite, punteggio, percentuale.
+        // ============================================================
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const livesSpan = document.getElementById('livesDisplay');
+        const percentSpan = document.getElementById('percentDisplay');
+        const scoreSpan = document.getElementById('scoreDisplay');
+
+        // ---- dimensioni e margini ----
+        const W = 800,
+            H = 600;
+        const MARGIN = 48;
+        const LEFT = MARGIN;
+        const RIGHT = W - MARGIN;
+        const TOP = MARGIN;
+        const BOTTOM = H - MARGIN;
+        const PERIMETER_LENGTH = 2 * ((RIGHT - LEFT) + (BOTTOM - TOP));
+
+        // ---- stato di gioco ----
+        let game = {
+            lives: 3,
+            score: 0,
+            percent: 0,
+            state: 'idle', // 'idle' | 'drawing' | 'gameover' | 'win'
+            playerPos: 0, // posizione sul perimetro (0 .. PERIMETER_LENGTH)
+            startPos: 0, // punto di partenza della linea (sul perimetro)
+            angle: 0, // angolo della linea in radianti (0 = destra)
+            lineHead: null, // {x,y} testa della linea (mentre si estende)
+            lineStart: null, // {x,y} punto di partenza sul perimetro
+            lineEnd: null, // {x,y} punto di arrivo (intersezione)
+            lines: [], // segmenti interni (già tracciati) [{x1,y1,x2,y2}]
+            filled: [], // poligoni riempiti (array di punti)
+            qix: { x: 0, y: 0, vx: 0, vy: 0, radius: 10 },
+            sparks: [], // [{x,y, angle, speed}]
+            trail: [], // punti della linea in estensione (per effetto)
+            drawProgress: 0, // 0..1 per animazione
+            flashTimer: 0,
+            message: '',
+            messageTimer: 0,
+        };
+
+        // ---- utility matematiche ----
+        function dist(x1, y1, x2, y2) {
+            return Math.hypot(x2 - x1, y2 - y1);
+        }
+
+        function pointOnPerimeter(t) {
+            // t in [0, PERIMETER_LENGTH)
+            const w = RIGHT - LEFT,
+                h = BOTTOM - TOP;
+            const per = PERIMETER_LENGTH;
+            let p = ((t % per) + per) % per;
+            if (p < w) return { x: LEFT + p, y: TOP };
+            p -= w;
+            if (p < h) return { x: RIGHT, y: TOP + p };
+            p -= h;
+            if (p < w) return { x: RIGHT - p, y: BOTTOM };
+            p -= w;
+            return { x: LEFT, y: BOTTOM - p };
+        }
+
+        function perimeterNormal(t) {
+            // versore normale verso l'interno (approssimativo)
+            const p = ((t % PERIMETER_LENGTH) + PERIMETER_LENGTH) % PERIMETER_LENGTH;
+            const w = RIGHT - LEFT,
+                h = BOTTOM - TOP;
+            if (p < w) return { x: 0, y: 1 };
+            if (p < w + h) return { x: -1, y: 0 };
+            if (p < 2 * w + h) return { x: 0, y: -1 };
+            return { x: 1, y: 0 };
+        }
+
+        function intersectSegments(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const d1x = x2 - x1,
+                d1y = y2 - y1;
+            const d2x = x4 - x3,
+                d2y = y4 - y3;
+            const denom = d1x * d2y - d1y * d2x;
+            if (Math.abs(denom) < 1e-10) return null;
+            const t = ((x3 - x1) * d2y - (y3 - y1) * d2x) / denom;
+            const u = ((x3 - x1) * d1y - (y3 - y1) * d1x) / denom;
+            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                return { x: x1 + t * d1x, y: y1 + t * d1y, t: t, u: u };
+            }
+            return null;
+        }
+
+        function rayIntersectPerimeter(originX, originY, dirX, dirY) {
+            // trova l'intersezione più vicina del raggio con il perimetro
+            const rect = [
+                [LEFT, TOP, RIGHT, TOP],
+                [RIGHT, TOP, RIGHT, BOTTOM],
+                [RIGHT, BOTTOM, LEFT, BOTTOM],
+                [LEFT, BOTTOM, LEFT, TOP]
+            ];
+            let best = null;
+            let bestT = Infinity;
+            for (let seg of rect) {
+                const p = intersectSegments(originX, originY, originX + dirX * 10000, originY + dirY * 10000,
+                    seg[0], seg[1], seg[2], seg[3]);
+                if (p) {
+                    const d = dist(originX, originY, p.x, p.y);
+                    if (d > 0.5 && d < bestT) {
+                        bestT = d;
+                        best = p;
+                    }
+                }
+            }
+            return best;
+        }
+
+        function rayIntersectLines(originX, originY, dirX, dirY, excludeLast) {
+            // intersezione con le linee interne
+            let best = null;
+            let bestT = Infinity;
+            const lines = game.lines;
+            for (let i = 0; i < lines.length; i++) {
+                if (excludeLast && i === lines.length - 1) continue;
+                const l = lines[i];
+                const p = intersectSegments(originX, originY, originX + dirX * 10000, originY + dirY * 10000,
+                    l.x1, l.y1, l.x2, l.y2);
+                if (p) {
+                    const d = dist(originX, originY, p.x, p.y);
+                    if (d > 0.5 && d < bestT) {
+                        bestT = d;
+                        best = p;
+                    }
+                }
+            }
+            return best;
+        }
+
+        function pointInPolygon(px, py, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x,
+                    yi = polygon[i].y;
+                const xj = polygon[j].x,
+                    yj = polygon[j].y;
+                const intersect = ((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function polygonArea(poly) {
+            let area = 0;
+            for (let i = 0; i < poly.length; i++) {
+                const j = (i + 1) % poly.length;
+                area += poly[i].x * poly[j].y;
+                area -= poly[j].x * poly[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        function polygonCenter(poly) {
+            let cx = 0,
+                cy = 0;
+            for (let p of poly) { cx += p.x;
+                cy += p.y; }
+            return { x: cx / poly.length, y: cy / poly.length };
+        }
+
+        // ---- costruzione poligono da linea ----
+        function buildPolygon(A, B) {
+            // A e B sono punti sul perimetro. Restituisce i due poligoni
+            // formati dal percorso sul perimetro e dalla linea AB.
+            const tA = game.startPos;
+            // trova la posizione di B sul perimetro
+            let tB = 0;
+            let found = false;
+            // campioniamo il perimetro per trovare il punto più vicino a B
+            let bestDist = Infinity;
+            for (let i = 0; i < 2000; i++) {
+                const t = (i / 2000) * PERIMETER_LENGTH;
+                const p = pointOnPerimeter(t);
+                const d = dist(p.x, p.y, B.x, B.y);
+                if (d < bestDist) { bestDist = d;
+                    tB = t; }
+            }
+
+            // due percorsi: da tA a tB (orario) e da tB a tA (orario)
+            const path1 = [];
+            const path2 = [];
+            const steps = 60;
+            // percorso 1: da tA a tB in senso crescente
+            for (let i = 0; i <= steps; i++) {
+                const t = tA + (tB - tA) * (i / steps);
+                path1.push(pointOnPerimeter(t));
+            }
+            // percorso 2: da tB a tA in senso crescente (passando per il capo)
+            for (let i = 0; i <= steps; i++) {
+                let t = tB + (tA - tB + PERIMETER_LENGTH) * (i / steps);
+                if (t >= PERIMETER_LENGTH) t -= PERIMETER_LENGTH;
+                path2.push(pointOnPerimeter(t));
+            }
+
+            const poly1 = [A, ...path1, B];
+            const poly2 = [A, ...path2, B];
+
+            // aggiungi la linea AB
+            // già A e B sono inclusi
+
+            return { poly1, poly2 };
+        }
+
+        function isPointOnSegment(px, py, x1, y1, x2, y2) {
+            const d = dist(x1, y1, x2, y2);
+            if (d < 0.01) return false;
+            const d1 = dist(px, py, x1, y1);
+            const d2 = dist(px, py, x2, y2);
+            return Math.abs(d1 + d2 - d) < 0.5;
+        }
+
+        // ---- inizializzazione Qix ----
+        function initQix() {
+            const q = game.qix;
+            q.radius = 10;
+            q.x = LEFT + (RIGHT - LEFT) * 0.3 + Math.random() * 0.4 * (RIGHT - LEFT);
+            q.y = TOP + (BOTTOM - TOP) * 0.3 + Math.random() * 0.4 * (BOTTOM - TOP);
+            const speed = 1.2;
+            const angle = Math.random() * 2 * Math.PI;
+            q.vx = Math.cos(angle) * speed;
+            q.vy = Math.sin(angle) * speed;
+        }
+
+        function initSparks() {
+            game.sparks = [];
+            for (let i = 0; i < 4; i++) {
+                const t = (i / 4) * PERIMETER_LENGTH + Math.random() * 20;
+                const p = pointOnPerimeter(t);
+                const angle = Math.random() * 2 * Math.PI;
+                game.sparks.push({
+                    x: p.x,
+                    y: p.y,
+                    angle: angle,
+                    speed: 0.8 + Math.random() * 0.6,
+                    t: t,
+                    size: 3 + Math.random() * 3,
+                });
+            }
+        }
+
+        // ---- reset / avvio ----
+        function resetGame() {
+            game.lives = 3;
+            game.score = 0;
+            game.percent = 0;
+            game.lines = [];
+            game.filled = [];
+            game.state = 'idle';
+            game.playerPos = 0;
+            game.angle = 0;
+            game.trail = [];
+            game.message = '';
+            game.messageTimer = 0;
+            game.flashTimer = 0;
+            game.drawProgress = 0;
+            const p = pointOnPerimeter(0);
+            game.lineStart = { x: p.x, y: p.y };
+            game.lineEnd = null;
+            game.lineHead = null;
+            game.startPos = 0;
+            initQix();
+            initSparks();
+            updateUI();
+        }
+
+        // ---- UI ----
+        function updateUI() {
+            livesSpan.textContent = game.lives;
+            const filledArea = game.filled.reduce((acc, poly) => acc + polygonArea(poly), 0);
+            const totalArea = (RIGHT - LEFT) * (BOTTOM - TOP);
+            let pct = Math.min(100, (filledArea / totalArea) * 100);
+            if (game.percent < pct) game.percent = pct;
+            percentSpan.textContent = Math.floor(game.percent);
+            scoreSpan.textContent = game.score;
+            if (game.percent >= 98) {
+                game.state = 'win';
+                game.message = '🏆 HAI VINTO! 🏆';
+                game.messageTimer = 9999;
+            }
+        }
+
+        // ---- movimento del Qix ----
+        function updateQix() {
+            const q = game.qix;
+            q.x += q.vx;
+            q.y += q.vy;
+
+            // rimbalzi sui bordi (considerando il raggio)
+            if (q.x - q.radius < LEFT) { q.x = LEFT + q.radius;
+                q.vx = -q.vx; }
+            if (q.x + q.radius > RIGHT) { q.x = RIGHT - q.radius;
+                q.vx = -q.vx; }
+            if (q.y - q.radius < TOP) { q.y = TOP + q.radius;
+                q.vy = -q.vy; }
+            if (q.y + q.radius > BOTTOM) { q.y = BOTTOM - q.radius;
+                q.vy = -q.vy; }
+
+            // piccola variazione casuale
+            if (Math.random() < 0.005) {
+                q.vx += (Math.random() - 0.5) * 0.3;
+                q.vy += (Math.random() - 0.5) * 0.3;
+                const sp = Math.hypot(q.vx, q.vy);
+                if (sp > 2) { q.vx *= 1.8 / sp;
+                    q.vy *= 1.8 / sp; }
+                if (sp < 0.6) { q.vx *= 1.2 / (sp + 0.1);
+                    q.vy *= 1.2 / (sp + 0.1); }
+            }
+            const sp = Math.hypot(q.vx, q.vy);
+            if (sp > 2.2) { q.vx *= 2.0 / sp;
+                q.vy *= 2.0 / sp; }
+            if (sp < 0.5) { q.vx = (Math.random() - 0.5) * 1.5;
+                q.vy = (Math.random() - 0.5) * 1.5; }
+        }
+
+        function updateSparks() {
+            for (let s of game.sparks) {
+                s.t += s.speed * 0.6;
+                if (s.t >= PERIMETER_LENGTH) s.t -= PERIMETER_LENGTH;
+                if (s.t < 0) s.t += PERIMETER_LENGTH;
+                const p = pointOnPerimeter(s.t);
+                s.x = p.x;
+                s.y = p.y;
+            }
+        }
+
+        // ---- tracciamento linea ----
+        function startDrawing() {
+            if (game.state !== 'idle') return;
+            if (game.lives <= 0) return;
+            const p = pointOnPerimeter(game.playerPos);
+            game.startPos = game.playerPos;
+            game.lineStart = { x: p.x, y: p.y };
+            // angolo iniziale: normale verso l'interno
+            const n = perimeterNormal(game.playerPos);
+            game.angle = Math.atan2(n.y, n.x);
+            // piccola perturbazione
+            game.angle += (Math.random() - 0.5) * 0.1;
+            game.lineHead = { x: p.x, y: p.y };
+            game.lineEnd = null;
+            game.trail = [{ x: p.x, y: p.y }];
+            game.drawProgress = 0;
+            game.state = 'drawing';
+            game.flashTimer = 0;
+        }
+
+        function updateDrawing() {
+            if (game.state !== 'drawing') return;
+            if (!game.lineStart) return;
+
+            const origin = game.lineStart;
+            const dirX = Math.cos(game.angle);
+            const dirY = Math.sin(game.angle);
+
+            // intersezione con il perimetro
+            const hitPerim = rayIntersectPerimeter(origin.x, origin.y, dirX, dirY);
+            // intersezione con le linee interne (escludendo l'ultima se è appena stata aggiunta)
+            const hitLine = rayIntersectLines(origin.x, origin.y, dirX, dirY, true);
+
+            let hit = null;
+            let hitType = 'perim';
+            if (hitPerim && hitLine) {
+                const dP = dist(origin.x, origin.y, hitPerim.x, hitPerim.y);
+                const dL = dist(origin.x, origin.y, hitLine.x, hitLine.y);
+                if (dL < dP) { hit = hitLine;
+                    hitType = 'line'; } else { hit = hitPerim;
+                    hitType = 'perim'; }
+            } else if (hitPerim) { hit = hitPerim;
+                hitType = 'perim'; } else if (hitLine) { hit = hitLine;
+                hitType = 'line'; } else {
+                // nessuna intersezione (non dovrebbe succedere)
+                return;
+            }
+
+            // distanza dal punto di partenza
+            const distToHit = dist(origin.x, origin.y, hit.x, hit.y);
+
+            // la testa della linea si muove verso l'intersezione
+            const speed = 3.5;
+            const step = Math.min(speed, distToHit);
+
+            if (game.trail.length === 0) {
+                game.trail.push({ x: origin.x, y: origin.y });
+            }
+            const last = game.trail[game.trail.length - 1];
+            const dLast = dist(last.x, last.y, hit.x, hit.y);
+
+            if (dLast < 1.5) {
+                // abbiamo raggiunto il punto di intersezione
+                game.lineEnd = { x: hit.x, y: hit.y };
+                game.state = 'idle';
+                // controlla se il Qix ha toccato la linea
+                const q = game.qix;
+                // controlla se il Qix è vicino alla linea tracciata
+                let qixOnLine = false;
+                for (let i = 0; i < game.trail.length - 1; i++) {
+                    const a = game.trail[i];
+                    const b = game.trail[i + 1];
+                    const d = distToSegment(q.x, q.y, a.x, a.y, b.x, b.y);
+                    if (d < q.radius + 2) { qixOnLine = true; break; }
+                }
+                // controlla anche se il Qix tocca il punto di partenza o arrivo
+                if (dist(q.x, q.y, origin.x, origin.y) < q.radius + 2) qixOnLine = true;
+                if (dist(q.x, q.y, hit.x, hit.y) < q.radius + 2) qixOnLine = true;
+
+                if (qixOnLine) {
+                    // il Qix ha toccato la linea: perdi una vita
+                    loseLife();
+                    return;
+                }
+
+                // completa la linea: crea il poligono e riempi
+                completeLine(hit, hitType);
+                return;
+            }
+
+            // estendi la traccia
+            const frac = step / dLast;
+            const newX = last.x + (hit.x - last.x) * frac;
+            const newY = last.y + (hit.y - last.y) * frac;
+            game.trail.push({ x: newX, y: newY });
+            game.lineHead = { x: newX, y: newY };
+
+            // controlla se il Qix tocca la linea durante l'estensione
+            const q = game.qix;
+            for (let i = 0; i < game.trail.length - 1; i++) {
+                const a = game.trail[i];
+                const b = game.trail[i + 1];
+                const d = distToSegment(q.x, q.y, a.x, a.y, b.x, b.y);
+                if (d < q.radius + 2) {
+                    // il Qix ha toccato la linea: perdi una vita
+                    game.state = 'idle';
+                    loseLife();
+                    return;
+                }
+            }
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1,
+                dy = y2 - y1;
+            const len2 = dx * dx + dy * dy;
+            if (len2 < 0.0001) return dist(px, py, x1, y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+            t = Math.max(0, Math.min(1, t));
+            const cx = x1 + t * dx,
+                cy = y1 + t * dy;
+            return dist(px, py, cx, cy);
+        }
+
+        function loseLife() {
+            game.lives--;
+            game.state = 'idle';
+            game.trail = [];
+            game.lineHead = null;
+            game.lineEnd = null;
+            game.flashTimer = 20;
+            if (game.lives <= 0) {
+                game.state = 'gameover';
+                game.message = '💀 GAME OVER 💀';
+                game.messageTimer = 9999;
+            } else {
+                game.message = '💥 Colpito! -1 vita';
+                game.messageTimer = 60;
+            }
+            updateUI();
+            // resetta il Qix
+            initQix();
+        }
+
+        function completeLine(hit, hitType) {
+            const A = game.lineStart;
+            const B = hit;
+            // aggiungi la linea alle linee interne
+            game.lines.push({ x1: A.x, y1: A.y, x2: B.x, y2: B.y });
+
+            // costruisci i poligoni
+            const { poly1, poly2 } = buildPolygon(A, B);
+
+            // determina quale poligono contiene il Qix
+            const q = game.qix;
+            const in1 = pointInPolygon(q.x, q.y, poly1);
+            const in2 = pointInPolygon(q.x, q.y, poly2);
+
+            // scegli il poligono da riempire (quello che NON contiene il Qix)
+            let toFill = null;
+            let other = null;
+            if (in1 && !in2) { toFill = poly2;
+                other = poly1; } else if (in2 && !in1) { toFill = poly1;
+                other = poly2; } else {
+                // se il Qix è su entrambi o su nessuno (sulla linea), scegli il più piccolo
+                const area1 = polygonArea(poly1);
+                const area2 = polygonArea(poly2);
+                if (area1 < area2) { toFill = poly1;
+                    other = poly2; } else { toFill = poly2;
+                    other = poly1; }
+                // controlla se il Qix è sulla linea
+                let onLine = false;
+                for (let i = 0; i < game.trail.length - 1; i++) {
+                    const a = game.trail[i];
+                    const b = game.trail[i + 1];
+                    if (distToSegment(q.x, q.y, a.x, a.y, b.x, b.y) < q.radius + 2) onLine = true;
+                }
+                if (onLine) {
+                    loseLife();
+                    return;
+                }
+            }
+
+            // controlla che il poligono da riempire non sia troppo piccolo
+            const areaFill = polygonArea(toFill);
+            if (areaFill < 1) {
+                // troppo piccolo, non riempire
+                game.state = 'idle';
+                game.trail = [];
+                game.lineHead = null;
+                game.lineEnd = null;
+                return;
+            }
+
+            // aggiungi ai poligoni riempiti
+            game.filled.push(toFill);
+
+            // punteggio: più grande è l'area, più punti
+            const totalArea = (RIGHT - LEFT) * (BOTTOM - TOP);
+            const pct = areaFill / totalArea;
+            game.score += Math.floor(pct * 100) + 1;
+
+            // pulisci
+            game.state = 'idle';
+            game.trail = [];
+            game.lineHead = null;
+            game.lineEnd = null;
+
+            // messaggio
+            game.message = `✅ +${Math.floor(pct * 100) + 1} punti!`;
+            game.messageTimer = 40;
+
+            updateUI();
+
+            // controlla vittoria
+            if (game.percent >= 98) {
+                game.state = 'win';
+                game.message = '🏆 HAI VINTO! 🏆';
+                game.messageTimer = 9999;
+            }
+        }
+
+        // ---- disegno ----
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // sfondo
+            const grad = ctx.createRadialGradient(400, 300, 100, 400, 300, 500);
+            grad.addColorStop(0, '#1a1a3a');
+            grad.addColorStop(1, '#0a0a1a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+
+            // griglia di sfondo
+            ctx.strokeStyle = 'rgba(40,60,100,0.15)';
+            ctx.lineWidth = 1;
+            for (let x = LEFT; x <= RIGHT; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, TOP);
+                ctx.lineTo(x, BOTTOM);
+                ctx.stroke();
+            }
+            for (let y = TOP; y <= BOTTOM; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(LEFT, y);
+                ctx.lineTo(RIGHT, y);
+                ctx.stroke();
+            }
+
+            // ---- perimetro ----
+            ctx.strokeStyle = '#4a7aaa';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(100,180,255,0.3)';
+            ctx.shadowBlur = 12;
+            ctx.strokeRect(LEFT, TOP, RIGHT - LEFT, BOTTOM - TOP);
+            ctx.shadowBlur = 0;
+
+            // ---- aree riempite ----
+            for (let poly of game.filled) {
+                ctx.beginPath();
+                ctx.moveTo(poly[0].x, poly[0].y);
+                for (let i = 1; i < poly.length; i++) {
+                    ctx.lineTo(poly[i].x, poly[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(60,180,255,0.25)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(60,180,255,0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // ---- linee interne ----
+            for (let l of game.lines) {
+                ctx.beginPath();
+                ctx.moveTo(l.x1, l.y1);
+                ctx.lineTo(l.x2, l.y2);
+                ctx.strokeStyle = '#6aafff';
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = 'rgba(100,200,255,0.4)';
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- linea di tracciamento (trail) ----
+            if (game.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(game.trail[0].x, game.trail[0].y);
+                for (let i = 1; i < game.trail.length; i++) {
+                    ctx.lineTo(game.trail[i].x, game.trail[i].y);
+                }
+                ctx.strokeStyle = '#ffdd44';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = 'rgba(255,220,68,0.7)';
+                ctx.shadowBlur = 20;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // testa della linea
+                const head = game.trail[game.trail.length - 1];
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffdd44';
+                ctx.shadowColor = 'rgba(255,220,68,0.9)';
+                ctx.shadowBlur = 25;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- giocatore (sul perimetro) ----
+            if (game.state === 'idle' || game.state === 'drawing') {
+                const p = pointOnPerimeter(game.playerPos);
+                // bagliore
+                const grd = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 18);
+                grd.addColorStop(0, 'rgba(100,220,255,0.9)');
+                grd.addColorStop(0.5, 'rgba(60,180,255,0.4)');
+                grd.addColorStop(1, 'rgba(60,180,255,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 18, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = '#88ddff';
+                ctx.shadowColor = 'rgba(100,220,255,0.8)';
+                ctx.shadowBlur = 20;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // indicatore di direzione (in idle)
+                if (game.state === 'idle') {
+                    const n = perimeterNormal(game.playerPos);
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + n.x * 30, p.y + n.y * 30);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 6]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // ---- angolo di tracciamento (in drawing) ----
+            if (game.state === 'drawing' && game.lineStart) {
+                const origin = game.lineStart;
+                const dirX = Math.cos(game.angle);
+                const dirY = Math.sin(game.angle);
+                ctx.beginPath();
+                ctx.moveTo(origin.x, origin.y);
+                ctx.lineTo(origin.x + dirX * 60, origin.y + dirY * 60);
+                ctx.strokeStyle = 'rgba(255,200,100,0.25)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([6, 8]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // arco di direzione
+                ctx.beginPath();
+                ctx.arc(origin.x, origin.y, 35, game.angle - 0.3, game.angle + 0.3);
+                ctx.strokeStyle = 'rgba(255,200,100,0.15)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // ---- Qix ----
+            const q = game.qix;
+            // bagliore Qix
+            const grdQ = ctx.createRadialGradient(q.x, q.y, 2, q.x, q.y, q.radius * 2.5);
+            grdQ.addColorStop(0, 'rgba(255,80,120,0.9)');
+            grdQ.addColorStop(0.5, 'rgba(200,40,80,0.5)');
+            grdQ.addColorStop(1, 'rgba(200,40,80,0)');
+            ctx.fillStyle = grdQ;
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, q.radius * 2.5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // corpo Qix
+            const gradQ2 = ctx.createRadialGradient(q.x - 3, q.y - 3, 2, q.x, q.y, q.radius);
+            gradQ2.addColorStop(0, '#ff8aaa');
+            gradQ2.addColorStop(0.6, '#e04070');
+            gradQ2.addColorStop(1, '#a02050');
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, q.radius, 0, 2 * Math.PI);
+            ctx.fillStyle = gradQ2;
+            ctx.shadowColor = 'rgba(255,80,120,0.6)';
+            ctx.shadowBlur = 25;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // occhi Qix
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(q.x - 4, q.y - 3, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(q.x + 4, q.y - 3, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#1a1a3a';
+            ctx.beginPath();
+            ctx.arc(q.x - 5, q.y - 2, 1.8, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(q.x + 3, q.y - 2, 1.8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // ---- Sparks ----
+            for (let s of game.sparks) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, 2 * Math.PI);
+                const gradS = ctx.createRadialGradient(s.x - 1, s.y - 1, 0.5, s.x, s.y, s.size);
+                gradS.addColorStop(0, '#88ddff');
+                gradS.addColorStop(1, '#4488cc');
+                ctx.fillStyle = gradS;
+                ctx.shadowColor = 'rgba(100,200,255,0.5)';
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- messaggio ----
+            if (game.message && game.messageTimer > 0) {
+                ctx.font = 'bold 28px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const alpha = Math.min(1, game.messageTimer / 20);
+                ctx.globalAlpha = alpha;
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(game.message, W / 2, 70);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                game.messageTimer--;
+                if (game.messageTimer <= 0) game.message = '';
+            }
+
+            // ---- stato gameover / win ----
+            if (game.state === 'gameover' || game.state === 'win') {
+                ctx.font = 'bold 52px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                ctx.shadowBlur = 30;
+                ctx.fillStyle = game.state === 'win' ? '#6bffb0' : '#ff6b8a';
+                ctx.fillText(game.message, W / 2, H / 2 - 20);
+                ctx.font = '22px "Courier New", monospace';
+                ctx.fillStyle = '#88aacc';
+                ctx.fillText('Premi R per ricominciare', W / 2, H / 2 + 50);
+                ctx.shadowBlur = 0;
+            }
+
+            // ---- percentuale e progresso ----
+            // barra di progresso in alto a destra
+            const barX = RIGHT - 160,
+                barY = TOP + 12,
+                barW = 140,
+                barH = 10;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.roundRect ? ctx.roundRect(barX - 4, barY - 4, barW + 8, barH + 8, 6) : 0;
+            ctx.fillStyle = 'rgba(20,30,60,0.6)';
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(barX - 4, barY - 4, barW + 8, barH + 8, 6) : ctx.rect(barX - 4, barY - 4, barW + 8,
+                barH + 8);
+            ctx.fill();
+
+            const pct = Math.min(100, game.percent);
+            ctx.fillStyle = 'rgba(60,180,255,0.3)';
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(barX, barY, barW, barH, 4) : ctx.rect(barX, barY, barW, barH);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(60,220,255,0.7)';
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(barX, barY, barW * (pct / 100), barH, 4) : ctx.rect(barX, barY, barW * (pct / 100),
+                barH);
+            ctx.fill();
+            ctx.fillStyle = '#b0d0ff';
+            ctx.font = '10px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(Math.floor(pct) + '%', barX + barW / 2, barY + barH / 2);
+        }
+
+        // ---- loop di gioco ----
+        function gameLoop() {
+            if (game.state === 'drawing') {
+                updateDrawing();
+            }
+            if (game.state === 'idle' || game.state === 'drawing') {
+                updateQix();
+                updateSparks();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ---- input tastiera ----
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+            if (key === 'r' || key === 'R') {
+                resetGame();
+                return;
+            }
+            if (game.state === 'gameover' || game.state === 'win') return;
+
+            if (key === 'ArrowLeft' || key === 'ArrowRight') {
+                e.preventDefault();
+                if (game.state === 'idle') {
+                    const step = 2.8;
+                    if (key === 'ArrowLeft') game.playerPos -= step;
+                    else game.playerPos += step;
+                    if (game.playerPos < 0) game.playerPos += PERIMETER_LENGTH;
+                    if (game.playerPos >= PERIMETER_LENGTH) game.playerPos -= PERIMETER_LENGTH;
+                } else if (game.state === 'drawing') {
+                    // in drawing, left/right ruotano l'angolo (più sensibile)
+                    const rot = 0.045;
+                    if (key === 'ArrowLeft') game.angle -= rot;
+                    else game.angle += rot;
+                }
+            }
+
+            if (key === 'ArrowUp' || key === 'ArrowDown') {
+                e.preventDefault();
+                if (game.state === 'drawing') {
+                    const rot = 0.035;
+                    if (key === 'ArrowUp') game.angle -= rot;
+                    else game.angle += rot;
+                }
+            }
+
+            if (key === ' ' || key === 'Space') {
+                e.preventDefault();
+                if (game.state === 'idle' && game.lives > 0) {
+                    startDrawing();
+                }
+            }
+        });
+
+        // ---- inizializza e avvia ----
+        resetGame();
+        gameLoop();
+
+        // ---- polyfill per roundRect (se non supportato) ----
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (r > w / 2) r = w / 2;
+                if (r > h / 2) r = h / 2;
+                this.moveTo(x + r, y);
+                this.lineTo(x + w - r, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + r);
+                this.lineTo(x + w, y + h - r);
+                this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                this.lineTo(x + r, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - r);
+                this.lineTo(x, y + r);
+                this.quadraticCurveTo(x, y, x + r, y);
+                return this;
+            };
+        }
+
+        console.log('🎮 Qix – Premi SPAZIO per tracciare, frecce per muoverti');
+    </script>
+</body>
+</html>

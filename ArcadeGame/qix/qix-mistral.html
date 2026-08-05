@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qix - Gioco Arcade</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+        }
+        #game-canvas {
+            border: 2px solid #fff;
+            background-color: #000;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #f00;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 4px 4px 8px rgba(255, 0, 0, 0.7);
+            display: none;
+        }
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.7);
+        }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="600" height="600"></canvas>
+        <div id="score">Punteggio: 0</div>
+        <div id="game-over">GAME OVER</div>
+        <div id="start-screen">
+            <h1>QIX</h1>
+            <p>Usa le frecce per muoverti e disegnare linee per chiudere il Qix.</p>
+            <button id="start-button">Inizia Gioco</button>
+        </div>
+    </div>
+
+    <script>
+        // Variabili globali
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverElement = document.getElementById('game-over');
+        const startScreenElement = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+
+        // Impostazioni del gioco
+        const GRID_SIZE = 20;
+        const PLAYER_SPEED = 5;
+        const QIX_SPEED = 2;
+        const SPARX_SPEED = 3;
+
+        // Stato del gioco
+        let score = 0;
+        let gameRunning = false;
+        let player = { x: 300, y: 300, radius: 5 };
+        let qix = { x: 100, y: 100, radius: 15 };
+        let sparx = [];
+        let trail = [];
+        let trailStart = null;
+        let filledArea = [];
+        let direction = { x: 0, y: 0 };
+        let qixDirection = { x: 1, y: 1 };
+
+        // Inizializzazione del gioco
+        function initGame() {
+            // Reimposta lo stato del gioco
+            score = 0;
+            scoreElement.textContent = `Punteggio: ${score}`;
+            player = { x: 300, y: 300, radius: 5 };
+            qix = { x: 100, y: 100, radius: 15 };
+            sparx = [];
+            trail = [];
+            trailStart = null;
+            filledArea = [];
+            direction = { x: 0, y: 0 };
+            qixDirection = { x: 1, y: 1 };
+
+            // Nascondi lo schermo di avvio e il game over
+            startScreenElement.style.display = 'none';
+            gameOverElement.style.display = 'none';
+
+            // Aggiungi due Sparx
+            sparx.push({ x: 50, y: 50, radius: 5, direction: { x: 1, y: 0 } });
+            sparx.push({ x: 550, y: 550, radius: 5, direction: { x: -1, y: 0 } });
+
+            // Avvia il loop del gioco
+            gameRunning = true;
+            gameLoop();
+        }
+
+        // Loop principale del gioco
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Pulisci il canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Aggiorna il gioco
+            update();
+
+            // Disegna il gioco
+            draw();
+
+            // Ripeti il loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Aggiornamento dello stato del gioco
+        function update() {
+            // Muovi il giocatore
+            player.x += direction.x * PLAYER_SPEED;
+            player.y += direction.y * PLAYER_SPEED;
+
+            // Mantieni il giocatore all'interno del canvas
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+
+            // Muovi il Qix
+            qix.x += qixDirection.x * QIX_SPEED;
+            qix.y += qixDirection.y * QIX_SPEED;
+
+            // Cambia direzione del Qix in modo casuale
+            if (Math.random() < 0.02) {
+                qixDirection.x = Math.random() * 2 - 1;
+                qixDirection.y = Math.random() * 2 - 1;
+                // Normalizza la direzione
+                const length = Math.sqrt(qixDirection.x * qixDirection.x + qixDirection.y * qixDirection.y);
+                qixDirection.x /= length;
+                qixDirection.y /= length;
+            }
+
+            // Mantieni il Qix all'interno del canvas
+            if (qix.x <= qix.radius || qix.x >= canvas.width - qix.radius) {
+                qixDirection.x *= -1;
+            }
+            if (qix.y <= qix.radius || qix.y >= canvas.height - qix.radius) {
+                qixDirection.y *= -1;
+            }
+
+            // Muovi gli Sparx
+            sparx.forEach(sparx => {
+                sparx.x += sparx.direction.x * SPARX_SPEED;
+                sparx.y += sparx.direction.y * SPARX_SPEED;
+
+                // Cambia direzione degli Sparx quando toccano il bordo
+                if (sparx.x <= sparx.radius || sparx.x >= canvas.width - sparx.radius) {
+                    sparx.direction.x *= -1;
+                }
+                if (sparx.y <= sparx.radius || sparx.y >= canvas.height - sparx.radius) {
+                    sparx.direction.y *= -1;
+                }
+            });
+
+            // Controlla le collisioni
+            checkCollisions();
+
+            // Gestione del trail
+            if (trailStart) {
+                trail.push({ x: player.x, y: player.y });
+            }
+
+            // Chiudi l'area se il giocatore torna al punto di partenza
+            if (trailStart && isCloseToStart()) {
+                closeArea();
+            }
+        }
+
+        // Controlla se il giocatore è vicino al punto di partenza
+        function isCloseToStart() {
+            const distance = Math.sqrt(
+                Math.pow(player.x - trailStart.x, 2) + Math.pow(player.y - trailStart.y, 2)
+            );
+            return distance < 15;
+        }
+
+        // Chiudi l'area disegnata
+        function closeArea() {
+            if (trail.length < 10) return; // Non chiudere aree troppo piccole
+
+            // Aggiungi l'area riempita
+            filledArea.push([...trail]);
+
+            // Calcola il punteggio in base all'area chiusa
+            const area = calculatePolygonArea(trail);
+            score += Math.floor(area / 10);
+            scoreElement.textContent = `Punteggio: ${score}`;
+
+            // Reimposta il trail
+            trail = [];
+            trailStart = null;
+        }
+
+        // Calcola l'area di un poligono
+        function calculatePolygonArea(points) {
+            let area = 0;
+            for (let i = 0; i < points.length; i++) {
+                const j = (i + 1) % points.length;
+                area += points[i].x * points[j].y;
+                area -= points[i].y * points[j].x;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        // Controlla le collisioni
+        function checkCollisions() {
+            // Collisione giocatore-Qix
+            const playerQixDistance = Math.sqrt(
+                Math.pow(player.x - qix.x, 2) + Math.pow(player.y - qix.y, 2)
+            );
+            if (playerQixDistance < player.radius + qix.radius) {
+                endGame();
+                return;
+            }
+
+            // Collisione giocatore-Sparx
+            for (const s of sparx) {
+                const playerSparxDistance = Math.sqrt(
+                    Math.pow(player.x - s.x, 2) + Math.pow(player.y - s.y, 2)
+                );
+                if (playerSparxDistance < player.radius + s.radius) {
+                    endGame();
+                    return;
+                }
+            }
+
+            // Collisione trail-Qix
+            for (const point of trail) {
+                const trailQixDistance = Math.sqrt(
+                    Math.pow(point.x - qix.x, 2) + Math.pow(point.y - qix.y, 2)
+                );
+                if (trailQixDistance < qix.radius) {
+                    endGame();
+                    return;
+                }
+            }
+
+            // Collisione trail-Sparx
+            for (const s of sparx) {
+                for (const point of trail) {
+                    const trailSparxDistance = Math.sqrt(
+                        Math.pow(point.x - s.x, 2) + Math.pow(point.y - s.y, 2)
+                    );
+                    if (trailSparxDistance < s.radius) {
+                        endGame();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Fine del gioco
+        function endGame() {
+            gameRunning = false;
+            gameOverElement.style.display = 'block';
+            startScreenElement.style.display = 'block';
+            startButton.textContent = 'Rigioca';
+        }
+
+        // Disegna il gioco
+        function draw() {
+            // Disegna il trail
+            if (trail.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(trail[0].x, trail[0].y);
+                for (let i = 1; i < trail.length; i++) {
+                    ctx.lineTo(trail[i].x, trail[i].y);
+                }
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Disegna le aree riempite
+            ctx.fillStyle = 'rgba(0, 100, 255, 0.3)';
+            filledArea.forEach(area => {
+                ctx.beginPath();
+                ctx.moveTo(area[0].x, area[0].y);
+                for (let i = 1; i < area.length; i++) {
+                    ctx.lineTo(area[i].x, area[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#0af';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // Disegna il Qix
+            ctx.beginPath();
+            ctx.arc(qix.x, qix.y, qix.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#f00';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Disegna gli Sparx
+            sparx.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff0';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // Disegna il giocatore
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#0f0';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Gestione input tastiera
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                return;
+            }
+
+            switch (e.key) {
+                case 'ArrowUp':
+                    direction = { x: 0, y: -1 };
+                    break;
+                case 'ArrowDown':
+                    direction = { x: 0, y: 1 };
+                    break;
+                case 'ArrowLeft':
+                    direction = { x: -1, y: 0 };
+                    break;
+                case 'ArrowRight':
+                    direction = { x: 1, y: 0 };
+                    break;
+                case ' ':
+                    // Inizia/ferma il trail
+                    if (gameRunning) {
+                        if (!trailStart) {
+                            trailStart = { x: player.x, y: player.y };
+                            trail = [{ x: player.x, y: player.y }];
+                        } else {
+                            // Chiudi il trail se premuto di nuovo lo spazio
+                            if (isCloseToStart()) {
+                                closeArea();
+                            }
+                        }
+                    }
+                    break;
+            }
+        });
+
+        // Gestione pulsante di avvio
+        startButton.addEventListener('click', initGame);
+
+        // Mostra lo schermo di avvio all'avvio della pagina
+        startScreenElement.style.display = 'block';
+    </script>
+</body>
+</html>

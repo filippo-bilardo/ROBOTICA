@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QIX - Arcade Classic</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  #game-wrapper {
+    position: relative;
+    border: 4px solid #444;
+    border-radius: 4px;
+    background: #000;
+    box-shadow: 0 0 20px rgba(0,255,255,0.2);
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #ui {
+    display: flex;
+    justify-content: space-between;
+    width: 512px;
+    padding: 8px 12px;
+    background: #111;
+    border-bottom: 2px solid #333;
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+  #ui span { color: #0ff; }
+  #ui .label { color: #888; font-size: 12px; }
+  #controls {
+    margin-top: 12px;
+    display: flex;
+    gap: 12px;
+  }
+  button {
+    background: #111;
+    color: #0ff;
+    border: 2px solid #0ff;
+    padding: 8px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  button:hover {
+    background: #0ff;
+    color: #000;
+  }
+  button:active { transform: scale(0.95); }
+  #instructions {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    line-height: 1.6;
+  }
+  #instructions kbd {
+    background: #222;
+    border: 1px solid #444;
+    padding: 1px 5px;
+    border-radius: 2px;
+    color: #aaa;
+  }
+  #overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.85);
+    pointer-events: none;
+    z-index: 10;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h1 {
+    font-size: 48px;
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff, 0 0 40px #0ff;
+    letter-spacing: 8px;
+    margin-bottom: 20px;
+  }
+  #overlay p {
+    font-size: 14px;
+    color: #aaa;
+    margin: 4px 0;
+  }
+  #overlay .blink {
+    animation: blink 1s infinite;
+    color: #ff0;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+  @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div id="game-wrapper">
+  <div id="ui">
+    <div><span class="label">SCORE</span> <span id="score">0</span></div>
+    <div><span class="label">HIGH</span> <span id="highscore">0</span></div>
+    <div><span class="label">AREA</span> <span id="area">0</span>%</div>
+    <div><span class="label">LIVES</span> <span id="lives">3</span></div>
+  </div>
+  <canvas id="c" width="256" height="256"></canvas>
+  <div id="overlay">
+    <h1>QIX</h1>
+    <p>CONQUER 75% OF THE AREA TO WIN</p>
+    <p>AVOID THE QIX AND THE SPARX</p>
+    <p class="blink">PRESS START</p>
+  </div>
+</div>
+<div id="controls">
+  <button id="btnStart">START</button>
+  <button id="btnPause">PAUSE</button>
+  <button id="btnReset">RESET</button>
+</div>
+<div id="instructions">
+  <kbd>ARROWS</kbd> MOVE &nbsp;|&nbsp; <kbd>SPACE</kbd> FAST/DRAW MODE &nbsp;|&nbsp; <kbd>ENTER</kbd> START
+</div>
+
+<script>
+(function(){
+  'use strict';
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const W = 256, H = 256;
+  const GRID = 2;
+  const COLS = W / GRID;
+  const ROWS = H / GRID;
+
+  // Audio context
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  function playTone(freq, dur, type, vol) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol || 0.1, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + dur);
+  }
+  function sfx(name) {
+    if (!audioCtx) return;
+    switch(name) {
+      case 'move': playTone(200, 0.05, 'square', 0.03); break;
+      case 'draw': playTone(400 + Math.random()*200, 0.08, 'sawtooth', 0.04); break;
+      case 'claim': playTone(600, 0.3, 'square', 0.08); setTimeout(()=>playTone(800,0.3,'square',0.08),100); break;
+      case 'die': playTone(150, 0.5, 'sawtooth', 0.15); setTimeout(()=>playTone(100,0.8,'sawtooth',0.1),200); break;
+      case 'win': for(let i=0;i<5;i++) setTimeout(()=>playTone(400+i*150,0.2,'square',0.08),i*120); break;
+      case 'start': playTone(300, 0.4, 'square', 0.1); break;
+    }
+  }
+
+  // Game state
+  let grid = [];
+  let player = { x: 0, y: ROWS-1, drawing: false, fast: false, trail: [], dir: {x:0,y:0} };
+  let qix = { x: COLS/2, y: ROWS/2, dx: 1.2, dy: 0.8, phase: 0 };
+  let sparx = [];
+  let fuse = null;
+  let score = 0, highscore = localStorage.getItem('qix_high')|0, lives = 3;
+  let state = 'title'; // title, playing, paused, dying, gameover, win
+  let animId = null, lastTime = 0;
+  let keys = {};
+  let moveAccum = 0, qixAccum = 0, sparxAccum = 0;
+  let deathTimer = 0, claimFlash = 0;
+  let level = 1;
+
+  function initGrid() {
+    grid = [];
+    for (let y = 0; y < ROWS; y++) {
+      grid[y] = [];
+      for (let x = 0; x < COLS; x++) {
+        grid[y][x] = (x===0 || x===COLS-1 || y===0 || y===ROWS-1) ? 1 : 0;
+      }
+    }
+  }
+
+  function resetGame() {
+    initGrid();
+    player = { x: 0, y: ROWS-1, drawing: false, fast: false, trail: [], dir: {x:0,y:0} };
+    qix = { x: COLS/2, y: ROWS/2, dx: 1 + Math.random(), dy: 0.5 + Math.random()*0.5, phase: 0 };
+    sparx = [];
+    fuse = null;
+    score = 0; lives = 3; level = 1;
+    spawnSparx();
+    updateUI();
+    state = 'title';
+    document.getElementById('overlay').classList.remove('hidden');
+    draw();
+  }
+
+  function spawnSparx() {
+    sparx = [];
+    let count = Math.min(2 + Math.floor(level/2), 6);
+    for (let i = 0; i < count; i++) {
+      sparx.push({
+        x: 0, y: ROWS-1,
+        dir: 1, // 1=right, -1=left along border
+        speed: 0.3 + level * 0.05,
+        edge: 'bottom'
+      });
+    }
+  }
+
+  function getArea() {
+    let filled = 0;
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        if (grid[y][x] === 1) filled++;
+    return Math.floor((filled / (COLS*ROWS)) * 100);
+  }
+
+  function updateUI() {
+    document.getElementById('score').textContent = score;
+    document.getElementById('highscore').textContent = highscore;
+    document.getElementById('area').textContent = getArea();
+    document.getElementById('lives').textContent = lives;
+  }
+
+  // Flood fill - find regions and fill those without Qix
+  function fillClaimed() {
+    // Temporarily mark trail as border for region detection
+    let saved = [];
+    for (let t of player.trail) {
+      saved.push({x:t.x, y:t.y, v:grid[t.y][t.x]});
+      grid[t.y][t.x] = 1;
+    }
+
+    // Find all empty regions
+    let visited = new Set();
+    let regions = [];
+    for (let y = 1; y < ROWS-1; y++) {
+      for (let x = 1; x < COLS-1; x++) {
+        if (grid[y][x] !== 0) continue;
+        let key = x+","+y;
+        if (visited.has(key)) continue;
+        let region = [];
+        let stack = [{x,y}];
+        let hasQix = false;
+        while (stack.length) {
+          let c = stack.pop();
+          let k = c.x+","+c.y;
+          if (visited.has(k)) continue;
+          visited.add(k);
+          region.push(c);
+          let qdx = c.x - qix.x, qdy = c.y - qix.y;
+          if (Math.sqrt(qdx*qdx + qdy*qdy) < 3) hasQix = true;
+          [[0,1],[0,-1],[1,0],[-1,0]].forEach(d => {
+            let nx = c.x+d[0], ny = c.y+d[1];
+            if (nx>=0 && nx<COLS && ny>=0 && ny<ROWS && grid[ny][nx]===0 && !visited.has(nx+","+ny))
+              stack.push({x:nx,y:ny});
+          });
+        }
+        regions.push({cells: region, hasQix});
+      }
+    }
+
+    let filled = 0;
+    for (let r of regions) {
+      if (!r.hasQix) {
+        for (let c of r.cells) {
+          grid[c.y][c.x] = 1;
+          filled++;
+        }
+      }
+    }
+
+    // Restore trail cells that weren't filled (shouldn't happen, but safety)
+    // Actually trail is now part of border
+    player.trail = [];
+    player.drawing = false;
+    fuse = null;
+
+    score += filled * (player.fast ? 2 : 1);
+    claimFlash = 10;
+    sfx('claim');
+    updateUI();
+
+    if (getArea() >= 75) {
+      sfx('win');
+      state = 'win';
+      setTimeout(() => {
+        level++;
+        initGrid();
+        player.x = 0; player.y = ROWS-1;
+        player.drawing = false; player.trail = [];
+        qix.x = COLS/2; qix.y = ROWS/2;
+        qix.dx = 1 + level*0.2; qix.dy = 0.5 + level*0.1;
+        spawnSparx();
+        state = 'playing';
+      }, 2000);
+    }
+  }
+
+  function loseLife() {
+    sfx('die');
+    lives--;
+    // Clear trail
+    for (let t of player.trail) grid[t.y][t.x] = 0;
+    player.trail = [];
+    player.drawing = false;
+    fuse = null;
+
+    // Find nearest border point
+    let best = null, bd = Infinity;
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (grid[y][x] === 1) {
+          let d = (x-player.x)**2 + (y-player.y)**2;
+          if (d < bd) { bd = d; best = {x,y}; }
+        }
+      }
+    }
+    if (best) { player.x = best.x; player.y = best.y; }
+
+    updateUI();
+    if (lives <= 0) {
+      state = 'gameover';
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem('qix_high', highscore);
+      }
+    } else {
+      state = 'dying';
+      deathTimer = 60;
+    }
+  }
+
+  function startGame() {
+    initAudio();
+    if (state === 'title' || state === 'gameover' || state === 'win') {
+      resetGame();
+      state = 'playing';
+      sfx('start');
+      document.getElementById('overlay').classList.add('hidden');
+      lastTime = performance.now();
+      animId = requestAnimationFrame(loop);
+    } else if (state === 'paused') {
+      state = 'playing';
+      document.getElementById('overlay').classList.add('hidden');
+      lastTime = performance.now();
+      animId = requestAnimationFrame(loop);
+    }
+  }
+
+  function pauseGame() {
+    if (state === 'playing') {
+      state = 'paused';
+      document.getElementById('overlay').innerHTML = '<h1>PAUSED</h1><p class="blink">PRESS START</p>';
+      document.getElementById('overlay').classList.remove('hidden');
+    }
+  }
+
+  // Input
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      player.fast = !player.fast;
+    }
+    if (e.key === 'Enter') startGame();
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  });
+  window.addEventListener('keyup', e => keys[e.key] = false);
+
+  document.getElementById('btnStart').addEventListener('click', startGame);
+  document.getElementById('btnPause').addEventListener('click', pauseGame);
+  document.getElementById('btnReset').addEventListener('click', () => {
+    cancelAnimationFrame(animId);
+    resetGame();
+  });
+
+  // Update
+  function update(dt) {
+    if (state !== 'playing') return;
+
+    let moveSpeed = player.fast ? 40 : 80;
+    moveAccum += dt;
+    qixAccum += dt;
+    sparxAccum += dt;
+
+    // Player movement
+    if (moveAccum >= moveSpeed) {
+      moveAccum = 0;
+      let dx = 0, dy = 0;
+      if (keys['ArrowLeft']) dx = -1;
+      else if (keys['ArrowRight']) dx = 1;
+      else if (keys['ArrowUp']) dy = -1;
+      else if (keys['ArrowDown']) dy = 1;
+
+      if (dx !== 0 || dy !== 0) {
+        let nx = player.x + dx;
+        let ny = player.y + dy;
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+          let cell = grid[ny][nx];
+          if (cell === 1) {
+            // On border - can move freely
+            player.x = nx; player.y = ny;
+            if (player.drawing) {
+              fillClaimed();
+            }
+          } else if (cell === 0) {
+            // Empty space - must be drawing
+            if (!player.drawing) {
+              // Can only start drawing from border
+              if (grid[player.y][player.x] === 1) {
+                player.drawing = true;
+                player.trail = [{x: player.x, y: player.y}];
+                fuse = { x: player.x, y: player.y, timer: 400 };
+              }
+            }
+            if (player.drawing) {
+              // Cannot cross own trail
+              let onTrail = player.trail.some(t => t.x === nx && t.y === ny);
+              if (!onTrail) {
+                grid[ny][nx] = 2; // trail
+                player.trail.push({x: nx, y: ny});
+                player.x = nx; player.y = ny;
+                player.dir = {x: dx, y: dy};
+                if (player.fast) sfx('draw');
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Qix movement
+    if (qixAccum >= 30) {
+      qixAccum = 0;
+      qix.phase += 0.2;
+      let nx = qix.x + qix.dx;
+      let ny = qix.y + qix.dy;
+      let ix = Math.round(nx), iy = Math.round(ny);
+
+      // Bounce on borders/trail
+      if (ix <= 0 || ix >= COLS-1 || (grid[iy] && grid[iy][ix] === 1) || (grid[iy] && grid[iy][ix] === 2)) {
+        qix.dx = -qix.dx + (Math.random()-0.5)*0.8;
+      }
+      if (iy <= 0 || iy >= ROWS-1 || (grid[iy] && grid[iy][ix] === 1) || (grid[iy] && grid[iy][ix] === 2)) {
+        qix.dy = -qix.dy + (Math.random()-0.5)*0.8;
+      }
+
+      qix.x += qix.dx;
+      qix.y += qix.dy;
+      qix.x = Math.max(1, Math.min(COLS-2, qix.x));
+      qix.y = Math.max(1, Math.min(ROWS-2, qix.y));
+    }
+
+    // Sparx movement (move along borders)
+    if (sparxAccum >= 60) {
+      sparxAccum = 0;
+      for (let s of sparx) {
+        let moved = false;
+        let dirs = [];
+        if (s.edge === 'bottom') dirs = [[1,0],[-1,0],[0,-1]]; // right, left, up
+        else if (s.edge === 'top') dirs = [[1,0],[-1,0],[0,1]];
+        else if (s.edge === 'left') dirs = [[0,1],[0,-1],[1,0]];
+        else if (s.edge === 'right') dirs = [[0,1],[0,-1],[-1,0]];
+
+        for (let d of dirs) {
+          let nx = Math.round(s.x + d[0] * s.speed);
+          let ny = Math.round(s.y + d[1] * s.speed);
+          if (nx>=0 && nx<COLS && ny>=0 && ny<ROWS && grid[ny][nx] === 1) {
+            s.x = nx; s.y = ny;
+            moved = true;
+            // Update edge
+            if (ny === ROWS-1) s.edge = 'bottom';
+            else if (ny === 0) s.edge = 'top';
+            else if (nx === 0) s.edge = 'left';
+            else if (nx === COLS-1) s.edge = 'right';
+            break;
+          }
+        }
+        if (!moved) {
+          // Try all directions
+          [[0,1],[0,-1],[1,0],[-1,0]].forEach(d => {
+            let nx = Math.round(s.x + d[0]);
+            let ny = Math.round(s.y + d[1]);
+            if (nx>=0 && nx<COLS && ny>=0 && ny<ROWS && grid[ny][nx] === 1) {
+              s.x = nx; s.y = ny;
+            }
+          });
+        }
+      }
+    }
+
+    // Fuse - follows trail if player stops
+    if (fuse && player.drawing) {
+      fuse.timer--;
+      if (fuse.timer <= 0) {
+        // Fuse moves along trail toward player
+        if (player.trail.length > 0) {
+          let target = player.trail[0];
+          fuse.x = target.x;
+          fuse.y = target.y;
+          player.trail.shift();
+          if (player.trail.length === 0) {
+            // Fuse reached start, player dies
+            loseLife();
+          }
+        }
+      }
+    }
+
+    // Collision: Qix with trail
+    if (player.drawing && player.trail.length > 0) {
+      for (let t of player.trail) {
+        let d = Math.sqrt((t.x - qix.x)**2 + (t.y - qix.y)**2);
+        if (d < 2.5) { loseLife(); return; }
+      }
+    }
+
+    // Collision: player with Qix
+    let pd = Math.sqrt((player.x - qix.x)**2 + (player.y - qix.y)**2);
+    if (pd < 2.5) { loseLife(); return; }
+
+    // Collision: player with Sparx
+    for (let s of sparx) {
+      let sd = Math.sqrt((player.x - s.x)**2 + (player.y - s.y)**2);
+      if (sd < 1.5) { loseLife(); return; }
+    }
+
+    // Collision: player with Fuse
+    if (fuse && Math.sqrt((player.x - fuse.x)**2 + (player.y - fuse.y)**2) < 1.5) {
+      loseLife(); return;
+    }
+  }
+
+  // Draw
+  function draw() {
+    // Background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid/Area
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        let cell = grid[y][x];
+        let px = x * GRID, py = y * GRID;
+        if (cell === 1) {
+          // Filled area - pattern
+          ctx.fillStyle = ((x+y)%2 === 0) ? '#004444' : '#003333';
+          ctx.fillRect(px, py, GRID, GRID);
+        } else if (cell === 2) {
+          // Trail
+          ctx.fillStyle = player.fast ? '#ff0088' : '#00ffff';
+          ctx.fillRect(px, py, GRID, GRID);
+        }
+      }
+    }
+
+    // Border highlight
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, W, H);
+
+    // Qix - original was a pulsing line creature
+    ctx.save();
+    ctx.translate(qix.x * GRID, qix.y * GRID);
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let qixPoints = 12;
+    for (let i = 0; i <= qixPoints; i++) {
+      let angle = (i / qixPoints) * Math.PI * 2 + qix.phase;
+      let r = 8 + Math.sin(angle * 3 + qix.phase * 2) * 4;
+      let qx = Math.cos(angle) * r;
+      let qy = Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(qx, qy);
+      else ctx.lineTo(qx, qy);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // Inner Qix
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i <= qixPoints; i++) {
+      let angle = (i / qixPoints) * Math.PI * 2 - qix.phase;
+      let r = 4 + Math.sin(angle * 2) * 2;
+      let qx = Math.cos(angle) * r;
+      let qy = Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(qx, qy);
+      else ctx.lineTo(qx, qy);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    // Sparx - diamonds moving on border
+    for (let s of sparx) {
+      ctx.save();
+      ctx.translate(s.x * GRID, s.y * GRID);
+      ctx.fillStyle = '#ff6600';
+      ctx.beginPath();
+      ctx.moveTo(0, -5);
+      ctx.lineTo(5, 0);
+      ctx.lineTo(0, 5);
+      ctx.lineTo(-5, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Fuse
+    if (fuse) {
+      ctx.save();
+      ctx.translate(fuse.x * GRID, fuse.y * GRID);
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Player marker - diamond shape
+    ctx.save();
+    ctx.translate(player.x * GRID, player.y * GRID);
+    ctx.fillStyle = player.fast ? '#ffffff' : '#00ff00';
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(5, 0);
+    ctx.lineTo(0, 5);
+    ctx.lineTo(-5, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Claim flash
+    if (claimFlash > 0) {
+      claimFlash--;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Death animation
+    if (state === 'dying') {
+      deathTimer--;
+      ctx.fillStyle = 'rgba(255,0,0,' + (deathTimer/60) + ')';
+      ctx.fillRect(0, 0, W, H);
+      if (deathTimer <= 0) state = 'playing';
+    }
+
+    // Overlays
+    if (state === 'gameover') {
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 24px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER', W/2, H/2 - 10);
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px Courier New';
+      ctx.fillText('SCORE: ' + score, W/2, H/2 + 20);
+      ctx.fillText('PRESS START', W/2, H/2 + 45);
+    } else if (state === 'win') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = 'bold 24px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText('LEVEL ' + level + ' CLEAR!', W/2, H/2);
+    }
+  }
+
+  function loop(time) {
+    let dt = time - lastTime;
+    lastTime = time;
+    update(dt);
+    draw();
+    if (state === 'playing' || state === 'dying') {
+      animId = requestAnimationFrame(loop);
+    }
+  }
+
+  resetGame();
+})();
+</script>
+</body>
+</html>

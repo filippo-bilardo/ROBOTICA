@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Qix HTML5</title>
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:#fff;
+    font-family:monospace;
+    text-align:center;
+}
+canvas{
+    background:#050505;
+    border:3px solid #0ff;
+    margin-top:20px;
+}
+h1{
+    color:#0ff;
+}
+</style>
+</head>
+
+<body>
+
+<h1>QIX - HTML5 Arcade</h1>
+<div id="info"></div>
+<canvas id="game" width="600" height="400"></canvas>
+
+<script>
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const W=30;
+const H=20;
+const CELL=20;
+
+let grid=[];
+let player;
+let qix;
+let drawing=false;
+let path=[];
+let score=0;
+let lives=3;
+let level=1;
+let area=0;
+
+let keys={};
+
+document.addEventListener("keydown",e=>{
+    keys[e.key]=true;
+});
+
+document.addEventListener("keyup",e=>{
+    keys[e.key]=false;
+});
+
+function init(){
+
+    grid=[];
+
+    for(let y=0;y<H;y++){
+        grid[y]=[];
+        for(let x=0;x<W;x++){
+            grid[y][x]=(x==0||y==0||x==W-1||y==H-1);
+        }
+    }
+
+    player={
+        x:1,
+        y:1,
+        dx:0,
+        dy:0
+    };
+
+    qix={
+        x:15,
+        y:10,
+        dx:0.08,
+        dy:0.05
+    };
+
+    score=0;
+    lives=3;
+    level=1;
+
+}
+
+
+function movePlayer(){
+
+    let nx=player.x;
+    let ny=player.y;
+
+    if(keys["ArrowLeft"]) nx--;
+    if(keys["ArrowRight"]) nx++;
+    if(keys["ArrowUp"]) ny--;
+    if(keys["ArrowDown"]) ny++;
+
+    if(nx<0||ny<0||nx>=W||ny>=H)
+        return;
+
+
+    let inside=grid[ny][nx];
+
+
+    if(!inside){
+
+        drawing=true;
+
+        path.push({
+            x:nx,
+            y:ny
+        });
+
+    }
+    else{
+
+        if(drawing)
+            complete();
+
+    }
+
+
+    player.x=nx;
+    player.y=ny;
+
+}
+
+
+
+function complete(){
+
+    drawing=false;
+
+
+    for(let p of path)
+        grid[p.y][p.x]=true;
+
+
+    flood();
+
+    score+=path.length*20;
+
+    path=[];
+
+}
+
+
+
+function flood(){
+
+    let visited=[];
+
+    for(let y=0;y<H;y++)
+        visited[y]=Array(W).fill(false);
+
+
+    let stack=[
+        {
+            x:Math.floor(qix.x),
+            y:Math.floor(qix.y)
+        }
+    ];
+
+
+    while(stack.length){
+
+        let p=stack.pop();
+
+        if(
+            p.x<0||
+            p.y<0||
+            p.x>=W||
+            p.y>=H||
+            visited[p.y][p.x]||
+            grid[p.y][p.x]
+        )
+            continue;
+
+
+        visited[p.y][p.x]=true;
+
+
+        stack.push({x:p.x+1,y:p.y});
+        stack.push({x:p.x-1,y:p.y});
+        stack.push({x:p.x,y:p.y+1});
+        stack.push({x:p.x,y:p.y-1});
+
+    }
+
+
+    for(let y=0;y<H;y++)
+        for(let x=0;x<W;x++)
+            if(!visited[y][x]&&!grid[y][x])
+                grid[y][x]=true;
+
+
+    area=countArea();
+
+    if(area>70){
+        level++;
+        qix.dx*=1.15;
+        qix.dy*=1.15;
+    }
+
+}
+
+
+
+function countArea(){
+
+    let c=0;
+
+    for(let y=0;y<H;y++)
+        for(let x=0;x<W;x++)
+            if(grid[y][x])
+                c++;
+
+    return Math.floor(c*100/(W*H));
+
+}
+
+
+
+function moveQix(){
+
+    qix.x+=qix.dx;
+    qix.y+=qix.dy;
+
+
+    if(qix.x<1||qix.x>W-2)
+        qix.dx*=-1;
+
+    if(qix.y<1||qix.y>H-2)
+        qix.dy*=-1;
+
+
+    if(drawing){
+
+        for(let p of path){
+
+            let dx=Math.abs(p.x-qix.x);
+            let dy=Math.abs(p.y-qix.y);
+
+            if(dx<0.7&&dy<0.7){
+
+                lives--;
+
+                drawing=false;
+                path=[];
+
+                player.x=1;
+                player.y=1;
+
+                if(lives<=0)
+                    init();
+
+            }
+        }
+    }
+
+}
+
+
+
+function draw(){
+
+    ctx.clearRect(0,0,600,400);
+
+
+    for(let y=0;y<H;y++){
+
+        for(let x=0;x<W;x++){
+
+            if(grid[y][x]){
+
+                ctx.fillStyle="#0044aa";
+                ctx.fillRect(
+                    x*CELL,
+                    y*CELL,
+                    CELL,
+                    CELL
+                );
+
+            }
+        }
+    }
+
+
+
+    // linea in costruzione
+
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=2;
+
+    ctx.beginPath();
+
+    for(let i=0;i<path.length;i++){
+
+        let p=path[i];
+
+        if(i==0)
+            ctx.moveTo(
+                p.x*CELL+10,
+                p.y*CELL+10
+            );
+        else
+            ctx.lineTo(
+                p.x*CELL+10,
+                p.y*CELL+10
+            );
+
+    }
+
+    ctx.stroke();
+
+
+
+    // giocatore
+
+    ctx.fillStyle="#00ff00";
+
+    ctx.fillRect(
+        player.x*CELL+3,
+        player.y*CELL+3,
+        14,
+        14
+    );
+
+
+
+    // Qix
+
+    ctx.fillStyle="#ff00ff";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        qix.x*CELL+10,
+        qix.y*CELL+10,
+        8,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+
+    document.getElementById("info").innerHTML=
+    "Punti: "+score+
+    " | Vite: "+lives+
+    " | Livello: "+level+
+    " | Area: "+area+"%";
+
+}
+
+
+
+function loop(){
+
+    movePlayer();
+    moveQix();
+    draw();
+
+    setTimeout(loop,120-level*8);
+
+}
+
+
+init();
+loop();
+
+</script>
+
+</body>
+</html>

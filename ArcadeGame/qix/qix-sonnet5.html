@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>QIX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  html,body{
+    margin:0; padding:0; height:100%; background:#000;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Press Start 2P','Courier New',monospace;
+    color:#0ff; user-select:none;
+  }
+  #wrap{ display:flex; flex-direction:column; align-items:center; }
+  #hud{
+    width:800px; display:flex; justify-content:space-between;
+    padding:10px 4px; font-size:12px; letter-spacing:1px; box-sizing:border-box;
+  }
+  #hud .lbl{ color:#557; font-size:9px; display:block; margin-bottom:4px;}
+  #hud .val{ color:#0ff; text-shadow:0 0 6px #0ff; }
+  #lives-val{ color:#ff0; text-shadow:0 0 6px #ff0; }
+  #pct-val{ color:#0f0; text-shadow:0 0 6px #0f0; }
+  #canvasHolder{ position:relative; }
+  canvas{
+    display:block; background:#000; border:3px solid #335;
+    box-shadow:0 0 40px rgba(0,255,255,.25), inset 0 0 40px rgba(0,0,0,.8);
+  }
+  #overlay{
+    position:absolute; inset:0; background:rgba(0,0,0,.82);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:18px; padding:20px; box-sizing:border-box;
+  }
+  #overlay h1{
+    font-size:46px; color:#0ff; text-shadow:0 0 12px #0ff, 0 0 30px #f0f; margin:0;
+    letter-spacing:6px;
+  }
+  #overlay h2{ font-size:20px; color:#ff0; text-shadow:0 0 10px #ff0; margin:0;}
+  #overlay p{ font-size:11px; color:#aaa; line-height:2; margin:4px 0; max-width:520px;}
+  #overlay .key{ color:#0f0; }
+  #overlay .btn{
+    margin-top:10px; font-family:inherit; font-size:12px; padding:12px 22px;
+    background:#111; color:#0ff; border:2px solid #0ff; cursor:pointer;
+    letter-spacing:2px; box-shadow:0 0 10px rgba(0,255,255,.4);
+  }
+  #overlay .btn:hover{ background:#0ff; color:#000; }
+  #footer{ color:#445; font-size:9px; margin-top:14px; letter-spacing:1px;}
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div><span class="lbl">SCORE</span><span class="val" id="score-val">0</span></div>
+    <div><span class="lbl">LIVELLO</span><span class="val" id="level-val">1</span></div>
+    <div><span class="lbl">AREA</span><span class="val" id="pct-val">0%</span> <span style="color:#555">/</span> <span id="target-val" style="color:#666">75%</span></div>
+    <div><span class="lbl">VITE</span><span class="val" id="lives-val">●●●</span></div>
+  </div>
+  <div id="canvasHolder">
+    <canvas id="game" width="800" height="600"></canvas>
+    <div id="overlay">
+      <h1 id="ov-title">QIX</h1>
+      <h2 id="ov-sub" class="hidden"></h2>
+      <p id="ov-text">
+        Muoviti lungo il bordo con le <span class="key">FRECCE</span> o <span class="key">WASD</span>.<br>
+        Entra nell'area vuota per tracciare una linea: se il QIX (la figura colorata) la tocca prima
+        che tu chiuda il tracciato, perdi una vita.<br>
+        Attento anche agli SPARX (le scintille) che pattugliano i bordi conquistati.<br>
+        Conquista almeno la percentuale richiesta di area per passare al livello successivo.
+      </p>
+      <button class="btn" id="startBtn">PREMI PER GIOCARE</button>
+    </div>
+  </div>
+  <div id="footer">FRECCE / WASD = muovi &nbsp;·&nbsp; P = pausa &nbsp;·&nbsp; INVIO = ricomincia dopo game over</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- CONFIG ----------
+  const CELL = 8;
+  const COLS = 100, ROWS = 75;
+  const W = COLS*CELL, H = ROWS*CELL;
+  const OPEN=0, FILLED=1, TRAIL=2;
+
+  const canvas = document.getElementById('game');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const bg = document.createElement('canvas');
+  bg.width = W; bg.height = H;
+  const bctx = bg.getContext('2d');
+
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ov-title');
+  const ovSub = document.getElementById('ov-sub');
+  const ovText = document.getElementById('ov-text');
+  const startBtn = document.getElementById('startBtn');
+
+  const scoreEl = document.getElementById('score-val');
+  const levelEl = document.getElementById('level-val');
+  const pctEl = document.getElementById('pct-val');
+  const targetEl = document.getElementById('target-val');
+  const livesEl = document.getElementById('lives-val');
+
+  // ---------- STATE ----------
+  let grid, borderCount, totalOpenAtStart;
+  let player, trailActive, trailCells;
+  let qixList, sparxList;
+  let score=0, lives=3, level=1, targetPct=75, claimedPct=0;
+  let gameState = 'start'; // start | playing | dead | levelup | gameover | paused
+  let invuln = 0;
+  let stateTimer = 0;
+  let lastTime = 0;
+
+  function idx(x,y){ return y*COLS+x; }
+  function inBounds(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
+
+  // ---------- INIT ----------
+  function initGrid(){
+    grid = new Uint8Array(COLS*ROWS);
+    for(let x=0;x<COLS;x++){ grid[idx(x,0)]=FILLED; grid[idx(x,ROWS-1)]=FILLED; }
+    for(let y=0;y<ROWS;y++){ grid[idx(0,y)]=FILLED; grid[idx(COLS-1,y)]=FILLED; }
+    borderCount = 2*COLS + 2*ROWS - 4;
+    totalOpenAtStart = COLS*ROWS - borderCount;
+  }
+
+  function makeQix(){
+    const px = W*(0.35 + Math.random()*0.3);
+    const py = H*(0.35 + Math.random()*0.3);
+    const ang = Math.random()*Math.PI*2;
+    const speed = 55 + level*6;
+    return {
+      px, py,
+      vx: Math.cos(ang)*speed, vy: Math.sin(ang)*speed,
+      speed,
+      changeTimer: 0.4 + Math.random()*0.8,
+      hueBase: Math.random()*360,
+      t: Math.random()*100
+    };
+  }
+
+  function makeSparx(i, count){
+    // place along the top border, spread out, moving right
+    const startX = 2 + Math.floor((COLS-4) * (i/Math.max(count,1)));
+    return { x:startX, y:0, dir:{x:1,y:0}, timer:0, interval: 0.075 - Math.min(level*0.003,0.03) };
+  }
+
+  function initLevel(){
+    initGrid();
+    player = { x: Math.floor(COLS/2), y:0, dir:{x:0,y:0}, nextDir:{x:0,y:0}, moveTimer:0, interval:0.045 };
+    trailActive = false; trailCells = [];
+
+    qixList = [];
+    const qixCount = level>=4 ? 2 : 1;
+    for(let i=0;i<qixCount;i++) qixList.push(makeQix());
+
+    sparxList = [];
+    const sparxCount = Math.min(1 + Math.floor((level-1)/2), 4);
+    for(let i=0;i<sparxCount;i++) sparxList.push(makeSparx(i, sparxCount));
+
+    targetPct = Math.min(75 + (level-1)*2, 88);
+    claimedPct = 0;
+    invuln = 1.0;
+    renderBackground();
+    updateHud();
+  }
+
+  function resetPositions(){
+    // clear any half-drawn trail
+    for(const c of trailCells){ if(grid[idx(c.x,c.y)]===TRAIL) grid[idx(c.x,c.y)]=OPEN; }
+    trailActive = false; trailCells = [];
+    player.x = Math.floor(COLS/2); player.y = 0;
+    player.dir = {x:0,y:0}; player.nextDir = {x:0,y:0};
+    invuln = 1.5;
+    renderBackground();
+  }
+
+  // ---------- HUD ----------
+  function updateHud(){
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    pctEl.textContent = claimedPct.toFixed(1) + '%';
+    targetEl.textContent = targetPct + '%';
+    livesEl.textContent = '●'.repeat(Math.max(lives,0)) + '○'.repeat(Math.max(3-lives,0));
+  }
+
+  // ---------- BACKGROUND RENDER ----------
+  function renderBackground(){
+    bctx.fillStyle = '#000';
+    bctx.fillRect(0,0,W,H);
+    const hue = (level*47) % 360;
+    bctx.fillStyle = `hsl(${hue},65%,22%)`;
+    for(let y=0;y<ROWS;y++){
+      let runStart = -1;
+      for(let x=0;x<COLS;x++){
+        const filled = grid[idx(x,y)]===FILLED;
+        if(filled && runStart===-1) runStart = x;
+        if((!filled || x===COLS-1) && runStart!==-1){
+          const runEnd = filled ? x : x-1;
+          bctx.fillRect(runStart*CELL, y*CELL, (runEnd-runStart+1)*CELL, CELL);
+          runStart = -1;
+        }
+      }
+    }
+    // outer border highlight
+    bctx.strokeStyle = `hsl(${hue},80%,55%)`;
+    bctx.lineWidth = 2;
+    bctx.strokeRect(1,1,W-2,H-2);
+  }
+
+  // ---------- FLOOD FILL ON TRAIL CLOSE ----------
+  function finishTrail(){
+    for(const c of trailCells){
+      if(grid[idx(c.x,c.y)]===TRAIL) grid[idx(c.x,c.y)]=FILLED;
+    }
+    const visited = new Uint8Array(COLS*ROWS);
+    const stack = [];
+    for(const q of qixList){
+      const cx = Math.floor(q.px/CELL), cy = Math.floor(q.py/CELL);
+      if(inBounds(cx,cy) && grid[idx(cx,cy)]===OPEN && !visited[idx(cx,cy)]){
+        visited[idx(cx,cy)] = 1;
+        stack.push(cx,cy);
+      }
+    }
+    while(stack.length){
+      const y = stack.pop(), x = stack.pop();
+      const nb = [[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+      for(const [nx,ny] of nb){
+        if(inBounds(nx,ny) && grid[idx(nx,ny)]===OPEN && !visited[idx(nx,ny)]){
+          visited[idx(nx,ny)] = 1;
+          stack.push(nx,ny);
+        }
+      }
+    }
+    let newlyClaimed = 0;
+    for(let i=0;i<grid.length;i++){
+      if(grid[i]===OPEN && !visited[i]){ grid[i]=FILLED; newlyClaimed++; }
+    }
+    score += newlyClaimed * 8 + trailCells.length * 2;
+    trailActive = false; trailCells = [];
+
+    let filledCount = 0;
+    for(let i=0;i<grid.length;i++) if(grid[i]===FILLED) filledCount++;
+    claimedPct = ((filledCount - borderCount) / totalOpenAtStart) * 100;
+    if(claimedPct>100) claimedPct=100;
+
+    renderBackground();
+    updateHud();
+
+    if(claimedPct >= targetPct){
+      levelComplete();
+    }
+  }
+
+  // ---------- PLAYER ----------
+  function tryMovePlayer(){
+    const dir = (player.nextDir.x||player.nextDir.y) ? player.nextDir : player.dir;
+    if(!dir.x && !dir.y) return;
+    const nx = player.x + dir.x, ny = player.y + dir.y;
+    if(!inBounds(nx,ny)) return;
+    const target = grid[idx(nx,ny)];
+
+    if(trailActive){
+      if(target===TRAIL){
+        killPlayer();
+        return;
+      }
+      if(target===OPEN){
+        grid[idx(nx,ny)] = TRAIL;
+        trailCells.push({x:nx,y:ny});
+        player.x=nx; player.y=ny;
+        player.dir = dir;
+      } else if(target===FILLED){
+        player.x=nx; player.y=ny;
+        player.dir = dir;
+        finishTrail();
+      }
+    } else {
+      if(target===FILLED){
+        player.x=nx; player.y=ny;
+        player.dir = dir;
+      } else if(target===OPEN){
+        trailActive = true;
+        trailCells = [{x:player.x,y:player.y}];
+        grid[idx(nx,ny)] = TRAIL;
+        trailCells.push({x:nx,y:ny});
+        player.x=nx; player.y=ny;
+        player.dir = dir;
+      }
+    }
+  }
+
+  function killPlayer(){
+    if(invuln>0) return;
+    lives--;
+    updateHud();
+    if(lives<=0){
+      gameOver();
+    } else {
+      resetPositions();
+    }
+  }
+
+  // ---------- LEVEL / GAME FLOW ----------
+  function levelComplete(){
+    gameState = 'levelup';
+    stateTimer = 2.2;
+    ovTitle.textContent = 'LIVELLO COMPLETATO!';
+    ovSub.textContent = 'Area conquistata: ' + claimedPct.toFixed(1) + '%';
+    ovSub.classList.remove('hidden');
+    ovText.textContent = 'Preparati per il livello ' + (level+1) + '...';
+    startBtn.classList.add('hidden');
+    overlay.classList.remove('hidden');
+  }
+
+  function gameOver(){
+    gameState = 'gameover';
+    ovTitle.textContent = 'GAME OVER';
+    ovSub.textContent = 'Punteggio finale: ' + score;
+    ovSub.classList.remove('hidden');
+    ovText.textContent = 'Premi INVIO oppure il pulsante per ricominciare.';
+    startBtn.textContent = 'RICOMINCIA';
+    startBtn.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+  }
+
+  function startGame(){
+    score=0; lives=3; level=1;
+    initLevel();
+    gameState='playing';
+    overlay.classList.add('hidden');
+  }
+
+  function nextLevel(){
+    level++;
+    initLevel();
+    gameState='playing';
+    overlay.classList.add('hidden');
+  }
+
+  // ---------- QIX ----------
+  function updateQix(q, dt){
+    q.t += dt;
+    q.changeTimer -= dt;
+    if(q.changeTimer<=0){
+      const ang = Math.random()*Math.PI*2;
+      q.vx = Math.cos(ang)*q.speed;
+      q.vy = Math.sin(ang)*q.speed;
+      q.changeTimer = 0.4 + Math.random()*1.0;
+    }
+    let nx = q.px + q.vx*dt;
+    let ny = q.py + q.vy*dt;
+
+    const cxTest = Math.floor(nx/CELL), cyCur = Math.floor(q.py/CELL);
+    if(!inBounds(cxTest,cyCur) || grid[idx(cxTest,cyCur)]===FILLED){
+      q.vx *= -1;
+      nx = q.px + q.vx*dt;
+    }
+    const cxCur = Math.floor(q.px/CELL), cyTest = Math.floor(ny/CELL);
+    if(!inBounds(cxCur,cyTest) || grid[idx(cxCur,cyTest)]===FILLED){
+      q.vy *= -1;
+      ny = q.py + q.vy*dt;
+    }
+    nx = Math.max(CELL, Math.min(W-CELL, nx));
+    ny = Math.max(CELL, Math.min(H-CELL, ny));
+    q.px = nx; q.py = ny;
+
+    if(invuln<=0){
+      const cx = Math.floor(q.px/CELL), cy = Math.floor(q.py/CELL);
+      if(inBounds(cx,cy) && grid[idx(cx,cy)]===TRAIL){
+        killPlayer();
+      }
+    }
+  }
+
+  // ---------- SPARX ----------
+  const DIRS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
+  function dirIndex(d){
+    for(let i=0;i<4;i++) if(DIRS[i].x===d.x && DIRS[i].y===d.y) return i;
+    return 0;
+  }
+  function updateSparx(s, dt){
+    s.timer -= dt;
+    if(s.timer>0) return;
+    s.timer = s.interval;
+    const ci = dirIndex(s.dir);
+    const order = [(ci+1)%4, ci, (ci+3)%4, (ci+2)%4];
+    for(const oi of order){
+      const cand = DIRS[oi];
+      const nx = s.x+cand.x, ny = s.y+cand.y;
+      if(inBounds(nx,ny) && grid[idx(nx,ny)]===FILLED){
+        s.x=nx; s.y=ny; s.dir=cand;
+        break;
+      }
+    }
+    if(invuln<=0 && s.x===player.x && s.y===player.y){
+      killPlayer();
+    }
+  }
+
+  // ---------- INPUT ----------
+  const keyMap = {
+    ArrowUp:{x:0,y:-1}, ArrowDown:{x:0,y:1}, ArrowLeft:{x:-1,y:0}, ArrowRight:{x:1,y:0},
+    w:{x:0,y:-1}, s:{x:0,y:1}, a:{x:-1,y:0}, d:{x:1,y:0},
+    W:{x:0,y:-1}, S:{x:0,y:1}, A:{x:-1,y:0}, D:{x:1,y:0}
+  };
+  window.addEventListener('keydown', (e)=>{
+    if(keyMap[e.key]){
+      e.preventDefault();
+      if(player) player.nextDir = keyMap[e.key];
+      if(gameState==='start') startGame();
+    } else if(e.key==='p' || e.key==='P'){
+      if(gameState==='playing'){ gameState='paused'; ovTitle.textContent='PAUSA'; ovSub.classList.add('hidden'); ovText.textContent='Premi P per continuare.'; startBtn.classList.add('hidden'); overlay.classList.remove('hidden'); }
+      else if(gameState==='paused'){ gameState='playing'; overlay.classList.add('hidden'); }
+    } else if(e.key==='Enter'){
+      if(gameState==='gameover' || gameState==='start') startGame();
+    }
+  });
+  startBtn.addEventListener('click', ()=>{
+    if(gameState==='gameover' || gameState==='start') startGame();
+  });
+
+  // ---------- DRAW ----------
+  function drawTrail(){
+    if(trailCells.length<2) return;
+    ctx.save();
+    ctx.strokeStyle = '#fff';
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(trailCells[0].x*CELL+CELL/2, trailCells[0].y*CELL+CELL/2);
+    for(let i=1;i<trailCells.length;i++){
+      ctx.lineTo(trailCells[i].x*CELL+CELL/2, trailCells[i].y*CELL+CELL/2);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    const px = player.x*CELL+CELL/2, py = player.y*CELL+CELL/2;
+    ctx.save();
+    if(invuln>0 && Math.floor(invuln*10)%2===0){
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawQix(q){
+    const n = 7;
+    ctx.save();
+    for(let i=0;i<n;i++){
+      const a1 = q.t*1.4 + i*(Math.PI*2/n);
+      const a2 = q.t*1.4 + (i+2)*(Math.PI*2/n) + Math.sin(q.t+i)*0.6;
+      const r1 = 10 + Math.sin(q.t*2+i)*6;
+      const r2 = 16 + Math.cos(q.t*1.7+i)*8;
+      const x1 = q.px + Math.cos(a1)*r1, y1 = q.py + Math.sin(a1)*r1;
+      const x2 = q.px + Math.cos(a2)*r2, y2 = q.py + Math.sin(a2)*r2;
+      const hue = (q.hueBase + i*40 + q.t*60) % 360;
+      ctx.strokeStyle = `hsl(${hue},100%,60%)`;
+      ctx.shadowColor = `hsl(${hue},100%,60%)`;
+      ctx.shadowBlur = 6;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1,y1);
+      ctx.lineTo(x2,y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSparx(s){
+    const px = s.x*CELL+CELL/2, py = s.y*CELL+CELL/2;
+    const t = performance.now()/100;
+    ctx.save();
+    const grad = ctx.createRadialGradient(px,py,0,px,py,7);
+    grad.addColorStop(0,'#fff');
+    grad.addColorStop(0.4,'#ff0');
+    grad.addColorStop(1,'rgba(255,120,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(px,py, 6 + Math.sin(t+px)*1.5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.drawImage(bg,0,0);
+    if(gameState==='playing' || gameState==='paused'){
+      drawTrail();
+      for(const s of sparxList) drawSparx(s);
+      for(const q of qixList) drawQix(q);
+      drawPlayer();
+    }
+  }
+
+  // ---------- MAIN LOOP ----------
+  function loop(ts){
+    if(!lastTime) lastTime = ts;
+    let dt = (ts - lastTime)/1000;
+    lastTime = ts;
+    if(dt>0.05) dt = 0.05;
+
+    if(gameState==='playing'){
+      if(invuln>0) invuln = Math.max(0, invuln-dt);
+
+      player.moveTimer -= dt;
+      if(player.moveTimer<=0){
+        player.moveTimer = player.interval;
+        tryMovePlayer();
+      }
+      for(const q of qixList) updateQix(q, dt);
+      for(const s of sparxList) updateSparx(s, dt);
+
+    } else if(gameState==='levelup'){
+      stateTimer -= dt;
+      if(stateTimer<=0){ nextLevel(); }
+    }
+
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- BOOT ----------
+  initGrid();
+  player = { x: Math.floor(COLS/2), y:0, dir:{x:0,y:0}, nextDir:{x:0,y:0}, moveTimer:0, interval:0.045 };
+  trailActive=false; trailCells=[];
+  qixList=[makeQix()];
+  sparxList=[makeSparx(0,1)];
+  renderBackground();
+  updateHud();
+  requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
