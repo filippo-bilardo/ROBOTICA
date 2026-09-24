@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090b">
+<title>QIX — Arcade 1981</title>
+<style>
+  :root{color-scheme:dark;--ink:#dadbd7;--muted:#797d81;--cyan:#66d9e8;--red:#ef664b}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100svh;background:#08090b;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;display:flex;flex-direction:column;align-items:center}
+  header{width:min(920px,94%);display:flex;align-items:center;justify-content:space-between;padding:23px 0 17px;border-bottom:1px solid #242629;font-size:10px;letter-spacing:2px;color:var(--muted)}
+  header strong{font-weight:500;color:var(--ink)}
+  .signal{display:inline-block;width:5px;height:5px;background:var(--red);margin-right:9px;box-shadow:0 0 9px #ef664b60}
+  main{width:100%;display:flex;flex-direction:column;align-items:center;padding:24px 14px 16px;flex:1;justify-content:center}
+  .cabinet{position:relative;width:min(560px,100%,calc((100svh - 225px)*.8));min-width:260px;background:#010102;border:1px solid #272b30;box-shadow:0 18px 65px #000,0 0 50px #5797a206;padding:12px;border-radius:8px}
+  .screen{position:relative;overflow:hidden;border-radius:4px;background:#000}
+  .screen:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0px,#0000 2px,#0002 3px);box-shadow:inset 0 0 28px #0008}
+  canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none;outline:none}
+  .bar{width:min(560px,100%);display:flex;justify-content:space-between;align-items:center;margin-top:17px;gap:8px}
+  button{font:inherit;color:var(--ink);background:#121417;border:1px solid #34383d;border-radius:3px;padding:10px 14px;font-size:10px;letter-spacing:1px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+  button:hover{background:#1e2328;border-color:#727a80}button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}button:active,.held{background:#303942;transform:translateY(1px)}
+  #start{border-color:#6b473b;color:#ffb098} .utility{display:flex;gap:7px}.utility button{padding:10px}
+  .guide{max-width:560px;width:100%;display:flex;justify-content:space-between;gap:12px;margin-top:19px;font-size:10px;color:var(--muted);line-height:1.8}
+  kbd{font:inherit;color:#c9cdce}.fast{color:var(--cyan)}.slow{color:var(--red)}
+  details{width:min(560px,100%);margin-top:18px;font-size:11px;color:#85898d;line-height:1.8}summary{cursor:pointer;letter-spacing:1px;font-size:9px}details p{margin:10px 0}a{color:#a5adb3;text-underline-offset:3px}
+  footer{width:min(920px,94%);display:flex;justify-content:space-between;border-top:1px solid #242629;padding:16px 0 20px;font-size:9px;letter-spacing:1.5px;color:#646a70;gap:15px}
+  .touch{display:none;width:min(480px,100%);justify-content:space-between;align-items:center;margin-top:20px;gap:20px}.dpad{display:grid;grid-template:repeat(3,42px)/repeat(3,44px);gap:3px}.dpad button{padding:0;font-size:19px}.drawbuttons{display:flex;gap:10px}.drawbuttons button{width:76px;height:76px;border-radius:50%;line-height:1.8}.drawbuttons .fast{border-color:#386e86}.drawbuttons .slow{border-color:#89472e}
+  @media(pointer:coarse){.touch{display:flex}.cabinet{width:min(480px,100%,calc((100svh - 345px)*.8))}.guide{display:none}}
+  @media(max-width:480px){header{padding-top:15px;font-size:9px}header span:last-child{letter-spacing:1px}main{padding-top:16px}.cabinet{padding:8px}footer{font-size:8px;letter-spacing:.7px}.guide{font-size:9px}.bar button{font-size:9px;padding:10px 9px}}
+</style>
+</head>
+<body>
+<header><strong><span class="signal"></span>THE ARCADE ARCHIVE</strong><span>1981 / TAITO AMERICA</span></header>
+<main>
+  <div class="cabinet"><div class="screen"><canvas id="game" width="320" height="400" tabindex="0" aria-label="Qix. Frecce per muoversi, tieni Z per tracciare veloce o X per tracciare lento. Invio per iniziare, P per pausa."></canvas></div></div>
+  <div class="bar"><button id="start">INIZIA · INVIO</button><div class="utility"><button id="pause" aria-label="Pausa" aria-pressed="false">PAUSA · P</button><button id="sound" aria-label="Attiva o disattiva audio" aria-pressed="true">AUDIO ON</button><button id="full" aria-label="Schermo intero">⛶</button></div></div>
+  <div class="guide"><span><kbd>↑ ← ↓ →</kbd> MUOVI</span><span><kbd class="fast">Z / SPAZIO</kbd> VELOCE</span><span><kbd class="slow">X / SHIFT</kbd> LENTO · 2×</span></div>
+  <div class="touch" aria-label="Controlli touch"><div class="dpad"><button style="grid-area:1/2" data-key="ArrowUp" aria-label="Su">↑</button><button style="grid-area:2/1" data-key="ArrowLeft" aria-label="Sinistra">←</button><button style="grid-area:2/2" data-key="ArrowDown" aria-label="Giù">↓</button><button style="grid-area:2/3" data-key="ArrowRight" aria-label="Destra">→</button></div><div class="drawbuttons"><button data-key="KeyX" class="slow">LENTO<br>2×</button><button data-key="KeyZ" class="fast">VELOCE<br>1×</button></div></div>
+  <details><summary>COME SI GIOCA / NOTE SULLA RICOSTRUZIONE</summary><p>Conquista almeno il 75% del campo. Muoviti sul bordo con le frecce; tieni premuto Z o Spazio per tracciare veloce, X o Shift per tracciare lento. Chiudi il tracciato tornando su un bordo: viene riempita la regione che non contiene il Qix. Il lento vale 500 punti per punto percentuale, il veloce 250.</p><p>Il Qix distrugge le linee incompiute; gli Sparx inseguono il tuo marcatore sul perimetro. Se ti fermi durante il disegno si accende la miccia: riprendi a muoverti per spegnerla. Dopo due schermate arrivano due Qix: separali per aumentare il moltiplicatore. Ogni punto percentuale oltre il 75% vale 1.000 punti bonus. Hai tre vite.</p><p>Invio inizia una partita; P o Esc mette in pausa; M controlla l’audio. Su telefono, tieni premuto un pulsante di disegno insieme a una direzione.</p><p>Ricostruzione indipendente in HTML e Canvas, senza ROM o risorse esterne. Regole, grafica e suoni ricreati: non è un’emulazione del codice originale. Riferimenti: <a href="https://www.arcade-history.com/game/2096/" target="_blank" rel="noopener noreferrer">Qix, scheda arcade e punteggi</a> e <a href="https://www.gamesdatabase.org/Media/SYSTEM/Arcade/Manual/formated/Qix_-_1981_-_Taito.pdf" target="_blank" rel="noopener noreferrer">manuale originale Taito</a>. Le note complete sono in <a href="qix-astra.md">qix-astra.md</a>.</p></details>
+</main>
+<footer><span>QIX <span style="color:#444">/</span> PRONOUNCED “KICKS”</span><span>UNA RICOSTRUZIONE DEL CLASSICO ARCADE</span></footer>
+<script>
+(() => {
+  'use strict';
+  // All coordinates are lattice vertices. Areas are cells, so Stix remain
+  // zero-width barriers and percentages never count a drawn line as territory.
+  const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+  const W=128,H=128,N=W*H,S=2,OX=32,OY=80,TARGET=75,SPARX_INTERVAL=37;
+  const cell=new Uint8Array(N), hwall=new Uint8Array(W*(H+1)), vwall=new Uint8Array((W+1)*H);
+  const terrain=document.createElement('canvas'); terrain.width=320;terrain.height=400;
+  const tc=terrain.getContext('2d');ctx.imageSmoothingEnabled=false;
+  const DIR=[[1,0],[0,1],[-1,0],[0,-1]], keys=new Set(), order=[];
+  const glyphs={
+    'A':'01110/10001/10001/11111/10001/10001/10001','B':'11110/10001/10001/11110/10001/10001/11110','C':'01111/10000/10000/10000/10000/10000/01111','D':'11110/10001/10001/10001/10001/10001/11110','E':'11111/10000/10000/11110/10000/10000/11111','F':'11111/10000/10000/11110/10000/10000/10000','G':'01111/10000/10000/10111/10001/10001/01111','H':'10001/10001/10001/11111/10001/10001/10001','I':'11111/00100/00100/00100/00100/00100/11111','J':'00111/00010/00010/00010/10010/10010/01100','K':'10001/10010/10100/11000/10100/10010/10001','L':'10000/10000/10000/10000/10000/10000/11111','M':'10001/11011/10101/10101/10001/10001/10001','N':'10001/11001/11001/10101/10011/10011/10001','O':'01110/10001/10001/10001/10001/10001/01110','P':'11110/10001/10001/11110/10000/10000/10000','Q':'01110/10001/10001/10001/10101/10010/01101','R':'11110/10001/10001/11110/10100/10010/10001','S':'01111/10000/10000/01110/00001/00001/11110','T':'11111/00100/00100/00100/00100/00100/00100','U':'10001/10001/10001/10001/10001/10001/01110','V':'10001/10001/10001/10001/10001/01010/00100','W':'10001/10001/10001/10101/10101/10101/01010','X':'10001/10001/01010/00100/01010/10001/10001','Y':'10001/10001/01010/00100/00100/00100/00100','Z':'11111/00001/00010/00100/01000/10000/11111',
+    '0':'01110/10001/10011/10101/11001/10001/01110','1':'00100/01100/00100/00100/00100/00100/01110','2':'01110/10001/00001/00010/00100/01000/11111','3':'11110/00001/00001/01110/00001/00001/11110','4':'00010/00110/01010/10010/11111/00010/00010','5':'11111/10000/10000/11110/00001/00001/11110','6':'01110/10000/10000/11110/10001/10001/01110','7':'11111/00001/00010/00100/01000/01000/01000','8':'01110/10001/10001/01110/10001/10001/01110','9':'01110/10001/10001/01111/00001/00001/01110',
+    '%':'11001/11010/00010/00100/01000/01011/10011','!':'00100/00100/00100/00100/00100/00000/00100','-':'00000/00000/00000/11111/00000/00000/00000','.':'00000/00000/00000/00000/00000/00110/00110',':':'00000/00110/00110/00000/00110/00110/00000','/':'00001/00010/00010/00100/01000/01000/10000','+':'00000/00100/00100/11111/00100/00100/00000','>':'10000/01000/00100/00010/00100/01000/10000','<':'00001/00010/00100/01000/00100/00010/00001'
+  };
+  function text(str,x,y,color='#eee',scale=1,align='left'){
+    str=String(str).toUpperCase();if(align==='center')x-=(str.length*6-1)*scale/2;if(align==='right')x-=(str.length*6-1)*scale;
+    ctx.fillStyle=color;x=Math.round(x);y=Math.round(y);
+    for(const c of str){const g=glyphs[c];if(g)g.split('/').forEach((r,j)=>{for(let i=0;i<5;i++)if(r[i]==='1')ctx.fillRect(x+i*scale,y+j*scale,scale,scale)});x+=6*scale}
+  }
+  let state='attract',paused=false,score=0,high=10000,lives=3,level=1,multiplier=1;
+  let player={x:64,y:H},trail=[],trailSet=new Set(),drawMode=0,claimed=0,qixes=[],sparx=[];
+  let moveClock=0,stageTime=0,spawnAt=SPARX_INTERVAL,idle=0,fuse=-1,phase=0,flash=0,now=0,last=0,accumulator=0;
+  let message='',bonus=0,deathAt={x:64,y:H},soundOn=true,audioContext=null,toneClock=0;
+  try{high=Math.max(10000,Number(localStorage.getItem('qix-astra-high'))||0);soundOn=localStorage.getItem('qix-astra-sound')!=='off'}catch{}
+  function audioUnlock(){if(!soundOn)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume().catch(()=>{})}catch{}}
+  function beep(freq,duration=.08,type='square',volume=.035,end=freq){
+    if(!soundOn||!audioContext||audioContext.state!=='running')return;
+    const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,end),t+duration);g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+duration+.01);
+  }
+  function saveHigh(){if(score>high){high=score;try{localStorage.setItem('qix-astra-high',String(high))}catch{}}}
+  function addScore(n){score+=Math.round(n);saveHigh()}
+  const idx=(x,y)=>y*W+x;
+  const nodeId=(x,y)=>y*(W+1)+x;
+  function open(x,y){return x>=0&&x<W&&y>=0&&y<H&&cell[idx(x,y)]===0}
+  function inside(x,y){return open(Math.floor(x),Math.floor(y))}
+  function edgeSides(x,y,nx,ny){return y===ny?[open(Math.min(x,nx),y-1),open(Math.min(x,nx),y)]:[open(x-1,Math.min(y,ny)),open(x,Math.min(y,ny))]}
+  function boundaryEdge(x,y,nx,ny){if(nx<0||nx>W||ny<0||ny>H)return false;const [a,b]=edgeSides(x,y,nx,ny);return a!==b}
+  function boundaryNode(x,y){return DIR.some(([dx,dy])=>boundaryEdge(x,y,x+dx,y+dy))}
+  function wall(a,b,value){if(a.y===b.y)hwall[a.y*W+Math.min(a.x,b.x)]=value;else vwall[Math.min(a.y,b.y)*(W+1)+a.x]=value}
+  function clearTrail(){trail=[];trailSet.clear();hwall.fill(0);vwall.fill(0);drawMode=0;idle=0;fuse=-1;moveClock=0}
+  function rebuildTerrain(){
+    tc.clearRect(0,0,320,400);
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cell[idx(x,y)]){tc.fillStyle=cell[idx(x,y)]===1?'#183bba':'#a84026';tc.fillRect(OX+x*S,OY+y*S,S,S)}
+    tc.strokeStyle='#a9cbd0';tc.lineWidth=1;tc.beginPath();
+    for(let y=0;y<=H;y++)for(let x=0;x<=W;x++){
+      if(x<W&&boundaryEdge(x,y,x+1,y)){tc.moveTo(OX+x*S+.5,OY+y*S+.5);tc.lineTo(OX+(x+1)*S+.5,OY+y*S+.5)}
+      if(y<H&&boundaryEdge(x,y,x,y+1)){tc.moveTo(OX+x*S+.5,OY+y*S+.5);tc.lineTo(OX+x*S+.5,OY+(y+1)*S+.5)}
+    }tc.stroke();
+  }
+  const random=(a,b)=>a+Math.random()*(b-a);
+  function makeQix(i){const x=i?86:47,y=i?48:65;return {a:{x:x-7,y:y-8,vx:random(-9,9),vy:random(-10,10)},b:{x:x+7,y:y+8,vx:random(-9,9),vy:random(-10,10)},history:[],clock:0,drift:0,hue:i?175:300}}
+  function newBoard(){
+    cell.fill(0);clearTrail();claimed=0;player={x:64,y:H};qixes=Array.from({length:level>=3?2:1},(_,i)=>makeQix(i));
+    stageTime=0;spawnAt=SPARX_INTERVAL;sparx=[];spawnSparx();rebuildTerrain();state='ready';phase=1.6;message='PLAYER 1';
+  }
+  function startGame(){if(['playing','ready','dying','level'].includes(state)){canvas.focus();return}audioUnlock();score=0;lives=3;level=1;multiplier=1;paused=false;clearKeys();newBoard();beep(220,.2,'square',.04,880);syncButtons();canvas.focus()}
+  function nearestBoundary(x,y){let best=null,d=Infinity;for(let yy=0;yy<=H;yy++)for(let xx=0;xx<=W;xx++){const nd=(xx-x)**2+(yy-y)**2;if(nd<d&&boundaryNode(xx,yy)){d=nd;best={x:xx,y:yy}}}return best||{x:64,y:H}}
+  function spawnSparx(){const p=nearestBoundary(64,0);for(const dir of [0,2])sparx.push({x:p.x,y:p.y,dir,hand:dir===0?1:-1,clock:0,super:stageTime>=SPARX_INTERVAL*2||level>=5})}
+  function die(){
+    if(state!=='playing')return;
+    deathAt={...player};const home=trail.length?trail[0]:player;player={...home};state='dying';phase=1.6;lives--;beep(190,.65,'sawtooth',.07,25);clearTrail();saveHigh();
+  }
+  function finish(split){
+    if(split){multiplier++;bonus=0;message='QIX SPLIT!'}else{bonus=Math.floor(Math.max(0,claimed-TARGET))*1000;addScore(bonus);message='SCREEN COMPLETE'}
+    state='level';phase=3.3;beep(330,.65,'square',.05,1320);
+  }
+  function capture(){
+    const labels=new Int32Array(N);labels.fill(-1);const queue=new Int32Array(N);let count=0;
+    for(let start=0;start<N;start++){
+      if(cell[start]||labels[start]!==-1)continue;
+      let head=0,tail=1;queue[0]=start;labels[start]=count;
+      while(head<tail){const p=queue[head++],x=p%W,y=Math.floor(p/W);
+        for(let d=0;d<4;d++){const nx=x+DIR[d][0],ny=y+DIR[d][1];if(!open(nx,ny))continue;const n=idx(nx,ny);if(labels[n]!==-1)continue;
+          const blocked=d===0?vwall[y*(W+1)+x+1]:d===2?vwall[y*(W+1)+x]:d===1?hwall[(y+1)*W+x]:hwall[y*W+x];
+          if(!blocked){labels[n]=count;queue[tail++]=n}
+        }
+      }count++;
+    }
+    const occupied=new Set(),qLabels=[];
+    for(const q of qixes){const label=labels[idx(Math.max(0,Math.min(W-1,Math.floor((q.a.x+q.b.x)/2))),Math.max(0,Math.min(H-1,Math.floor((q.a.y+q.b.y)/2))))];qLabels.push(label);if(label>=0)occupied.add(label)}
+    let gained=0;const color=drawMode;
+    for(let i=0;i<N;i++)if(!cell[i]&&!occupied.has(labels[i])){cell[i]=color;gained++}
+    claimed=cell.reduce((sum,c)=>sum+(c!==0),0)/N*100;
+    addScore(gained/N*100*(color===2?500:250)*multiplier);clearTrail();rebuildTerrain();flash=.13;
+    for(const q of qixes)q.history=[];
+    for(const s of sparx)if(!boundaryNode(s.x,s.y))Object.assign(s,nearestBoundary(s.x,s.y));
+    beep(color===2?450:650,.16,'triangle',.07,1100);
+    if(qLabels.length===2&&qLabels[0]!==qLabels[1])finish(true);else if(claimed>=TARGET)finish(false);
+  }
+  function segmentDistance(px,py,a,b){const dx=b.x-a.x,dy=b.y-a.y,len=dx*dx+dy*dy,t=len?Math.max(0,Math.min(1,((px-a.x)*dx+(py-a.y)*dy)/len)):0;return Math.hypot(px-a.x-t*dx,py-a.y-t*dy)}
+  function orientation(a,b,c){return (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)}
+  function intersects(a,b,c,d){const p=orientation(a,b,c),q=orientation(a,b,d),r=orientation(c,d,a),s=orientation(c,d,b);return ((p>0&&q<0)||(p<0&&q>0))&&((r>0&&s<0)||(r<0&&s>0))||Math.min(segmentDistance(a.x,a.y,c,d),segmentDistance(b.x,b.y,c,d),segmentDistance(c.x,c.y,a,b),segmentDistance(d.x,d.y,a,b))<.25}
+  function trailHit(){if(trail.length<2)return false;for(const q of qixes){const segments=[...q.history,{a:q.a,b:q.b}];for(const line of segments)for(let i=1;i<trail.length;i++)if(intersects(line.a,line.b,trail[i-1],trail[i]))return true}return false}
+  function direction(){for(let i=order.length-1;i>=0;i--){const key=order[i];if(!keys.has(key))continue;const d={ArrowRight:0,KeyD:0,ArrowDown:1,KeyS:1,ArrowLeft:2,KeyA:2,ArrowUp:3,KeyW:3}[key];if(d!==undefined)return d}return -1}
+  function mode(){return keys.has('KeyX')||keys.has('ShiftLeft')||keys.has('ShiftRight')?2:keys.has('KeyZ')||keys.has('Space')?1:0}
+  function movePlayer(){
+    const d=direction();if(d<0)return false;const [dx,dy]=DIR[d],nx=player.x+dx,ny=player.y+dy;
+    if(nx<0||nx>W||ny<0||ny>H)return false;
+    if(!trail.length){
+      if(boundaryEdge(player.x,player.y,nx,ny)){player={x:nx,y:ny};return true}
+      if(!mode())return false;
+      const [a,b]=edgeSides(player.x,player.y,nx,ny);if(!a||!b)return false;
+      drawMode=mode();trail=[{...player}];trailSet.add(nodeId(player.x,player.y));
+    }else if(!mode())return false;
+    if(trailSet.has(nodeId(nx,ny)))return false;
+    const [a,b]=edgeSides(player.x,player.y,nx,ny);if(!a&&!b)return false;
+    const prev={...player};player={x:nx,y:ny};trail.push({...player});trailSet.add(nodeId(nx,ny));wall(prev,player,1);idle=0;fuse=-1;
+    if(trailHit()){die();return true}
+    if(boundaryNode(nx,ny))capture();
+    return true;
+  }
+  function validLine(a,b){const n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)*3);for(let i=0;i<=n;i++){const t=n?i/n:0;if(!inside(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t))return false}return true}
+  function updateQix(q,dt,demo=false){
+    const speed=1+Math.min(level-1,10)*.08;q.drift-=dt;q.clock+=dt;
+    if(q.drift<=0){q.drift=random(.12,.6);for(const p of [q.a,q.b]){p.vx=Math.max(-23,Math.min(23,p.vx+random(-13,13)));p.vy=Math.max(-23,Math.min(23,p.vy+random(-13,13)))}}
+    for(const [p,other] of [[q.a,q.b],[q.b,q.a]]){
+      const distance=Math.hypot(p.x-other.x,p.y-other.y);if(distance>29){p.vx+=(other.x-p.x)*dt*2;p.vy+=(other.y-p.y)*dt*2}else if(distance<8){p.vx+=(p.x-other.x)*dt*2;p.vy+=(p.y-other.y)*dt*2}
+      const nx=p.x+p.vx*dt*speed,ny=p.y+p.vy*dt*speed;
+      if(validLine({x:nx,y:p.y},other))p.x=nx;else p.vx=-p.vx;
+      if(validLine({x:p.x,y:ny},other))p.y=ny;else p.vy=-p.vy;
+    }
+    if(q.clock>=.026){q.clock=0;q.history.push({a:{x:q.a.x,y:q.a.y},b:{x:q.b.x,y:q.b.y},hue:(q.hue+now*85)%360});if(q.history.length>9)q.history.shift()}
+    if(!demo&&trailHit())die();
+  }
+  function moveSparx(s){
+    // Follow a directed contour, preserving its side at four-way junctions.
+    for(const d of [(s.dir+s.hand+4)%4,s.dir,(s.dir-s.hand+4)%4,(s.dir+2)%4]){
+      const nx=s.x+DIR[d][0],ny=s.y+DIR[d][1];if(boundaryEdge(s.x,s.y,nx,ny)){s.x=nx;s.y=ny;s.dir=d;break}
+    }
+  }
+  function sparxCollision(s){if(Math.hypot(s.x-player.x,s.y-player.y)<1.45)die()}
+  function update(dt){
+    now+=dt;if(paused)return;flash=Math.max(0,flash-dt);
+    if(state==='attract'||state==='gameover'){for(const q of qixes)updateQix(q,dt,true);return}
+    if(state==='ready'){phase-=dt;if(phase<=0)state='playing';return}
+    if(state==='dying'){phase-=dt;if(phase<=0){if(lives<=0){state='gameover';syncButtons()}else{if(!boundaryNode(player.x,player.y))player=nearestBoundary(player.x,player.y);sparx=[];spawnSparx();state='ready';phase=1.3;message='PLAYER 1'}}return}
+    if(state==='level'){phase-=dt;if(phase<=0){level++;newBoard()}return}
+    stageTime+=dt;
+    if(stageTime>=spawnAt){if(sparx.length<8)spawnSparx();else sparx.forEach(s=>s.super=true);spawnAt+=SPARX_INTERVAL;beep(120,.25,'sawtooth',.04,380)}
+    for(const s of sparx){if(stageTime>=SPARX_INTERVAL*2)s.super=true;sparxCollision(s)}if(state!=='playing')return;
+    const speed=trail.length?(drawMode===2?23:46):66;moveClock+=dt*speed;let moved=false;
+    while(moveClock>=1){moveClock--;moved=movePlayer()||moved;if(state!=='playing')return}
+    if(trail.length){
+      if(!moved)idle+=dt;if(idle>.42){if(fuse<0){fuse=0;beep(85,.16,'sawtooth',.03,260)}fuse+=dt*(48+level*2);if(fuse>=trail.length-1){die();return}}
+      toneClock-=dt;if(toneClock<=0){toneClock=.085;beep(fuse>=0?random(70,280):drawMode===2?105:160,.045,'square',.011)}
+    }
+    for(const q of qixes){updateQix(q,dt);if(state!=='playing')return}
+    for(const s of sparx){s.clock+=dt*(19+Math.min(level,12)*2.2)*(s.super?1.65:1);while(s.clock>=1){s.clock--;moveSparx(s);sparxCollision(s);if(state!=='playing')return}sparxCollision(s)}
+  }
+  function line(a,b,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(OX+a.x*S+.5,OY+a.y*S+.5);ctx.lineTo(OX+b.x*S+.5,OY+b.y*S+.5);ctx.stroke()}
+  function drawQix(q){for(let i=0;i<q.history.length;i++){const h=q.history[i];line(h.a,h.b,`hsl(${h.hue} 100% ${37+i*3}%)`)}line(q.a,q.b,'#f7a4eb')}
+  function spark(x,y,color,seed,size=4){x=Math.round(OX+x*S);y=Math.round(OY+y*S);ctx.fillStyle=color;for(let i=0;i<8;i++){const angle=i*Math.PI/4+now*12+seed,r=size*(.55+.45*Math.sin(now*37+i*7+seed));ctx.fillRect(Math.round(x+Math.cos(angle)*r),Math.round(y+Math.sin(angle)*r),2,2)}ctx.fillStyle='#fffbd5';ctx.fillRect(x,y,2,2)}
+  function marker(p,color='#f7f7e0'){const x=OX+p.x*S,y=OY+p.y*S;ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+.5,y-3.5);ctx.lineTo(x+4.5,y+.5);ctx.lineTo(x+.5,y+4.5);ctx.lineTo(x-3.5,y+.5);ctx.closePath();ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
+  function hud(){
+    text('1UP',32,13,'#ed4949');text('HIGH SCORE',160,13,'#ed4949',1,'center');text('2UP',288,13,'#ed4949',1,'right');
+    text(String(score).padStart(6,'0'),32,25);text(String(high).padStart(6,'0'),160,25,'#eee',1,'center');text('00',288,25,'#eee',1,'right');
+    text('CLAIMED',32,44,'#9a9fa5');text(`${Math.floor(claimed)}%`,32,57,'#fbfbec');text('THRESHOLD',288,44,'#9a9fa5',1,'right');text('75%',288,57,'#fbfbec',1,'right');
+    if(multiplier>1)text(`${multiplier}X`,160,54,'#faac4c',1,'center');
+    ctx.fillStyle='#411417';ctx.fillRect(OX,OY-6,W*S,2);ctx.fillStyle='#de3543';const remaining=Math.max(0,Math.min(1,(spawnAt-stageTime)/SPARX_INTERVAL));ctx.fillRect(OX+W*S*(1-remaining)/2,OY-6,W*S*remaining,2);
+    for(let i=0;i<Math.max(0,lives-1);i++){const x=35+i*11;ctx.strokeStyle='#f0f1de';ctx.beginPath();ctx.moveTo(x,351);ctx.lineTo(x+3,354);ctx.lineTo(x,357);ctx.lineTo(x-3,354);ctx.closePath();ctx.stroke()}
+    text(`SCREEN ${String(level).padStart(2,'0')}`,288,351,'#b5b9ba',1,'right');
+    text(drawMode===2?'SLOW STIX':drawMode===1?'FAST STIX':'QIX',160,351,drawMode===2?'#ef7044':drawMode===1?'#75b9fc':'#d75277',1,'center');
+    text('CLAIM OVER 75% FOR BONUS',160,374,'#757a83',1,'center');
+  }
+  function panel(y,height){ctx.fillStyle='#000e';ctx.fillRect(44,y,232,height)}
+  function drawTitle(){
+    panel(109,193);
+    // The slanted, open-line QIX lettering recalls the original title artwork.
+    ctx.save();ctx.translate(87,122);ctx.strokeStyle='#e84969';ctx.lineWidth=2;
+    const paths=[[[0,0],[36,0],[26,45],[-10,45],[0,0]],[[13,30],[34,53]],[[54,0],[44,45]],[[76,0],[96,45]],[[106,0],[66,45]]];
+    for(let k=3;k>=0;k--){ctx.strokeStyle=['#ff6480','#be3562','#703977','#354c88'][k];ctx.beginPath();for(const p of paths){ctx.moveTo(p[0][0]+k*2,p[0][1]+k*2);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0]+k*2,p[i][1]+k*2)}ctx.stroke()}ctx.restore();
+    text('THE ORIGINAL AREA CAPTURE GAME',160,190,'#909ba5',1,'center');
+    if(Math.floor(now*1.5)%2===0)text('PUSH ENTER TO START',160,217,'#f4eddc',1,'center');
+    text('CLAIM 75% OF THE SCREEN',160,243,'#e2e4de',1,'center');text('FAST STIX',93,263,'#669ff7',1,'center');text('SLOW STIX',226,263,'#e66a41',1,'center');text('1X POINTS',93,277,'#92979f',1,'center');text('2X POINTS',226,277,'#92979f',1,'center');
+    text('1981 TAITO AMERICA CORP.',160,317,'#a6b9bd',1,'center');
+  }
+  function render(){
+    ctx.fillStyle='#000';ctx.fillRect(0,0,320,400);ctx.drawImage(terrain,0,0);hud();
+    for(const q of qixes)drawQix(q);
+    if(trail.length>1){ctx.strokeStyle=drawMode===2?'#ff6044':'#58baff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(OX+trail[0].x*S+.5,OY+trail[0].y*S+.5);for(let i=1;i<trail.length;i++)ctx.lineTo(OX+trail[i].x*S+.5,OY+trail[i].y*S+.5);ctx.stroke()}
+    for(let i=0;i<sparx.length;i++){const s=sparx[i];spark(s.x,s.y,s.super?'#72baff':'#ff773b',i)}
+    if(fuse>=0&&trail.length){const i=Math.min(trail.length-1,Math.floor(fuse)),a=trail[i],b=trail[Math.min(i+1,trail.length-1)],t=fuse-i;spark(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,'#ffef68',0,5)}
+    if(state!=='dying')marker(player);
+    if(flash>0){ctx.strokeStyle='#fff';ctx.strokeRect(OX-.5,OY-.5,W*S+1,H*S+1)}
+    if(state==='dying'){const radius=(1.6-phase)*35;for(let i=0;i<16;i++){const a=i*Math.PI/8,x=deathAt.x+Math.cos(a)*radius,y=deathAt.y+Math.sin(a)*radius;if(x>=0&&x<=W&&y>=0&&y<=H)spark(x,y,i%2?'#ec4d4a':'#fff',i,2)}}
+    if(state==='attract')drawTitle();
+    if(state==='ready'){panel(190,42);text(message,160,199,'#f2e9c7',1,'center');text('GET READY',160,216,'#e76165',1,'center')}
+    if(state==='level'){panel(170,85);text(message,160,182,'#f7e4ac',1,'center');text(`${Math.floor(claimed)}% CLAIMED`,160,203,'#c7e7e5',1,'center');text(bonus?`BONUS ${bonus}`:`MULTIPLIER ${multiplier}X`,160,227,'#ef8258',1,'center')}
+    if(state==='gameover'){panel(167,100);text('GAME OVER',160,179,'#ef5269',2,'center');text(`SCORE ${score}`,160,211,'#fff',1,'center');if(Math.floor(now*1.5)%2===0)text('PUSH ENTER TO PLAY AGAIN',160,243,'#cdcabc',1,'center')}
+    if(paused){panel(174,76);text('PAUSA',160,186,'#f1e9d8',2,'center');text('P / ESC PER RIPRENDERE',160,225,'#98abb2',1,'center')}
+  }
+  function syncButtons(){document.getElementById('start').textContent=state==='attract'?'INIZIA · INVIO':state==='gameover'?'RIGIOCA · INVIO':'PARTITA IN CORSO';document.getElementById('pause').textContent=paused?'RIPRENDI · P':'PAUSA · P';document.getElementById('pause').setAttribute('aria-pressed',String(paused));document.getElementById('sound').textContent=soundOn?'AUDIO ON':'AUDIO OFF';document.getElementById('sound').setAttribute('aria-pressed',String(soundOn))}
+  function clearKeys(){keys.clear();order.length=0;document.querySelectorAll('[data-key]').forEach(b=>b.classList.remove('held'))}
+  function pause(){if(state==='attract'||state==='gameover')return;paused=!paused;clearKeys();if(!paused)audioUnlock();syncButtons()}
+  function mute(){soundOn=!soundOn;if(soundOn)audioUnlock();try{localStorage.setItem('qix-astra-sound',soundOn?'on':'off')}catch{}syncButtons()}
+  function press(code){if(!keys.has(code)){keys.add(code);order.push(code);moveClock=Math.max(moveClock,1)}}
+  function release(code){keys.delete(code);const i=order.indexOf(code);if(i>=0)order.splice(i,1)}
+  const handled=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','KeyZ','KeyX','Space','ShiftLeft','ShiftRight','Enter','KeyP','Escape','KeyM']);
+  window.addEventListener('keydown',e=>{if(!handled.has(e.code)||e.ctrlKey||e.metaKey||e.altKey)return;if((e.code==='Enter'||e.code==='Space')&&e.target.closest('button,summary,a'))return;e.preventDefault();if(e.repeat)return;audioUnlock();if(e.code==='Enter'){startGame();return}if(e.code==='KeyP'||e.code==='Escape'){pause();return}if(e.code==='KeyM'){mute();return}press(e.code)});
+  window.addEventListener('keyup',e=>release(e.code));
+  window.addEventListener('blur',()=>{clearKeys();if(state!=='attract'&&state!=='gameover'&&!paused){paused=true;syncButtons()}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearKeys();if(state!=='attract'&&state!=='gameover'){paused=true;syncButtons()}}last=0;accumulator=0});
+  document.getElementById('start').addEventListener('click',startGame);document.getElementById('pause').addEventListener('click',pause);document.getElementById('sound').addEventListener('click',mute);
+  document.getElementById('full').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch{}});
+  document.querySelectorAll('[data-key]').forEach(button=>{button.addEventListener('pointerdown',e=>{e.preventDefault();audioUnlock();button.setPointerCapture(e.pointerId);press(button.dataset.key);button.classList.add('held')});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>{release(button.dataset.key);button.classList.remove('held')})});
+  function frame(timestamp){if(!last)last=timestamp;accumulator+=Math.min((timestamp-last)/1000,.1);last=timestamp;while(accumulator>=1/120){update(1/120);accumulator-=1/120}render();requestAnimationFrame(frame)}
+  cell.fill(0);qixes=[makeQix(0)];spawnSparx();rebuildTerrain();syncButtons();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
